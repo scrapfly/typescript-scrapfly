@@ -108,7 +108,14 @@ export type ResultData = {
     data?: string; // TODO: type?
     dns?: any; // TODO: type?
     duration: number;
-    error?: string;  // TODO: type?
+    error?: {
+        code: string,
+        http_code: number,
+        links: Rec<string>,
+        message: string,
+        retryable: boolean,
+        doc_url?: string,
+    };
     format: string;
     iframes: Array<any>; // TODO: type?
     log_url: string;

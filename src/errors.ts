@@ -4,7 +4,7 @@ export class ScrapflyError extends Error {
     constructor(message: string, args?: Record<string, any>) {
         super(message);
         this.args = args;
- }
+    }
 }
 
 // raised when scrape config is invalid

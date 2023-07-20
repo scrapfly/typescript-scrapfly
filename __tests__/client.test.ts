@@ -7,6 +7,7 @@ jest.mock('axios');
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
+
 function resultFactory(params: {
     url?: string,
     status?: string,
@@ -31,9 +32,87 @@ function resultFactory(params: {
     }
 }
 
+
+describe('concurrent scrape', () => {
+    const client = new ScrapflyClient({ "key": "1234" });
+    // mock axios to return /account data and 2 types of results: 
+    // - success for /success endpoints
+    // - ASP failure for /failure endpoints
+    mockedAxios.request.mockImplementation(async config => {
+        if (config.url.includes('/account')) {
+            return {
+                status: 200,
+                data: {
+                    account: { account_id: '1234' },
+                    project: { scrape_request_count: 42 },
+                    subscription: { usage: { scrape: { concurrent_limit: 5 } } }
+                }
+            }
+        }
+        // sleep for 1 second
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (config.params.url.includes("/success")) {
+            return resultFactory({ url: config.url, status: "DONE", success: true, status_code: 200 })
+        }
+        if (config.params.url.includes("/failure")) {
+            return resultFactory({ url: config.url, status: "ERR::ASP::SHIELD_ERROR", success: true, });
+        }
+        return null;
+    });
+
+    beforeEach(() => {
+        mockedAxios.request.mockClear();  // clear all mock meta on each test
+    });
+
+    it('success', async () => {
+        const configs = [
+            ... new Array(5).fill(null).map(() => new ScrapeConfig({ url: "https://httpbin.dev/success" })),
+            ... new Array(5).fill(null).map(() => new ScrapeConfig({ url: "https://httpbin.dev/failure" })),
+        ];
+        const results = [];
+        const errors = [];
+        for await (const resultOrError of client.concurrentScrape(configs)) {
+            if (resultOrError instanceof Error) {
+                errors.push(resultOrError);
+            } else {
+                results.push(resultOrError);
+            }
+        }
+        expect(results.length).toBe(5);
+        expect(errors.length).toBe(5);
+        // 10 requests and 1 account info
+        expect(mockedAxios.request).toHaveBeenCalledTimes(11);
+    }, 5_000)
+
+    it('success with explicit concurrency', async () => {
+        const configs = [
+            ... new Array(5).fill(null).map(() => new ScrapeConfig({ url: "https://httpbin.dev/success" })),
+            ... new Array(5).fill(null).map(() => new ScrapeConfig({ url: "https://httpbin.dev/failure" })),
+        ];
+        const results = [];
+        const errors = [];
+        for await (const resultOrError of client.concurrentScrape(configs, 10)) {
+            if (resultOrError instanceof Error) {
+                errors.push(resultOrError);
+            } else {
+                results.push(resultOrError);
+            }
+        }
+        expect(results.length).toBe(5);
+        expect(errors.length).toBe(5);
+        // 10 requests and 1 account info
+        expect(mockedAxios.request).toHaveBeenCalledTimes(10);
+
+    }, 2_000)
+})
+
 describe('scrape', () => {
     const KEY = "1234";
     const client = new ScrapflyClient({ "key": KEY });
+
+    beforeEach(() => {
+        mockedAxios.request.mockClear();  // clear all mock meta on each test
+    });
 
     it('GET success', async () => {
         const url = "https://httpbin.dev/json";
@@ -81,6 +160,7 @@ describe('scrape', () => {
         expect(result.config.url).toBe("https://httpbin.dev/json");
         expect(result.context.asp).toBe(false);
         expect(result.uuid).toBe('1234');
+        expect(mockedAxios.request).toHaveBeenCalledTimes(1);
     });
 
     it('unhandled errors propagate up', async () => {
@@ -115,6 +195,10 @@ describe('client init', () => {
 describe('client errors', () => {
     const KEY = "1234";
     const client = new ScrapflyClient({ "key": KEY });
+
+    beforeEach(() => {
+        mockedAxios.request.mockClear();  // clear all mock meta on each test
+    });
 
     it("raises ApiHttpServerError on 500 and success", async () => {
         const url = "https://httpbin.dev/json";
@@ -229,7 +313,7 @@ describe('client errors', () => {
             'ASP': errors.ScrapflyAspError,
             'SESSION': errors.ScrapflySessionError,
         };
-        for(const [resource, err] of Object.entries(resourceErrMap)) {
+        for (const [resource, err] of Object.entries(resourceErrMap)) {
             mockedAxios.request.mockImplementation(async config => {
                 return resultFactory({ url: config.url, success: false, status: `ERR::${resource}::MISSING` });
             });
