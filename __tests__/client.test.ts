@@ -12,11 +12,12 @@ function resultFactory(params: {
     url?: string,
     status?: string,
     status_code?: number,
+    response_status_code?: number,
     success?: boolean,
     error?: string,
 }): Record<string, any> {
     return {
-        status: 200,
+        status: params.response_status_code ?? 200,
         data: {
             result: {
                 content: "some html",
@@ -304,6 +305,7 @@ describe('client errors', () => {
         });
         await expect(client.scrape(new ScrapeConfig({ url: "https://httpbin.dev/json" }))).rejects.toThrow(errors.UpstreamHttpClientError);
     });
+
     it("raises resource exceptions on failure", async () => {
         const resourceErrMap = {
             'SCRAPE': errors.ScrapflyScrapeError,
@@ -320,4 +322,37 @@ describe('client errors', () => {
             await expect(client.scrape(new ScrapeConfig({ url: "https://httpbin.dev/json" }))).rejects.toThrow(err);
         }
     });
+
+    it("raises ScrapflyError on unhandled failure", async () => {
+        mockedAxios.request.mockImplementation(async config => {
+            return resultFactory({ url: config.url, success: false, status_code: 404, status: "ERR" });
+        });
+        await expect(client.scrape(new ScrapeConfig({ url: "https://httpbin.dev/json" }))).rejects.toThrow(errors.ScrapflyError);
+    });
+    it("raises  on unhandled failure", async () => {
+        mockedAxios.request.mockImplementation(async config => {
+            return resultFactory({ url: config.url, success: false, status_code: 404, status: "ERR" });
+        });
+        await expect(client.scrape(new ScrapeConfig({ url: "https://httpbin.dev/json" }))).rejects.toThrow(errors.ScrapflyError);
+    });
+    it("account retrieval status unhandled code (e.g. 404)", async () => {
+        mockedAxios.request.mockRejectedValue({
+          response: { status: 404, data: { } },
+        });
+        await expect(client.account()).rejects.toThrow(errors.HttpError);
+    });
+    it("account retrieval bad api key (status 401)", async () => {
+        mockedAxios.request.mockRejectedValue({
+          response: { status: 401, data: { } },
+        });
+        await expect(client.account()).rejects.toThrow(errors.BadApiKeyError);
+    });
+    it("scrape bad api key (status 401)", async () => {
+        mockedAxios.request.mockRejectedValue({
+          response: { status: 401, data: { } },
+        });
+        await expect(client.scrape(new ScrapeConfig({url: "https://httpbin.dev/json"}))).rejects.toThrow(errors.BadApiKeyError);
+    });
+
+
 });

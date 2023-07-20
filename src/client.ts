@@ -81,9 +81,6 @@ export class ScrapflyClient {
      * Turn scrapfly API response to ScrapeResult or raise one of ScrapflyError
      */
     async handleResponse(response: AxiosResponse): Promise<ScrapeResult> {
-        if (response.status < 200 || response.status >= 300) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
         const data = response.data as { config: ConfigData; context: ContextData; result: ResultData; uuid: string; };
         const result = new ScrapeResult(data);
         log.debug("scrape log url: ", result.result.log_url);
@@ -110,7 +107,6 @@ export class ScrapflyClient {
                     "accept": "application/json",
                 },
                 "params": { key: this.key },
-                validateStatus: function (status) { return status >= 200 && status < 300; }
             });
             return response.data;
         } catch (e) {
@@ -118,7 +114,7 @@ export class ScrapflyClient {
             if (e.response && e.response.status === 401) {
                 throw new errors.BadApiKeyError(JSON.stringify(e.response.data));
             }
-            throw e;
+            throw new errors.HttpError(`failed to get account details; status code ${e.response.status}`, e);
         }
     }
     /**
