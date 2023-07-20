@@ -1,26 +1,27 @@
 /*
 This example shows how to capture page screenshots in scrapfly
 */
-import { ScrapflyClient, ScrapeConfig } from "scrapfly-sdk";
+import { ScrapflyClient, ScrapeConfig } from 'scrapfly-sdk';
 
-const key = "YOUR_SCRAPFLY_KEY";
+const key = 'YOUR_SCRAPFLY_KEY';
 const client = new ScrapflyClient({ key });
-const result = await client.scrape(new ScrapeConfig({
-    "url": "https://web-scraping.dev/product/1",
-    // enable headless browsers for screenshots
-    "render_js": true,
-    // optional: you can wait for page to load before capturing
-    "wait_for_selector": ".review",
-    "screenshots": {
-        // name: what-to-capture
-        // fullpage - will capture everything
-        // css selector (e.g. #reviews) - will capture just that element
-        "everything": "fullpage",
-        "reviews": "#reviews",
-    }
-
-}))
-console.log(result.result.screenshots)
+const result = await client.scrape(
+    new ScrapeConfig({
+        url: 'https://web-scraping.dev/product/1',
+        // enable headless browsers for screenshots
+        render_js: true,
+        // optional: you can wait for page to load before capturing
+        wait_for_selector: '.review',
+        screenshots: {
+            // name: what-to-capture
+            // fullpage - will capture everything
+            // css selector (e.g. #reviews) - will capture just that element
+            everything: 'fullpage',
+            reviews: '#reviews',
+        },
+    }),
+);
+console.log(result.result.screenshots);
 /*
 {
   everything: {

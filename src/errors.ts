@@ -8,36 +8,35 @@ export class ScrapflyError extends Error {
 }
 
 // raised when scrape config is invalid
-export class ScrapeConfigError extends ScrapflyError { }
+export class ScrapeConfigError extends ScrapflyError {}
 
 // raised when scrape parameters cannot be encoded
-export class EncodeError extends ScrapflyError { }
+export class EncodeError extends ScrapflyError {}
 
 // Base error for all http related operations
-export class HttpError extends ScrapflyError { }
-export class UpstreamHttpError extends HttpError { }
-export class UpstreamHttpClientError extends UpstreamHttpError { }
-export class UpstreamHttpServerError extends UpstreamHttpClientError { }
+export class HttpError extends ScrapflyError {}
+export class UpstreamHttpError extends HttpError {}
+export class UpstreamHttpClientError extends UpstreamHttpError {}
+export class UpstreamHttpServerError extends UpstreamHttpClientError {}
 
-export class ApiHttpClientError extends HttpError { }
+export class ApiHttpClientError extends HttpError {}
 // raised when API key provided to client is not valid or not existant
-export class BadApiKeyError extends ApiHttpClientError { }
+export class BadApiKeyError extends ApiHttpClientError {}
 
-export class TooManyRequests extends HttpError { }
-export class ApiHttpServerError extends HttpError { }
-export class ScrapflyScrapeError extends HttpError { }
+export class TooManyRequests extends HttpError {}
+export class ApiHttpServerError extends HttpError {}
+export class ScrapflyScrapeError extends HttpError {}
 // raised when proxy settings don't match available proxies (e.g. invalid proxy pool, country setting)
-export class ScrapflyProxyError extends HttpError { }
-export class ScrapflyThrottleError extends HttpError { }
+export class ScrapflyProxyError extends HttpError {}
+export class ScrapflyThrottleError extends HttpError {}
 // raised when ScrapFly fails to bypass anti-scraping protection
-export class ScrapflyAspError extends HttpError { }
-export class ScrapflyScheduleError extends HttpError { }
+export class ScrapflyAspError extends HttpError {}
+export class ScrapflyScheduleError extends HttpError {}
 // raised when Webhook is invalid or cannot be fulfilled (i.e. full queue)
-export class ScrapflyWebhookError extends HttpError { }
+export class ScrapflyWebhookError extends HttpError {}
 // raised when session is access concurrently
-export class ScrapflySessionError extends HttpError { }
-// raised when concurrent requests exceed account limits 
-export class TooManyConcurrentRequests extends HttpError { }
+export class ScrapflySessionError extends HttpError {}
+// raised when concurrent requests exceed account limits
+export class TooManyConcurrentRequests extends HttpError {}
 // raised when account is out of scrape credits
-export class QuotaLimitReached extends HttpError { }
-
+export class QuotaLimitReached extends HttpError {}

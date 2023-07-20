@@ -1,55 +1,51 @@
-import { ScrapeConfig } from "./scrapeconfig.js";
-import * as errors from "./errors.js";
-import { ConfigData, ContextData, ResultData, ScrapeResult, AccountData } from "./result.js";
-import { Logger, ILogObj } from "tslog";
-import axios, { AxiosResponse } from "axios";
+import { ScrapeConfig } from './scrapeconfig.js';
+import * as errors from './errors.js';
+import { ConfigData, ContextData, ResultData, ScrapeResult, AccountData } from './result.js';
+import { Logger, ILogObj } from 'tslog';
+import axios, { AxiosResponse } from 'axios';
 
 export const log: Logger<ILogObj> = new Logger();
-
-
 
 export class ScrapflyClient {
     public HOST = 'https://api.scrapfly.io';
     private key: string;
     private ua: string;
 
-    constructor(options: {
-        key: string;
-    }) {
+    constructor(options: { key: string }) {
         if (typeof options.key !== 'string' || options.key.trim() === '') {
             throw new errors.BadApiKeyError('Invalid key. Key must be a non-empty string');
         }
         this.key = options.key;
-        this.ua = "Typescript Scrapfly SDK";
+        this.ua = 'Typescript Scrapfly SDK';
     }
     /**
      * Raise appropriate error for given response and scrape result
      */
     errResult(response: AxiosResponse, result: ScrapeResult): errors.ScrapflyError {
         const error = result.result.error;
-        const message = error.message ?? "";
+        const message = error.message ?? '';
         const args = {
-            'code': result.result.status,
-            'http_status_code': result.result.status_code,
-            'is_retryable': error.retryable ?? false,
-            'api_response': result,
-            'resource': result.result.status ? result.result.status.split('::')[1] : null,
-            'retry_delay': error.retryable ? 5 : (response.headers ?? {})["X-Retry"] ?? 5,
-            'retry_times': 3,
-            'documentation_url': error.doc_url ?? 'https://scrapfly.io/docs/scrape-api/errors#api',
-        }
+            code: result.result.status,
+            http_status_code: result.result.status_code,
+            is_retryable: error.retryable ?? false,
+            api_response: result,
+            resource: result.result.status ? result.result.status.split('::')[1] : null,
+            retry_delay: error.retryable ? 5 : (response.headers ?? {})['X-Retry'] ?? 5,
+            retry_times: 3,
+            documentation_url: error.doc_url ?? 'https://scrapfly.io/docs/scrape-api/errors#api',
+        };
         const resourceErrMap = {
-            'SCRAPE': errors.ScrapflyScrapeError,
-            'WEBHOOK': errors.ScrapflyWebhookError,
-            'PROXY': errors.ScrapflyProxyError,
-            'SCHEDULE': errors.ScrapflyScheduleError,
-            'ASP': errors.ScrapflyAspError,
-            'SESSION': errors.ScrapflySessionError,
-        }
+            SCRAPE: errors.ScrapflyScrapeError,
+            WEBHOOK: errors.ScrapflyWebhookError,
+            PROXY: errors.ScrapflyProxyError,
+            SCHEDULE: errors.ScrapflyScheduleError,
+            ASP: errors.ScrapflyAspError,
+            SESSION: errors.ScrapflySessionError,
+        };
         const httpStatusErrMap = {
             401: errors.BadApiKeyError,
             429: errors.TooManyRequests,
-        }
+        };
         if (result.result.success === true) {
             if (args.http_status_code >= 500) {
                 return new errors.ApiHttpServerError(message, args);
@@ -73,7 +69,7 @@ export class ScrapflyClient {
             if (resourceErrMap[args.resource]) {
                 return new resourceErrMap[args.resource](message, args);
             }
-            throw (new errors.ScrapflyError(message, args))
+            throw new errors.ScrapflyError(message, args);
         }
     }
 
@@ -81,9 +77,14 @@ export class ScrapflyClient {
      * Turn scrapfly API response to ScrapeResult or raise one of ScrapflyError
      */
     async handleResponse(response: AxiosResponse): Promise<ScrapeResult> {
-        const data = response.data as { config: ConfigData; context: ContextData; result: ResultData; uuid: string; };
+        const data = response.data as {
+            config: ConfigData;
+            context: ContextData;
+            result: ResultData;
+            uuid: string;
+        };
         const result = new ScrapeResult(data);
-        log.debug("scrape log url: ", result.result.log_url);
+        log.debug('scrape log url: ', result.result.log_url);
         // success
         if (result.result.status === 'DONE' && result.result.success === true) {
             return result;
@@ -96,21 +97,21 @@ export class ScrapflyClient {
      * Retrieve Scrapfly account details
      */
     async account(): Promise<AccountData> {
-        log.debug("retrieving account info");
+        log.debug('retrieving account info');
         try {
             const response = await axios.request({
-                "method": "GET",
-                "url": this.HOST + "/account",
-                "headers": {
-                    "user-agent": this.ua,
-                    "accept-ecoding": "gzip, deflate, br",
-                    "accept": "application/json",
+                method: 'GET',
+                url: this.HOST + '/account',
+                headers: {
+                    'user-agent': this.ua,
+                    'accept-ecoding': 'gzip, deflate, br',
+                    accept: 'application/json',
                 },
-                "params": { key: this.key },
+                params: { key: this.key },
             });
             return response.data;
         } catch (e) {
-            log.error("error", e);
+            log.error('error', e);
             if (e.response && e.response.status === 401) {
                 throw new errors.BadApiKeyError(JSON.stringify(e.response.data));
             }
@@ -121,23 +122,23 @@ export class ScrapflyClient {
      * Issue a single scrape command from a given scrape configuration
      */
     async scrape(config: ScrapeConfig): Promise<ScrapeResult> {
-        log.debug("scraping", { method: config.method, url: config.url });
+        log.debug('scraping', { method: config.method, url: config.url });
         let response: AxiosResponse;
         try {
             response = await axios.request({
-                "method": config.method,
-                "url": this.HOST + "/scrape",
-                "headers": {
-                    "user-agent": this.ua,
-                    "content-type": config.method === "POST" ? config.headers['content-type'] : "application/json",
-                    "accept-ecoding": "gzip, deflate, br",
-                    "accept": "application/json",
+                method: config.method,
+                url: this.HOST + '/scrape',
+                headers: {
+                    'user-agent': this.ua,
+                    'content-type': config.method === 'POST' ? config.headers['content-type'] : 'application/json',
+                    'accept-ecoding': 'gzip, deflate, br',
+                    accept: 'application/json',
                 },
-                "params": config.toApiParams({ key: this.key }),
-                "data": config.body,
+                params: config.toApiParams({ key: this.key }),
+                data: config.body,
             });
         } catch (e) {
-            log.error("error", e);
+            log.error('error', e);
             if (e.response && e.response.status === 401) {
                 throw new errors.BadApiKeyError(JSON.stringify(e.response.data));
             }
@@ -148,26 +149,29 @@ export class ScrapflyClient {
     }
 
     /**
-      Concurrently scrape multiple configs
-      This is a async generator call it like this:
-
-        const results = [];
-        const errors = [];
-        for await (const resultOrError of client.concurrentScrape(configs)) {
-            if (resultOrError instanceof Error) {
-                errors.push(resultOrError);
-            } else {
-                results.push(resultOrError);
-            }
-        }
-      
-       @param concurrencyLimit: if not set it will be taken from your account info 
-     */
-    async *concurrentScrape(configs: ScrapeConfig[], concurrencyLimit?: number): AsyncGenerator<ScrapeResult | Error | undefined, void, undefined> {
+        Concurrently scrape multiple configs
+        This is a async generator call it like this:
+  
+          const results = [];
+          const errors = [];
+          for await (const resultOrError of client.concurrentScrape(configs)) {
+              if (resultOrError instanceof Error) {
+                  errors.push(resultOrError);
+              } else {
+                  results.push(resultOrError);
+              }
+          }
+        
+         @param concurrencyLimit: if not set it will be taken from your account info 
+       */
+    async *concurrentScrape(
+        configs: ScrapeConfig[],
+        concurrencyLimit?: number,
+    ): AsyncGenerator<ScrapeResult | Error | undefined, void, undefined> {
         if (concurrencyLimit === undefined) {
             const account = await this.account();
             concurrencyLimit = account.subscription.usage.scrape.concurrent_limit;
-            log.info(`concurrency not provided - setting it to ${concurrencyLimit} from account info`)
+            log.info(`concurrency not provided - setting it to ${concurrencyLimit} from account info`);
         }
         const activePromises = new Set<Promise<ScrapeResult | Error>>();
         const configsIterator = configs[Symbol.iterator]();
@@ -200,4 +204,3 @@ export class ScrapflyClient {
         }
     }
 }
-

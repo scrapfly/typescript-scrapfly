@@ -1,4 +1,4 @@
-import { urlsafe_b64encode } from "../src/utils.js"
+import { urlsafe_b64encode } from '../src/utils.js';
 
 describe('urlsafe_b64encode', () => {
     it('should encode a string to base64', () => {

@@ -8,15 +8,15 @@ note:
     the client will automatically set the limit to your maximum
     if you set the limit to high expect errors.TooManyConcurrentRequests
 */
-import { ScrapflyClient, ScrapeConfig } from "scrapfly-sdk";
+import { ScrapflyClient, ScrapeConfig } from 'scrapfly-sdk';
 
-const key = "YOUR_SCRAPFLY_KEY";
+const key = 'YOUR_SCRAPFLY_KEY';
 const client = new ScrapflyClient({ key });
 const configs = [
     // these two will succeed:
-    ... new Array(2).fill(null).map(() => new ScrapeConfig({ url: "https://httpbin.dev/status/200" })),
+    ...new Array(2).fill(null).map(() => new ScrapeConfig({ url: 'https://httpbin.dev/status/200' })),
     // these two will fail:
-    ... new Array(2).fill(null).map(() => new ScrapeConfig({ url: "https://httpbin.dev/status/403" })),
+    ...new Array(2).fill(null).map(() => new ScrapeConfig({ url: 'https://httpbin.dev/status/403' })),
 ];
 const results = [];
 const errors = [];

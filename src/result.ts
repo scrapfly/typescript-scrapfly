@@ -1,4 +1,4 @@
-import { Rec, HttpMethod } from "./types.js"
+import { Rec, HttpMethod } from './types.js';
 
 export type ConfigData = {
     url: string;
@@ -45,9 +45,9 @@ export type ContextData = {
     };
     cookies: Record<string, string>;
     cost: {
-        details: Array<{ amount: number, code: string, description: string }>;
+        details: Array<{ amount: number; code: string; description: string }>;
         total: number;
-    }
+    };
     created_at: string;
     debug: {
         response_url: string;
@@ -79,15 +79,15 @@ export type ContextData = {
     spider?: any;
     throttler?: any;
     uri: {
-        base_url: string,
-        fragment?: string,
-        host: string,
-        params?: Rec<string>,
-        port: number,
-        query?: string,
-        root_domain: string,
-        scheme: string,
-    },
+        base_url: string;
+        fragment?: string;
+        host: string;
+        params?: Rec<string>;
+        port: number;
+        query?: string;
+        root_domain: string;
+        scheme: string;
+    };
     url: string;
     webhook?: string;
 };
@@ -106,11 +106,11 @@ export type ResultData = {
                 executed: boolean;
                 result?: string;
                 success: boolean;
-            }>
-        };  
-        local_storage_data: Array<any>;  // TODO: type?
+            }>;
+        };
+        local_storage_data: Array<any>; // TODO: type?
         session_storage_data: Array<any>; // TODO: type?
-        websockets: Array<any>;  // TODO: type?
+        websockets: Array<any>; // TODO: type?
         xhr_call: Array<{
             body?: string;
             headers: Rec<string>;
@@ -123,9 +123,9 @@ export type ResultData = {
                 format: string;
                 headers: Rec<string>;
                 status: number;
-            },
-        }>; 
-    },
+            };
+        }>;
+    };
     content: string;
     content_encoding: string;
     content_type: string;
@@ -134,12 +134,12 @@ export type ResultData = {
     dns?: any; // TODO: type?
     duration: number;
     error?: {
-        code: string,
-        http_code: number,
-        links: Rec<string>,
-        message: string,
-        retryable: boolean,
-        doc_url?: string,
+        code: string;
+        http_code: number;
+        links: Rec<string>;
+        message: string;
+        retryable: boolean;
+        doc_url?: string;
     };
     format: string;
     iframes: Array<any>; // TODO: type?
@@ -147,7 +147,13 @@ export type ResultData = {
     reason: string;
     request_headers: Rec<string>;
     response_headers: Rec<string>;
-    screenshots: Rec<{ css_selector?: string, extension: string, format: string, size: number; url: string }>;
+    screenshots: Rec<{
+        css_selector?: string;
+        extension: string;
+        format: string;
+        size: number;
+        url: string;
+    }>;
     size: number;
     ssl?: any; // TODO: type?
     status: string;
@@ -162,12 +168,7 @@ export class ScrapeResult {
     result: ResultData;
     uuid: string;
 
-    constructor(data: {
-        config: ConfigData
-        context: ContextData;
-        result: ResultData;
-        uuid: string;
-    }) {
+    constructor(data: { config: ConfigData; context: ContextData; result: ResultData; uuid: string }) {
         this.config = data.config;
         this.context = data.context;
         this.result = data.result;
@@ -177,48 +178,48 @@ export class ScrapeResult {
 
 export class AccountData {
     acount: {
-        account_id: string,
-        currency: string,
-        timezone: string,
+        account_id: string;
+        currency: string;
+        timezone: string;
     };
     project: {
-        allow_extra_usage: boolean,
-        allowed_networks: Array<string>,
-        budget_limit: any,
-        budget_spent: any,
-        concurrency_limit?: number,
-        name: string,
-        quota_reached: boolean,
-        scrape_request_count: number,
-        scrape_request_limit: number,
-        tags: Array<string>,
+        allow_extra_usage: boolean;
+        allowed_networks: Array<string>;
+        budget_limit: any;
+        budget_spent: any;
+        concurrency_limit?: number;
+        name: string;
+        quota_reached: boolean;
+        scrape_request_count: number;
+        scrape_request_limit: number;
+        tags: Array<string>;
     };
     subscription: {
         billing: {
-            current_extra_scrape_request_price: { currency: string, amount: number },
-            extra_scrape_request_price_per_10k: { currency: string, amount: number },
-            ongoing_payment: { currency: string, amount: number },
-            plan_price: { currency: string, amount: number },
-        },
-        extra_scrape_allowed: boolean,
-        max_concurrency: number,
+            current_extra_scrape_request_price: { currency: string; amount: number };
+            extra_scrape_request_price_per_10k: { currency: string; amount: number };
+            ongoing_payment: { currency: string; amount: number };
+            plan_price: { currency: string; amount: number };
+        };
+        extra_scrape_allowed: boolean;
+        max_concurrency: number;
         period: {
-            start: string,
-            end: string,
-        },
-        plan_name: string,
+            start: string;
+            end: string;
+        };
+        plan_name: string;
         usage: {
-            schedule: { current: number, limit: number },
-            spider: { current: number, limit: number },
+            schedule: { current: number; limit: number };
+            spider: { current: number; limit: number };
             scrape: {
-                concurrent_limit: number,
-                concurrent_remaining: number,
-                concurrent_usage: number,
-                current: number,
-                extra: number,
-                limit: number,
-                remaining: number
-            },
-        }
-    }
+                concurrent_limit: number;
+                concurrent_remaining: number;
+                concurrent_usage: number;
+                current: number;
+                extra: number;
+                limit: number;
+                remaining: number;
+            };
+        };
+    };
 }
