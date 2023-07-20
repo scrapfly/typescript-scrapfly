@@ -60,7 +60,7 @@ export class ScrapeConfig {
     cache_ttl?: number;
     proxy_pool?: string;
     session?: string;
-    tags?: Set<string>;
+    tags?: Array<string>;
     correlation_id?: string;
     cookies?: Rec<string>;
     body?: string;
@@ -93,7 +93,7 @@ export class ScrapeConfig {
     this.cache_ttl = options.cache_ttl ?? this.cache_ttl;
     this.proxy_pool = options.proxy_pool ?? this.proxy_pool;
     this.session = options.session ?? this.session;
-    this.tags = options.tags ?? this.tags;
+    this.tags = new Set(options.tags) ?? this.tags;
     this.correlation_id = options.correlation_id ?? this.correlation_id;
     this.cookies = options.cookies ? Object.fromEntries(Object.entries(options.cookies).map(([k, v]) => [k.toLowerCase(), v])) : {};
     this.body = options.body ?? this.body;
@@ -109,6 +109,9 @@ export class ScrapeConfig {
     this.os = options.os ?? this.os;
     this.lang = options.lang ?? this.lang;
     this.auto_scroll = options.auto_scroll ?? this.auto_scroll;
+    this.dns = options.dns ?? this.dns;
+    this.ssl = options.ssl ?? this.ssl;
+    this.debug = options.debug ?? this.debug;
     if (this.body && this.data) {
       throw new ScrapeConfigError("Cannot set both body and data");
     }
@@ -217,7 +220,7 @@ export class ScrapeConfig {
         params.cache_clear = true;
       }
       if (this.cache_ttl) {
-        params.cache_clear = true;
+        params.cache_ttl = this.cache_ttl;
       }
     } else {
       if (this.cache_clear) {
@@ -249,7 +252,7 @@ export class ScrapeConfig {
         log.warn('Params "session_sticky_proxy" is ignored. Works only if session is enabled');
       }
     }
-    if (this.debug) {
+    if (this.debug === true) {
       params.debug = true;
     }
     if (this.proxy_pool) {
