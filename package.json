@@ -24,7 +24,6 @@
     "typescript": "~5.0"
   },
   "scripts": {
-    "start": "node build/src/main.js",
     "clean": "rimraf coverage build tmp",
     "prebuild": "npm run lint",
     "build": "tsc -p tsconfig.json",

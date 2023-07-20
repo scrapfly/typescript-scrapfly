@@ -108,6 +108,17 @@ describe("url param generation", () => {
       "headers[cookie]": "foo=bar; x-test=mock",
     });
   });
+  it("screenshots converted to params", () => {
+    const config = new ScrapeConfig({ "url": "http://httpbin.dev/get", screenshots: { "everything": "fullpage" }, render_js: true });
+    expect(config.toApiParams({ key: "1234" })).toEqual({
+      "key": "1234",
+      "render_js": true,
+      "url": "http://httpbin.dev/get",
+      "screenshots[everything]": "fullpage",
+    });
+  });
+
+
 
   it("js scenario encodes", () => {
     const scenario = [

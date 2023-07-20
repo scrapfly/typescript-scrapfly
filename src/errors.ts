@@ -37,7 +37,7 @@ export class ScrapflyWebhookError extends HttpError { }
 // raised when session is access concurrently
 export class ScrapflySessionError extends HttpError { }
 // raised when concurrent requests exceed account limits 
-export class TooManyConcurrentRequest extends HttpError { }
+export class TooManyConcurrentRequests extends HttpError { }
 // raised when account is out of scrape credits
 export class QuotaLimitReached extends HttpError { }
 

@@ -95,11 +95,36 @@ export type ContextData = {
 export type ResultData = {
     browser_data: {
         javascript_evaluation_result: string;
-        js_scenario: Array<any>;  // TODO: type?
+        js_scenario: {
+            duration: number;
+            executed: number;
+            response: any;
+            steps: Array<{
+                action: string;
+                config: Rec<string>;
+                duration: number;
+                executed: boolean;
+                result?: string;
+                success: boolean;
+            }>
+        };  
         local_storage_data: Array<any>;  // TODO: type?
         session_storage_data: Array<any>; // TODO: type?
         websockets: Array<any>;  // TODO: type?
-        xhr_call: Array<any>; // Todo: type?
+        xhr_call: Array<{
+            body?: string;
+            headers: Rec<string>;
+            method: string;
+            type: string;
+            url: string;
+            response: {
+                body: string;
+                duration: number;
+                format: string;
+                headers: Rec<string>;
+                status: number;
+            },
+        }>; 
     },
     content: string;
     content_encoding: string;

@@ -179,9 +179,9 @@ export class ScrapeConfig {
       if (this.rendering_wait !== null) {
         params.rendering_wait = this.rendering_wait;
       }
-      if (this.screenshots !== null) {
-        this.screenshots.forEach((value, key) => {
-          params[`screenshot[${key}]`] = value;
+      if (this.screenshots) {
+        Object.keys(this.screenshots).forEach((key) => {
+          params[`screenshots[${key}]`] = this.screenshots[key];
         })
       }
       if (this.auto_scroll !== null) {
