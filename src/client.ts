@@ -22,7 +22,9 @@ export class ScrapflyClient {
         this.key = options.key;
         this.ua = "Typescript Scrapfly SDK";
     }
-
+    /**
+     * Raise appropriate error for given response and scrape result
+     */
     errResult(response: AxiosResponse, result: ScrapeResult): errors.ScrapflyError {
         const error = result.result.error;
         const message = error.message ?? "";
@@ -75,6 +77,9 @@ export class ScrapflyClient {
         }
     }
 
+    /**
+     * Turn scrapfly API response to ScrapeResult or raise one of ScrapflyError
+     */
     async handleResponse(response: AxiosResponse): Promise<ScrapeResult> {
         if (response.status < 200 || response.status >= 300) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -90,6 +95,9 @@ export class ScrapflyClient {
         throw this.errResult(response, result);
     }
 
+    /**
+     * Retrieve Scrapfly account details
+     */
     async account(): Promise<AccountData> {
         log.debug("retrieving account info");
         try {
@@ -113,7 +121,9 @@ export class ScrapflyClient {
             throw e;
         }
     }
-
+    /**
+     * Issue a single scrape command from a given scrape configuration
+     */
     async scrape(config: ScrapeConfig): Promise<ScrapeResult> {
         log.debug("scraping", { method: config.method, url: config.url });
         let response: AxiosResponse;
@@ -141,6 +151,22 @@ export class ScrapflyClient {
         return result;
     }
 
+    /**
+      Concurrently scrape multiple configs
+      This is a async generator call it like this:
+
+        const results = [];
+        const errors = [];
+        for await (const resultOrError of client.concurrentScrape(configs)) {
+            if (resultOrError instanceof Error) {
+                errors.push(resultOrError);
+            } else {
+                results.push(resultOrError);
+            }
+        }
+      
+       @param concurrencyLimit: if not set it will be taken from your account info 
+     */
     async *concurrentScrape(configs: ScrapeConfig[], concurrencyLimit?: number): AsyncGenerator<ScrapeResult | Error | undefined, void, undefined> {
         if (concurrencyLimit === undefined) {
             const account = await this.account();

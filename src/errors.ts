@@ -26,12 +26,18 @@ export class BadApiKeyError extends ApiHttpClientError { }
 export class TooManyRequests extends HttpError { }
 export class ApiHttpServerError extends HttpError { }
 export class ScrapflyScrapeError extends HttpError { }
+// raised when proxy settings don't match available proxies (e.g. invalid proxy pool, country setting)
 export class ScrapflyProxyError extends HttpError { }
 export class ScrapflyThrottleError extends HttpError { }
+// raised when ScrapFly fails to bypass anti-scraping protection
 export class ScrapflyAspError extends HttpError { }
 export class ScrapflyScheduleError extends HttpError { }
+// raised when Webhook is invalid or cannot be fulfilled (i.e. full queue)
 export class ScrapflyWebhookError extends HttpError { }
+// raised when session is access concurrently
 export class ScrapflySessionError extends HttpError { }
+// raised when concurrent requests exceed account limits 
 export class TooManyConcurrentRequest extends HttpError { }
+// raised when account is out of scrape credits
 export class QuotaLimitReached extends HttpError { }
 
