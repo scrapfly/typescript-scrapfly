@@ -1,6 +1,7 @@
 export default {
   testEnvironment: 'node',
   preset: 'ts-jest/presets/default-esm',
+  testPathIgnorePatterns: ['/node_modules/', '/.history/', '/build/'],
   transform: {
     '^.+\\.m?[tj]s?$': ['ts-jest', { useESM: true }],
   },

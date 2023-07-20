@@ -1,6 +1,6 @@
 import { urlsafe_b64encode } from "./utils.js"
 import { log } from "./client.js"
-import { Optional, Rec, HttpMethod } from "./types.js"
+import { Rec, HttpMethod } from "./types.js"
 import { ScrapeConfigError } from "./errors.js"
 
 
@@ -13,7 +13,7 @@ export class ScrapeConfig {
   url: string;
   retry = true;
   method: HttpMethod = "GET";
-  country: Optional<string> = null;
+  country?: string = null;
   render_js = false;
   cache = false;
   cache_clear = false;
@@ -22,33 +22,33 @@ export class ScrapeConfig {
   asp = false;
   debug = false;
   raise_on_upstream_error = true;
-  cache_ttl: Optional<number> = null;
-  proxy_pool: Optional<string> = null;
-  session: Optional<string> = null;
+  cache_ttl?: number = null;
+  proxy_pool?: string = null;
+  session?: string = null;
   tags: Set<string> = new Set<string>();
-  correlation_id: Optional<string> = null;
-  cookies: Optional<Rec<string>> = null;
-  body: Optional<string> = null;
-  data: Optional<Rec<any>> = null;
-  headers: Optional<Rec<string>> = null;
-  js: Optional<string> = null;
-  rendering_wait: Optional<number> = null;
-  wait_for_selector: Optional<string> = null;
+  correlation_id?: string = null;
+  cookies?: Rec<string> = null;
+  body?: string = null;
+  data?: Rec<any> = null;
+  headers?: Rec<string> = null;
+  js?: string = null;
+  rendering_wait?: number = null;
+  wait_for_selector?: string = null;
   session_sticky_proxy = false;
-  screenshots: Optional<Rec<any>> = null;
-  webhook: Optional<string> = null;
-  timeout: Optional<number> = null; // in milliseconds
-  js_scenario: Optional<Rec<any>> = null;
-  extract: Optional<Rec<any>> = null;
-  lang: Optional<string[]> = null;
-  os: Optional<string> = null;
-  auto_scroll: Optional<boolean> = null;
+  screenshots?: Rec<any> = null;
+  webhook?: string = null;
+  timeout?: number = null; // in milliseconds
+  js_scenario?: Rec<any> = null;
+  extract?: Rec<any> = null;
+  lang?: string[] = null;
+  os?: string = null;
+  auto_scroll?: boolean = null;
 
   constructor(options: {
     url: string;
     retry?: boolean;
     method?: HttpMethod;
-    country?: Optional<string>;
+    country?: string;
     render_js?: boolean;
     cache?: boolean;
     cache_clear?: boolean;
@@ -57,27 +57,27 @@ export class ScrapeConfig {
     asp?: boolean;
     debug?: boolean;
     raise_on_upstream_error?: boolean;
-    cache_ttl?: Optional<number>;
-    proxy_pool?: Optional<string>;
-    session?: Optional<string>;
+    cache_ttl?: number;
+    proxy_pool?: string;
+    session?: string;
     tags?: Set<string>;
-    correlation_id?: Optional<string>;
+    correlation_id?: string;
     cookies?: Rec<string>;
-    body?: Optional<string>;
-    data?: Optional<Rec<any>>;
+    body?: string;
+    data?: Rec<any>;
     headers?: Rec<string>;
-    js?: Optional<string>;
-    rendering_wait?: Optional<number>;
-    wait_for_selector?: Optional<string>;
-    screenshots?: Optional<Rec<any>>;
+    js?: string;
+    rendering_wait?: number;
+    wait_for_selector?: string;
+    screenshots?: Rec<any>;
     session_sticky_proxy?: boolean;
-    webhook?: Optional<string>;
-    timeout?: Optional<number>; // in milliseconds
-    js_scenario?: Optional<Rec<any>>;
-    extract?: Optional<Rec<any>>;
-    os?: Optional<string>;
-    lang?: Optional<string[]>;
-    auto_scroll?: Optional<boolean>;
+    webhook?: string;
+    timeout?: number; // in milliseconds
+    js_scenario?: Rec<any>;
+    extract?: Rec<any>;
+    os?: string;
+    lang?: string[];
+    auto_scroll?: boolean;
   }) {
     this.url = options.url;
     this.retry = options.retry ?? this.retry;

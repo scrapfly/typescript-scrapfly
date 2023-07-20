@@ -111,19 +111,19 @@ describe("url param generation", () => {
 
   it("js scenario encodes", () => {
     const scenario = [
-        { "wait_for_selector": { "selector": ".review" } },
-        { "click": { "selector": "#load-more-reviews" } },
-        { "wait_for_navigation": {} },
-        { "execute": { "script": "[...document.querySelectorAll('.review p')].map(p=>p.outerText)" } }
+      { "wait_for_selector": { "selector": ".review" } },
+      { "click": { "selector": "#load-more-reviews" } },
+      { "wait_for_navigation": {} },
+      { "execute": { "script": "[...document.querySelectorAll('.review p')].map(p=>p.outerText)" } }
     ];
-    const config = new ScrapeConfig({url: "https://web-scraping.dev/product/1", js_scenario: scenario, render_js: true});
+    const config = new ScrapeConfig({ url: "https://web-scraping.dev/product/1", js_scenario: scenario, render_js: true });
     expect(config.toApiParams({ "key": "1234" })).toEqual({
       url: "https://web-scraping.dev/product/1",
       key: "1234",
       render_js: true,
-      js_scenario: "foo",
+      js_scenario: "W3sid2FpdF9mb3Jfc2VsZWN0b3IiOnsic2VsZWN0b3IiOiIucmV2aWV3In19LHsiY2xpY2siOnsic2VsZWN0b3IiOiIjbG9hZC1tb3JlLXJldmlld3MifX0seyJ3YWl0X2Zvcl9uYXZpZ2F0aW9uIjp7fX0seyJleGVjdXRlIjp7InNjcmlwdCI6IlsuLi5kb2N1bWVudC5xdWVyeVNlbGVjdG9yQWxsKCcucmV2aWV3IHAnKV0ubWFwKHA9PnAub3V0ZXJUZXh0KSJ9fV0",
     });
-    
+
   })
 
 

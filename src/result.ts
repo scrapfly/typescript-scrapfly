@@ -1,10 +1,10 @@
-import { Optional, Rec, HttpMethod } from "./types.js"
+import { Rec, HttpMethod } from "./types.js"
 
 export type ConfigData = {
     url: string;
     retry: boolean;
     method: HttpMethod;
-    country: Optional<string>;
+    country?: string;
     render_js: boolean;
     cache: boolean;
     cache_clear: boolean;
@@ -15,25 +15,25 @@ export type ConfigData = {
     raise_on_upstream_error: boolean;
     cache_ttl: number;
     proxy_pool: string;
-    session: Optional<string>;
+    session?: string;
     tags: Set<string>;
-    correlation_id: Optional<string>;
+    correlation_id?: string;
     cookies: Record<string, string>;
-    body: Optional<string>;
-    data: Optional<Rec<any>>;
+    body?: string;
+    data?: Rec<any>;
     headers: Rec<string>;
-    js: Optional<string>;
-    rendering_wait: Optional<number>;
-    wait_for_selector: Optional<string>;
+    js?: string;
+    rendering_wait?: number;
+    wait_for_selector?: string;
     session_sticky_proxy: boolean;
-    screenshots: Optional<Rec<any>>;
-    webhook: Optional<string>;
-    timeout: Optional<number>; // in milliseconds
-    js_scenario: Optional<Rec<any>>;
-    extract: Optional<Rec<any>>;
-    lang: Optional<string[]>;
-    os: Optional<string>;
-    auto_scroll: Optional<boolean>;
+    screenshots?: Rec<any>;
+    webhook?: string;
+    timeout?: number; // in milliseconds
+    js_scenario?: Rec<any>;
+    extract?: Rec<any>;
+    lang?: string[];
+    os?: string;
+    auto_scroll?: boolean;
 };
 
 export type ContextData = {
@@ -41,7 +41,7 @@ export type ContextData = {
     bandwidth_consumed: number;
     cache: {
         state: string;
-        entry: Optional<string>;
+        entry?: string;
     };
     cookies: Record<string, string>;
     cost: {
@@ -51,13 +51,13 @@ export type ContextData = {
     created_at: string;
     debug: {
         response_url: string;
-        screenshot_url: Optional<string>;
+        screenshot_url?: string;
     };
     env: string;
     fingerprint: string;
     headers: Record<string, string>;
     is_xml_http_request: boolean;
-    job: Optional<string>;
+    job?: string;
     lang: Array<string>;
     os: {
         distribution: string;
@@ -74,22 +74,22 @@ export type ContextData = {
     };
     redirects: Array<string>;
     retry: number;
-    schedule: Optional<string>;
-    session: Optional<string>;
-    spider: Optional<any>;
-    throttler: Optional<any>;
+    schedule?: string;
+    session?: string;
+    spider?: any;
+    throttler?: any;
     uri: {
-        base_url: string;
-        fragment: Optional<string>,
-        host: string;
-        params: Optional<Rec<string>>;
+        base_url: string,
+        fragment?: string,
+        host: string,
+        params?: Rec<string>,
         port: number,
-        query: Optional<string>,
+        query?: string,
         root_domain: string,
         scheme: string,
     },
     url: string;
-    webhook: Optional<string>;
+    webhook?: string;
 };
 
 export type ResultData = {
@@ -105,19 +105,19 @@ export type ResultData = {
     content_encoding: string;
     content_type: string;
     cookies: Array<any>; // TODO: type?
-    data: Optional<string>; // TODO: type?
-    dns: Optional<any>; // TODO: type?
+    data?: string; // TODO: type?
+    dns?: any; // TODO: type?
     duration: number;
-    error: Optional<string>;  // TODO: type?
+    error?: string;  // TODO: type?
     format: string;
     iframes: Array<any>; // TODO: type?
     log_url: string;
     reason: string;
     request_headers: Rec<string>;
     response_headers: Rec<string>;
-    screenshots: Rec<{ css_selector: Optional<string>, extension: string, format: string, size: number; url: string }>;
+    screenshots: Rec<{ css_selector?: string, extension: string, format: string, size: number; url: string }>;
     size: number;
-    ssl: Optional<any>; // TODO: type?
+    ssl?: any; // TODO: type?
     status: string;
     status_code: number;
     success: boolean;
@@ -125,7 +125,7 @@ export type ResultData = {
 };
 
 export class ScrapeResult {
-    config: ConfigData
+    config: ConfigData;
     context: ContextData;
     result: ResultData;
     uuid: string;
@@ -140,5 +140,53 @@ export class ScrapeResult {
         this.context = data.context;
         this.result = data.result;
         this.uuid = data.uuid;
+    }
+}
+
+export class AccountData {
+    acount: {
+        account_id: string,
+        currency: string,
+        timezone: string,
+    };
+    project: {
+        allow_extra_usage: boolean,
+        allowed_networks: Array<string>,
+        budget_limit: any,
+        budget_spent: any,
+        concurrency_limit?: number,
+        name: string,
+        quota_reached: boolean,
+        scrape_request_count: number,
+        scrape_request_limit: number,
+        tags: Array<string>,
+    };
+    subscription: {
+        billing: {
+            current_extra_scrape_request_price: { currency: string, amount: number },
+            extra_scrape_request_price_per_10k: { currency: string, amount: number },
+            ongoing_payment: { currency: string, amount: number },
+            plan_price: { currency: string, amount: number },
+        },
+        extra_scrape_allowed: boolean,
+        max_concurrency: number,
+        period: {
+            start: string,
+            end: string,
+        },
+        plan_name: string,
+        usage: {
+            schedule: { current: number, limit: number },
+            spider: { current: number, limit: number },
+            scrape: {
+                concurrent_limit: number,
+                concurrent_remaining: number,
+                concurrent_usage: number,
+                current: number,
+                extra: number,
+                limit: number,
+                remaining: number
+            },
+        }
     }
 }
