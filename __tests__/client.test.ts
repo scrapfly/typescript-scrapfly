@@ -169,8 +169,6 @@ describe('scrape', () => {
         expect(mockedAxios.request).toHaveBeenCalledTimes(1);
     });
 
-
-
     it('POST success', async () => {
         const url = 'https://httpbin.dev/json';
         mockedAxios.request.mockImplementation(async (config) => {

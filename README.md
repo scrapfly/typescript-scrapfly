@@ -31,8 +31,8 @@ console.log(apiResponse.result.content); // html content
 
 For more see [/examples](/examples/) directory.  
 For more on Scrapfly API see full documentation: <https://scrapfly.io/docs>  
-For Python see [Scrapfly Python SDK](https://github.com/scrapfly/python-scrapfly)  
-    
+For Python see [Scrapfly Python SDK](https://github.com/scrapfly/python-scrapfly)
+
 ## Development
 
 Install and setup environment:
