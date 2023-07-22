@@ -2,36 +2,37 @@
 
 `npm install scrapfly-sdk`
 
-Quick use:
+## Quick Intro
+
+Get your API Key on [scrapfly.io/dashboard](https://scrapfly.io/dashboard) and start scraping:
 
 ```javascript
-import { ScrapflyClient, ScrapeConfig } from "scrapfly-sdk";
+import { ScrapflyClient, ScrapeConfig } from 'scrapfly-sdk';
 
-const client = new ScrapflyClient({key: "YOUR SCRAPFLY KEY"});
-const result = await client.scrape(new ScrapeConfig({
-    url: "https://httpbin.dev/html",
-    // optional:
-    aps: true,  // enable anti-scraping protection bypass
-    render_js: true, // enable headless browsers for javascript rendering
-    country: "us",  // use a US proxy
-    method: "GET",  // use GET, POST or other type of requests
-    data: {},  // what data to send if POST is used
-    ...
-}))
-console.log(result.result.content)  // html content
+const key = 'YOUR SCRAPFLY KEY';
+const client = new ScrapflyClient({ key });
+const apiResponse = await client.scrape(
+    new ScrapeConfig({
+        url: 'https://web-scraping.dev/product/1',
+        // optional parameters:
+        // enable javascript rendering
+        render_js: true,
+        // set proxy country
+        country: 'us',
+        // enable anti-scraping protection bypass
+        asp: true,
+        // set residential proxies
+        proxy_pool: 'public_residential_pool',
+        // etc.
+    }),
+);
+console.log(apiResponse.result.content); // html content
 ```
 
-See [/examples](./examples/) for more.
-
-## Get Your API Key
-
-You can create a free account on [Scrapfly](https://scrapfly.io/register) to get your API Key.
-
--   [Usage](https://scrapfly.io/docs/sdk/python)
--   [Python API](https://scrapfly.github.io/python-scrapfly/scrapfly)
--   [Open API 3 Spec](https://scrapfly.io/docs/openapi#get-/scrape)
--   [Scrapy Integration](https://scrapfly.io/docs/sdk/scrapy)
-
+For more see [/examples](/examples/) directory.  
+For more on Scrapfly API see full documentation: <https://scrapfly.io/docs>  
+For Python see [Scrapfly Python SDK](https://github.com/scrapfly/python-scrapfly)  
+    
 ## Development
 
 Install and setup environment:

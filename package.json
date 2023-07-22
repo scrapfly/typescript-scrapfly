@@ -5,6 +5,11 @@
     "type": "module",
     "types": "build/src/main.d.ts",
     "main": "build/src/main.js",
+    "repository": {"type": "git", "url": "https://github.com/scrapfly/typescript-scrapfly"},
+    "bugs": "https://github.com/scrapfly/typescript-scrapfly/issues",
+    "homepage": "https://scrapfly.io/",
+    "keywords": ["web scraping", "SDK", "scrapfly", "api"],
+    "files": ["build/src"],
     "engines": {
         "node": ">= 18.12 <19"
     },
@@ -35,7 +40,7 @@
         "test:watch": "jest --watch"
     },
     "author": "Bernardas Alisauskas <bernardas@scrapfly.io>",
-    "license": "Apache-2.0",
+    "license": "BSD",
     "dependencies": {
         "axios": "^1.4.0",
         "node-fetch": "^3.3.1",
