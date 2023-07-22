@@ -145,6 +145,32 @@ describe('scrape', () => {
         expect(mockedAxios.request).toHaveBeenCalledTimes(1);
     });
 
+    it('GET complex urls', async () => {
+        const url = 'https://httpbin.dev/anything/?website=https://httpbin.dev/anything';
+        mockedAxios.request.mockImplementation(async (config) => {
+            // Ensure the URL matches the pattern
+            expect(config.url).toMatch(client.HOST + '/scrape');
+            expect(config.method).toEqual('GET');
+            expect(config.params.key).toMatch(KEY);
+            expect(config.params.url).toMatch(url);
+            expect(Object.keys(config.params)).toEqual(['key', 'url']);
+
+            // Return the fake response
+            return resultFactory({ url });
+        });
+
+        const result = await client.scrape(new ScrapeConfig({ url: url }));
+        expect(result).toBeDefined();
+        expect(result.result.content).toBe('some html');
+        expect(result.config.url).toBe(url);
+        expect(result.context.asp).toBe(false);
+        expect(result.uuid).toBe('1234');
+        // a single request:
+        expect(mockedAxios.request).toHaveBeenCalledTimes(1);
+    });
+
+
+
     it('POST success', async () => {
         const url = 'https://httpbin.dev/json';
         mockedAxios.request.mockImplementation(async (config) => {

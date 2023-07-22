@@ -6,20 +6,20 @@ import { ScrapflyClient, ScrapeConfig } from 'scrapfly-sdk';
 const key = 'YOUR_SCRAPFLY_KEY';
 const client = new ScrapflyClient({ key });
 const result = await client.scrape(
-    new ScrapeConfig({
-        url: 'https://web-scraping.dev/product/1',
-        // enable headless browsers for screenshots
-        render_js: true,
-        // optional: you can wait for page to load before capturing
-        wait_for_selector: '.review',
-        screenshots: {
-            // name: what-to-capture
-            // fullpage - will capture everything
-            // css selector (e.g. #reviews) - will capture just that element
-            everything: 'fullpage',
-            reviews: '#reviews',
-        },
-    }),
+  new ScrapeConfig({
+    url: 'https://web-scraping.dev/product/1',
+    // enable headless browsers for screenshots
+    render_js: true,
+    // optional: you can wait for page to load before capturing
+    wait_for_selector: '.review',
+    screenshots: {
+      // name: what-to-capture
+      // fullpage - will capture everything
+      // css selector (e.g. #reviews) - will capture just that element
+      everything: 'fullpage',
+      reviews: '#reviews',
+    },
+  }),
 );
 console.log(result.result.screenshots);
 /*
@@ -40,3 +40,18 @@ console.log(result.result.screenshots);
   }
 }
 */
+
+// To save screenshot to file you can download the screenshot from the result urls
+import axios from "axios";
+import fs from "fs";
+for (let [name, screenshot] of Object.entries(result.result.screenshots)) {
+  let response = await axios.get(screenshot.url, { 
+    // note: don't forget to add your API key parameter:
+    params: { "key": key }, 
+    // this indicates that response is binary data:
+    responseType: "arraybuffer",
+  }
+  );
+  // write to screenshot data to a file in currenct directory:
+  fs.writeFileSync(`example-screenshot-${name}.${screenshot.extension}`, response.data);
+}
