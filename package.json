@@ -1,6 +1,6 @@
 {
     "name": "scrapfly-sdk",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "SDK for Scrapfly.io web scraping service",
     "type": "module",
     "types": "build/src/main.d.ts",
@@ -53,7 +53,6 @@
     "license": "BSD",
     "dependencies": {
         "axios": "^1.4.0",
-        "node-fetch": "^3.3.1",
         "tslib": "~2.5",
         "tslog": "^4.8.2"
     },
