@@ -22,4 +22,4 @@ jobs:
     - name: Publish to NPM
       run: npm publish
       env:
-        NODE_TOKEN: ${{secrets.NPM_AUTOMATION_TOKEN}}
+        NPM_TOKEN: ${{secrets.NPM_AUTOMATION_TOKEN}}
