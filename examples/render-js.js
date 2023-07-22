@@ -4,7 +4,7 @@ in scrapfly and how to execute custom javascript code
 */
 import { ScrapflyClient, ScrapeConfig } from 'scrapfly-sdk';
 
-const key = 'YOUR_SCRAPFLY_KEY';
+const key = 'YOUR SCRAPFLY KEY';
 const client = new ScrapflyClient({ key });
 const result = await client.scrape(
     new ScrapeConfig({

@@ -10,7 +10,7 @@ note:
 */
 import { ScrapflyClient, ScrapeConfig } from 'scrapfly-sdk';
 
-const key = 'YOUR_SCRAPFLY_KEY';
+const key = 'YOUR SCRAPFLY KEY';
 const client = new ScrapflyClient({ key });
 const configs = [
     // these two will succeed:
