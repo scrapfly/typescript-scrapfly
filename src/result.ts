@@ -1,4 +1,6 @@
 import { Rec, HttpMethod } from './types.js';
+import * as errors from './errors.js';
+import * as cheerio from 'cheerio';
 
 export type ConfigData = {
     url: string;
@@ -94,8 +96,8 @@ export type ContextData = {
 
 export type ResultData = {
     browser_data: {
-        javascript_evaluation_result: string;
-        js_scenario: {
+        javascript_evaluation_result?: string;
+        js_scenario?: {
             duration: number;
             executed: number;
             response: any;
@@ -108,10 +110,10 @@ export type ResultData = {
                 success: boolean;
             }>;
         };
-        local_storage_data: Rec<string>;
-        session_storage_data: Rec<string>;
-        websockets: Array<any>;
-        xhr_call: Array<{
+        local_storage_data?: Rec<string>;
+        session_storage_data?: Rec<string>;
+        websockets?: Array<any>;
+        xhr_call?: Array<{
             body?: string;
             headers: Rec<string>;
             method: string;
@@ -194,12 +196,25 @@ export class ScrapeResult {
     context: ContextData;
     result: ResultData;
     uuid: string;
+    private _selector: cheerio.CheerioAPI;
 
     constructor(data: { config: ConfigData; context: ContextData; result: ResultData; uuid: string }) {
         this.config = data.config;
         this.context = data.context;
         this.result = data.result;
         this.uuid = data.uuid;
+    }
+
+    get selector() {
+        if (!this._selector) {
+            if (!this.result.response_headers['content-type'].includes('text/html')) {
+                throw new errors.ContentTypeError(
+                    `Cannot use selector on non-html content-type, received: ${this.result.response_headers['content-type']}`,
+                );
+            }
+            this._selector = cheerio.load(this.result.content);
+        }
+        return this._selector;
     }
 }
 

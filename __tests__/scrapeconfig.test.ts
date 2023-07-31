@@ -1,6 +1,7 @@
 import { ScrapeConfig } from '../src/scrapeconfig.js';
 import { HttpMethod } from '../src/types.js';
 import { ScrapeConfigError } from '../src/errors.js';
+import { describe, it, expect } from '@jest/globals';
 
 describe('scrapeconfig', () => {
     it('loads', () => {

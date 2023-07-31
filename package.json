@@ -1,6 +1,6 @@
 {
     "name": "scrapfly-sdk",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "description": "SDK for Scrapfly.io web scraping service",
     "type": "module",
     "types": "build/src/main.d.ts",
@@ -24,7 +24,6 @@
         "node": ">= 18.12 <19"
     },
     "devDependencies": {
-        "@types/jest": "~29.5",
         "@types/node": "~18",
         "@typescript-eslint/eslint-plugin": "~5.59",
         "@typescript-eslint/parser": "~5.59",
@@ -36,7 +35,7 @@
         "rimraf": "~5.0",
         "ts-api-utils": "~0.0.44",
         "ts-jest": "~29.1",
-        "typescript": "~5.0"
+        "typescript": "^5.1.6"
     },
     "scripts": {
         "clean": "rimraf coverage build tmp",
@@ -52,9 +51,10 @@
     "author": "Bernardas Alisauskas <bernardas@scrapfly.io>",
     "license": "BSD",
     "dependencies": {
+        "@types/cheerio": "^0.22.31",
         "axios": "^1.4.0",
-        "tslib": "~2.5",
-        "tslog": "^4.8.2"
+        "cheerio": "^1.0.0-rc.12",
+        "tslib": "~2.5"
     },
     "volta": {
         "node": "18.17.0"

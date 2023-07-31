@@ -3,17 +3,18 @@
 `npm install scrapfly-sdk`
 
 Typescript/NodeJS SDK for [Scrapfly.io](https://scrapfly.io/) web scraping API which allows to:
-- Scrape the web without being blocked.
-- Use headless browsers to access Javascript-powered page data.
-- Scale up web scraping.
-- ... and [much more](https://scrapfly.io/docs/scrape-api/getting-started)!
+
+-   Scrape the web without being blocked.
+-   Use headless browsers to access Javascript-powered page data.
+-   Scale up web scraping.
+-   ... and [much more](https://scrapfly.io/docs/scrape-api/getting-started)!
 
 For web scraping guides see [our blog](https://scrapfly.io/blog/) and [#scrapeguide](https://scrapfly.io/blog/tag/scrapeguide/) tag for how to scrape specific targets.
 
 ## Quick Intro
 
 1. Register a [Scrapfly account for free](https://scrapfly.io/register)
-2. Get your API Key on [scrapfly.io/dashboard](https://scrapfly.io/dashboard) 
+2. Get your API Key on [scrapfly.io/dashboard](https://scrapfly.io/dashboard)
 3. Start scraping: 🚀
 
 ```javascript
@@ -42,6 +43,24 @@ console.log(apiResponse.result.content); // html content
 For more see [/examples](/examples/) directory.  
 For more on Scrapfly API see our [getting started documentation](https://scrapfly.io/docs/scrape-api/getting-started)
 For Python see [Scrapfly Python SDK](https://github.com/scrapfly/python-scrapfly)
+
+## Debugging
+
+To enable debug logs set Scrapfly's log level to `"DEBUG"`:
+
+```javascript
+log.setLevel('DEBUG');
+```
+
+Additionally, set `debug=true` in `ScrapeConfig` to access debug information in [Scrapfly web dashboard](https://scrapfly.io/dashboard):
+
+```typescript
+new ScrapeConfig({
+    url: 'https://web-scraping.dev/product/1',
+    debug: true,
+    // ^ enable debug information
+});
+```
 
 ## Development
 

@@ -1,10 +1,8 @@
 import { ScrapeConfig } from './scrapeconfig.js';
 import * as errors from './errors.js';
 import { ConfigData, ContextData, ResultData, ScrapeResult, AccountData } from './result.js';
-import { Logger, ILogObj } from 'tslog';
 import axios, { AxiosResponse } from 'axios';
-
-export const log: Logger<ILogObj> = new Logger();
+import { log } from './logger.js';
 
 export class ScrapflyClient {
     public HOST = 'https://api.scrapfly.io';
