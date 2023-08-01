@@ -21,7 +21,7 @@
         "build/src"
     ],
     "engines": {
-        "node": ">= 18.12 <19"
+        "node": ">= 18 <19"
     },
     "devDependencies": {
         "@types/node": "~18",

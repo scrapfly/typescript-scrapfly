@@ -49,16 +49,20 @@ For Python see [Scrapfly Python SDK](https://github.com/scrapfly/python-scrapfly
 To enable debug logs set Scrapfly's log level to `"DEBUG"`:
 
 ```javascript
+import { log } from 'scrapfly-sdk';
+
 log.setLevel('DEBUG');
 ```
 
 Additionally, set `debug=true` in `ScrapeConfig` to access debug information in [Scrapfly web dashboard](https://scrapfly.io/dashboard):
 
 ```typescript
+import { ScrapflyClient } from 'scrapfly-sdk';
+
 new ScrapeConfig({
     url: 'https://web-scraping.dev/product/1',
     debug: true,
-    // ^ enable debug information
+    // ^ enable debug information - this will show extra details on web dashboard
 });
 ```
 
