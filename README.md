@@ -38,6 +38,8 @@ const apiResponse = await client.scrape(
     }),
 );
 console.log(apiResponse.result.content); // html content
+// Parse HTML directly with SDK (through cheerio)
+console.log(apiResponse.result.selector('h3').text());
 ```
 
 For more see [/examples](/examples/) directory.  
