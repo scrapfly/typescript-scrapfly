@@ -14,6 +14,7 @@ export class ScrapeConfig {
     render_js = false;
     cache = false;
     cache_clear = false;
+    cost_budget?: number = null
     ssl = false;
     dns = false;
     asp = false;
@@ -49,6 +50,7 @@ export class ScrapeConfig {
         render_js?: boolean;
         cache?: boolean;
         cache_clear?: boolean;
+        cost_budget?: number;
         ssl?: boolean;
         dns?: boolean;
         asp?: boolean;
@@ -84,6 +86,7 @@ export class ScrapeConfig {
         this.render_js = options.render_js ?? this.render_js;
         this.cache = options.cache ?? this.cache;
         this.cache_clear = options.cache_clear ?? this.cache_clear;
+        this.cost_budget = options.cost_budget ?? this.cost_budget;
         this.asp = options.asp ?? this.asp;
         this.headers = options.headers
             ? Object.fromEntries(Object.entries(options.headers).map(([k, v]) => [k.toLowerCase(), v]))

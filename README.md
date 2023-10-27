@@ -43,6 +43,6 @@ $ npm install
 Build and test:
 
 ```shell
-$ npm task build
-$ npm task tests
+$ npm run build
+$ npm run tests
 ```
