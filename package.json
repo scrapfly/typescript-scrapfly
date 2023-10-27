@@ -1,6 +1,6 @@
 {
     "name": "scrapfly-sdk",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "SDK for Scrapfly.io web scraping service",
     "type": "module",
     "types": "build/src/main.d.ts",
