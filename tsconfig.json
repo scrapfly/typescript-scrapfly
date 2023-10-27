@@ -2,9 +2,11 @@
     "compilerOptions": {
         "declaration": true,
         "target": "es2022",
-        "module": "node16",
-        "lib": ["ES2022"],
-        "moduleResolution": "node16",
+        "types": ["node", "jest"],
+        "skipLibCheck": true,
+        "module": "ESNext",
+        "lib": ["ES2022", "ESNext"],
+        "moduleResolution": "Node",
         "rootDir": ".",
         "outDir": "build",
         "allowSyntheticDefaultImports": true,
@@ -20,5 +22,6 @@
         "noImplicitThis": false,
         "strictNullChecks": false
     },
-    "include": ["src/**/*", "__tests__/**/*"]
+    "include": ["src/**/*", "__tests__/**/*"],
+    "exclude": ["examples/**/*"]
 }

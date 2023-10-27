@@ -1,5 +1,5 @@
 import { urlsafe_b64encode } from './utils.js';
-import { log } from './client.js';
+import { log } from './logger.js';
 import { Rec, HttpMethod } from './types.js';
 import { ScrapeConfigError } from './errors.js';
 

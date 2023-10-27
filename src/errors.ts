@@ -12,6 +12,7 @@ export class ScrapeConfigError extends ScrapflyError {}
 
 // raised when scrape parameters cannot be encoded
 export class EncodeError extends ScrapflyError {}
+export class ContentTypeError extends ScrapflyError {}
 
 // Base error for all http related operations
 export class HttpError extends ScrapflyError {}

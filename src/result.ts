@@ -1,4 +1,6 @@
 import { Rec, HttpMethod } from './types.js';
+import * as errors from './errors.js';
+import * as cheerio from 'cheerio';
 
 export type ConfigData = {
     url: string;
@@ -94,8 +96,8 @@ export type ContextData = {
 
 export type ResultData = {
     browser_data: {
-        javascript_evaluation_result: string;
-        js_scenario: {
+        javascript_evaluation_result?: string;
+        js_scenario?: {
             duration: number;
             executed: number;
             response: any;
@@ -108,10 +110,10 @@ export type ResultData = {
                 success: boolean;
             }>;
         };
-        local_storage_data: Array<any>; // TODO: type?
-        session_storage_data: Array<any>; // TODO: type?
-        websockets: Array<any>; // TODO: type?
-        xhr_call: Array<{
+        local_storage_data?: Rec<string>;
+        session_storage_data?: Rec<string>;
+        websockets?: Array<any>;
+        xhr_call?: Array<{
             body?: string;
             headers: Rec<string>;
             method: string;
@@ -129,9 +131,21 @@ export type ResultData = {
     content: string;
     content_encoding: string;
     content_type: string;
-    cookies: Array<any>; // TODO: type?
-    data?: string; // TODO: type?
-    dns?: any; // TODO: type?
+    cookies: Array<{
+        name: string;
+        value: string;
+        expires: string;
+        path: string;
+        comment: string;
+        domain: string;
+        max_age: number;
+        secure: boolean;
+        http_only: boolean;
+        version: string;
+        size: number;
+    }>;
+    data?: Rec<any>;
+    dns?: Rec<Array<Rec<any>>>;
     duration: number;
     error?: {
         code: string;
@@ -142,7 +156,20 @@ export type ResultData = {
         doc_url?: string;
     };
     format: string;
-    iframes: Array<any>; // TODO: type?
+    iframes: Array<{
+        url: string;
+        uri: {
+            root_domain: string;
+            base_url: string;
+            host: string;
+            scheme: string;
+            query?: string;
+            fragment?: string;
+            port: number;
+            params?: Rec<string>;
+        };
+        content: string;
+    }>;
     log_url: string;
     reason: string;
     request_headers: Rec<string>;
@@ -155,7 +182,9 @@ export type ResultData = {
         url: string;
     }>;
     size: number;
-    ssl?: any; // TODO: type?
+    ssl?: {
+        certs: Array<Rec<any>>;
+    };
     status: string;
     status_code: number;
     success: boolean;
@@ -167,12 +196,25 @@ export class ScrapeResult {
     context: ContextData;
     result: ResultData;
     uuid: string;
+    private _selector: cheerio.CheerioAPI;
 
     constructor(data: { config: ConfigData; context: ContextData; result: ResultData; uuid: string }) {
         this.config = data.config;
         this.context = data.context;
         this.result = data.result;
         this.uuid = data.uuid;
+    }
+
+    get selector() {
+        if (!this._selector) {
+            if (!this.result.response_headers['content-type'].includes('text/html')) {
+                throw new errors.ContentTypeError(
+                    `Cannot use selector on non-html content-type, received: ${this.result.response_headers['content-type']}`,
+                );
+            }
+            this._selector = cheerio.load(this.result.content);
+        }
+        return this._selector;
     }
 }
 
