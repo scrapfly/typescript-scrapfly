@@ -2,7 +2,19 @@ import { ScrapeConfig } from './scrapeconfig.js';
 import * as errors from './errors.js';
 import { ConfigData, ContextData, ResultData, ScrapeResult, AccountData } from './result.js';
 import axios, { AxiosResponse } from 'axios';
+import axiosRetry from 'axios-retry';
 import { log } from './logger.js';
+
+
+axios.defaults.timeout = 160_000;  // 160 seconds
+
+axiosRetry(axios, {
+    retries: 3,
+    retryDelay: (retryCount) => {
+        return retryCount * 1000;
+    },
+    // note: default retryCondition is isNetworkOrIdempotentRequestError and it works us
+});
 
 export class ScrapflyClient {
     public HOST = 'https://api.scrapfly.io';

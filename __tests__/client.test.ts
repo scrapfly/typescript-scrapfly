@@ -5,9 +5,6 @@ import * as errors from '../src/errors.js';
 import { ScrapeConfig } from '../src/scrapeconfig.js';
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 
-jest.mock('axios');
-
-const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 function resultFactory(params: {
     url?: string;
@@ -39,7 +36,7 @@ describe('concurrent scrape', () => {
     // mock axios to return /account data and 2 types of results:
     // - success for /success endpoints
     // - ASP failure for /failure endpoints
-    mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+    jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
         if (config.url.includes('/account')) {
             return {
                 status: 200,
@@ -71,7 +68,7 @@ describe('concurrent scrape', () => {
     });
 
     beforeEach(() => {
-        mockedAxios.request.mockClear(); // clear all mock meta on each test
+        jest.spyOn(axios, 'request').mockClear(); // clear all mock meta on each test
     });
 
     it('success', async () => {
@@ -91,7 +88,7 @@ describe('concurrent scrape', () => {
         expect(results.length).toBe(5);
         expect(errors.length).toBe(5);
         // 10 requests and 1 account info
-        expect(mockedAxios.request).toHaveBeenCalledTimes(11);
+        expect(jest.spyOn(axios, 'request')).toHaveBeenCalledTimes(11);
     }, 5_000);
 
     it('success with explicit concurrency', async () => {
@@ -111,7 +108,7 @@ describe('concurrent scrape', () => {
         expect(results.length).toBe(5);
         expect(errors.length).toBe(5);
         // 10 requests and 1 account info
-        expect(mockedAxios.request).toHaveBeenCalledTimes(10);
+        expect(jest.spyOn(axios, 'request')).toHaveBeenCalledTimes(10);
     }, 2_000);
 });
 
@@ -120,12 +117,12 @@ describe('scrape', () => {
     const client = new ScrapflyClient({ key: KEY });
 
     beforeEach(() => {
-        mockedAxios.request.mockClear(); // clear all mock meta on each test
+        jest.spyOn(axios, 'request').mockClear(); // clear all mock meta on each test
     });
 
     it('GET success', async () => {
         const url = 'https://httpbin.dev/json';
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             // Ensure the URL matches the pattern
             expect(config.url).toMatch(client.HOST + '/scrape');
             expect(config.method).toEqual('GET');
@@ -144,12 +141,12 @@ describe('scrape', () => {
         expect(result.context.asp).toBe(false);
         expect(result.uuid).toBe('1234');
         // a single request:
-        expect(mockedAxios.request).toHaveBeenCalledTimes(1);
+        expect(jest.spyOn(axios, 'request')).toHaveBeenCalledTimes(1);
     });
 
     it('GET complex urls', async () => {
         const url = 'https://httpbin.dev/anything/?website=https://httpbin.dev/anything';
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             // Ensure the URL matches the pattern
             expect(config.url).toMatch(client.HOST + '/scrape');
             expect(config.method).toEqual('GET');
@@ -168,12 +165,12 @@ describe('scrape', () => {
         expect(result.context.asp).toBe(false);
         expect(result.uuid).toBe('1234');
         // a single request:
-        expect(mockedAxios.request).toHaveBeenCalledTimes(1);
+        expect(jest.spyOn(axios, 'request')).toHaveBeenCalledTimes(1);
     });
 
     it('POST success', async () => {
         const url = 'https://httpbin.dev/json';
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             // Ensure the URL matches the pattern
             expect(config.url).toMatch(client.HOST + '/scrape');
             expect(config.method).toEqual('POST');
@@ -198,16 +195,17 @@ describe('scrape', () => {
         expect(result.config.url).toBe('https://httpbin.dev/json');
         expect(result.context.asp).toBe(false);
         expect(result.uuid).toBe('1234');
-        expect(mockedAxios.request).toHaveBeenCalledTimes(1);
+        expect(jest.spyOn(axios, 'request')).toHaveBeenCalledTimes(1);
     });
 
     it('unhandled errors propagate up', async () => {
+        jest.spyOn(axios, 'request').mockReset();
         const url = 'https://httpbin.dev/json';
-        mockedAxios.request.mockImplementation(() => Promise.reject(new Error('Network Error')));
+        jest.spyOn(axios, 'request').mockImplementation(() => Promise.reject(new Error('Foo Error')));
 
         await expect(async () => {
             await client.scrape(new ScrapeConfig({ url }));
-        }).rejects.toThrow('Network Error');
+        }).rejects.toThrow('Foo Error');
     });
     // it('handles ')
 });
@@ -230,12 +228,12 @@ describe('client errors', () => {
     const client = new ScrapflyClient({ key: KEY });
 
     beforeEach(() => {
-        mockedAxios.request.mockClear(); // clear all mock meta on each test
+        jest.spyOn(axios, 'request').mockClear(); // clear all mock meta on each test
     });
 
     it('raises ApiHttpServerError on 500 and success', async () => {
         const url = 'https://httpbin.dev/json';
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 status_code: 500,
@@ -249,7 +247,7 @@ describe('client errors', () => {
 
     it('raises BadApiKeyError on 401', async () => {
         const url = 'https://httpbin.dev/json';
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 status_code: 401,
@@ -262,7 +260,7 @@ describe('client errors', () => {
     });
     it('raises TooManyRequests on 429 and success', async () => {
         const url = 'https://httpbin.dev/json';
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 status_code: 429,
@@ -273,7 +271,7 @@ describe('client errors', () => {
         await expect(client.scrape(new ScrapeConfig({ url }))).rejects.toThrow(errors.TooManyRequests);
     });
     it('raises ScrapflyScrapeError on ::SCRAPE:: resource and success', async () => {
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 status: 'ERR::SCRAPE::BAD_PROTOCOL',
@@ -286,7 +284,7 @@ describe('client errors', () => {
     });
 
     it('raises ScrapflyWebhookError on ::WEBHOOK:: resource and success', async () => {
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 status: 'ERR::WEBHOOK::DISABLED ',
@@ -298,7 +296,7 @@ describe('client errors', () => {
         );
     });
     it('raises ScrapflyProxyError on ERR::PROXY::POOL_NOT_FOUND  resource and success', async () => {
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 status: 'ERR::PROXY::POOL_NOT_FOUND ',
@@ -311,7 +309,7 @@ describe('client errors', () => {
     });
 
     it('raises ScrapflyScheduleError on ERR::SCHEDULE::DISABLED resource and success', async () => {
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 status: 'ERR::SCHEDULE::DISABLED',
@@ -324,7 +322,7 @@ describe('client errors', () => {
     });
 
     it('raises ScrapflyAspError on ERR::ASP::SHIELD_ERROR resource and success', async () => {
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 status: 'ERR::ASP::SHIELD_ERROR',
@@ -337,7 +335,7 @@ describe('client errors', () => {
     });
 
     it('raises ScrapflySessionError on ERR::SESSION::CONCURRENT_ACCESS resource and success', async () => {
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 status: 'ERR::SESSION::CONCURRENT_ACCESS',
@@ -350,7 +348,7 @@ describe('client errors', () => {
     });
 
     it('raises ApiHttpClientError on success and unknown status', async () => {
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 status: 'ERR::NEW',
@@ -362,7 +360,7 @@ describe('client errors', () => {
         );
     });
     it('raises UpstreamHttpServerError on failure, ERR::SCRAPE::BAD_UPSTREAM_RESPONSE and >=500', async () => {
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 success: false,
@@ -375,7 +373,7 @@ describe('client errors', () => {
         );
     });
     it('raises UpstreamHttpClientError on failure, ERR::SCRAPE::BAD_UPSTREAM_RESPONSE and 4xx status', async () => {
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 success: false,
@@ -398,7 +396,7 @@ describe('client errors', () => {
             SESSION: errors.ScrapflySessionError,
         };
         for (const [resource, err] of Object.entries(resourceErrMap)) {
-            mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+            jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
                 return resultFactory({
                     url: config.url,
                     success: false,
@@ -410,7 +408,7 @@ describe('client errors', () => {
     });
 
     it('raises ScrapflyError on unhandled failure', async () => {
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 success: false,
@@ -423,7 +421,7 @@ describe('client errors', () => {
         );
     });
     it('raises  on unhandled failure', async () => {
-        mockedAxios.request.mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
+        jest.spyOn(axios, 'request').mockImplementation(async (config: AxiosRequestConfig): Promise<any> => {
             return resultFactory({
                 url: config.url,
                 success: false,
@@ -436,19 +434,19 @@ describe('client errors', () => {
         );
     });
     it('account retrieval status unhandled code (e.g. 404)', async () => {
-        mockedAxios.request.mockRejectedValue({
+        jest.spyOn(axios, 'request').mockRejectedValue({
             response: { status: 404, data: {} },
         });
         await expect(client.account()).rejects.toThrow(errors.HttpError);
     });
     it('account retrieval bad api key (status 401)', async () => {
-        mockedAxios.request.mockRejectedValue({
+        jest.spyOn(axios, 'request').mockRejectedValue({
             response: { status: 401, data: {} },
         });
         await expect(client.account()).rejects.toThrow(errors.BadApiKeyError);
     });
     it('scrape bad api key (status 401)', async () => {
-        mockedAxios.request.mockRejectedValue({
+        jest.spyOn(axios, 'request').mockRejectedValue({
             response: { status: 401, data: {} },
         });
         await expect(client.scrape(new ScrapeConfig({ url: 'https://httpbin.dev/json' }))).rejects.toThrow(

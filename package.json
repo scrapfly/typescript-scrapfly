@@ -1,6 +1,6 @@
 {
     "name": "scrapfly-sdk",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "SDK for Scrapfly.io web scraping service",
     "type": "module",
     "types": "build/src/main.d.ts",
@@ -53,6 +53,7 @@
     "dependencies": {
         "@types/cheerio": "^0.22.31",
         "axios": "^1.4.0",
+        "axios-retry": "^4.0.0",
         "cheerio": "^1.0.0-rc.12",
         "tslib": "~2.5"
     },
