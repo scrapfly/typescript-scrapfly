@@ -24,6 +24,7 @@ export class ScrapeConfig {
     proxy_pool?: string = null;
     session?: string = null;
     tags: Set<string> = new Set<string>();
+    format?: 'json' | 'text' | 'markdown' | 'clean_html' | 'raw' = 'raw'; //unchanged
     correlation_id?: string = null;
     cookies?: Rec<string> = null;
     body?: string = null;
@@ -34,6 +35,7 @@ export class ScrapeConfig {
     wait_for_selector?: string = null;
     session_sticky_proxy = false;
     screenshots?: Rec<any> = null;
+    screenshot_flags?: string = null;
     webhook?: string = null;
     timeout?: number = null; // in milliseconds
     js_scenario?: Rec<any> = null;
@@ -60,6 +62,7 @@ export class ScrapeConfig {
         proxy_pool?: string;
         session?: string;
         tags?: Array<string>;
+        format?: 'json' | 'text' | 'markdown' | 'clean_html' | 'raw';
         correlation_id?: string;
         cookies?: Rec<string>;
         body?: string;
@@ -69,6 +72,7 @@ export class ScrapeConfig {
         rendering_wait?: number;
         wait_for_selector?: string;
         screenshots?: Rec<any>;
+        screenshot_flags?: string;
         session_sticky_proxy?: boolean;
         webhook?: string;
         timeout?: number; // in milliseconds
@@ -96,6 +100,7 @@ export class ScrapeConfig {
         this.proxy_pool = options.proxy_pool ?? this.proxy_pool;
         this.session = options.session ?? this.session;
         this.tags = new Set(options.tags) ?? this.tags;
+        this.format = options.format ?? this.format;
         this.correlation_id = options.correlation_id ?? this.correlation_id;
         this.cookies = options.cookies
             ? Object.fromEntries(Object.entries(options.cookies).map(([k, v]) => [k.toLowerCase(), v]))
@@ -106,6 +111,7 @@ export class ScrapeConfig {
         this.rendering_wait = options.rendering_wait ?? this.rendering_wait;
         this.wait_for_selector = options.wait_for_selector ?? this.wait_for_selector;
         this.screenshots = options.screenshots ?? this.screenshots;
+        this.screenshot_flags = options.screenshot_flags ?? this.screenshot_flags;
         this.webhook = options.webhook ?? this.webhook;
         this.timeout = options.timeout ?? this.timeout;
         this.js_scenario = options.js_scenario ?? this.js_scenario;
@@ -194,6 +200,13 @@ export class ScrapeConfig {
                 Object.keys(this.screenshots).forEach((key) => {
                     params[`screenshots[${key}]`] = this.screenshots[key];
                 });
+                if (this.screenshot_flags) {
+                    params.screenshot_flags = this.screenshot_flags;
+                }
+            } else {
+                if (this.screenshot_flags) {
+                    log.warn('Params "screenshot_flags" is ignored. Works only if screenshots is enabled');
+                }                
             }
             if (this.auto_scroll !== null) {
                 params.auto_scroll = this.auto_scroll;
@@ -246,6 +259,9 @@ export class ScrapeConfig {
         }
         if (this.tags.size > 0) {
             params.tags = Array.from(this.tags).join(',');
+        }
+        if (this.format) {
+            params.format = this.format;
         }
         if (this.correlation_id) {
             params.correlation_id = this.correlation_id;
