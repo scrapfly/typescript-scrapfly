@@ -24,7 +24,7 @@ export class ScrapeConfig {
     proxy_pool?: string = null;
     session?: string = null;
     tags: Set<string> = new Set<string>();
-    format?: 'json' | 'text' | 'markdown' | 'clean_html' | 'raw' = 'raw'; //unchanged
+    format?: string = null; // raw(unchanged)
     correlation_id?: string = null;
     cookies?: Rec<string> = null;
     body?: string = null;
@@ -62,7 +62,7 @@ export class ScrapeConfig {
         proxy_pool?: string;
         session?: string;
         tags?: Array<string>;
-        format?: 'json' | 'text' | 'markdown' | 'clean_html' | 'raw';
+        format?: string;
         correlation_id?: string;
         cookies?: Rec<string>;
         body?: string;
