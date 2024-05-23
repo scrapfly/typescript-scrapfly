@@ -3,10 +3,13 @@ import { log } from './logger.js';
 import { Rec, HttpMethod } from './types.js';
 import { ScrapeConfigError } from './errors.js';
 
+type ScreenshotFlags = "load_images" | "dark_mode" | "block_banners" | "high_quality" | "print_media_format";
+type Format = "raw" | "json" | "text" | "markdown" | "clean_html";
+
 export class ScrapeConfig {
     static PUBLIC_DATACENTER_POOL = 'public_datacenter_pool';
     static PUBLIC_RESIDENTIAL_POOL = 'public_residential_pool';
-
+    
     url: string;
     retry = true;
     method: HttpMethod = 'GET';
@@ -24,7 +27,7 @@ export class ScrapeConfig {
     proxy_pool?: string = null;
     session?: string = null;
     tags: Set<string> = new Set<string>();
-    format?: string = null; // raw(unchanged)
+    format?: Format = null; // raw(unchanged)
     correlation_id?: string = null;
     cookies?: Rec<string> = null;
     body?: string = null;
@@ -35,7 +38,7 @@ export class ScrapeConfig {
     wait_for_selector?: string = null;
     session_sticky_proxy = false;
     screenshots?: Rec<any> = null;
-    screenshot_flags?: string = null;
+    screenshot_flags?: ScreenshotFlags[] = null;
     webhook?: string = null;
     timeout?: number = null; // in milliseconds
     js_scenario?: Rec<any> = null;
@@ -62,7 +65,7 @@ export class ScrapeConfig {
         proxy_pool?: string;
         session?: string;
         tags?: Array<string>;
-        format?: string;
+        format?: Format;
         correlation_id?: string;
         cookies?: Rec<string>;
         body?: string;
@@ -72,7 +75,7 @@ export class ScrapeConfig {
         rendering_wait?: number;
         wait_for_selector?: string;
         screenshots?: Rec<any>;
-        screenshot_flags?: string;
+        screenshot_flags?: ScreenshotFlags[];
         session_sticky_proxy?: boolean;
         webhook?: string;
         timeout?: number; // in milliseconds
@@ -201,7 +204,7 @@ export class ScrapeConfig {
                     params[`screenshots[${key}]`] = this.screenshots[key];
                 });
                 if (this.screenshot_flags) {
-                    params.screenshot_flags = this.screenshot_flags;
+                    params.screenshot_flags = this.screenshot_flags.join(',');
                 }
             } else {
                 if (this.screenshot_flags) {
@@ -261,7 +264,7 @@ export class ScrapeConfig {
             params.tags = Array.from(this.tags).join(',');
         }
         if (this.format) {
-            params.format = this.format;
+            params.format = this.format.valueOf();
         }
         if (this.correlation_id) {
             params.correlation_id = this.correlation_id;

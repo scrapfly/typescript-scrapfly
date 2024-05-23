@@ -198,7 +198,13 @@ describe('url param generation', () => {
         const config = new ScrapeConfig({
             url: 'http://httpbin.dev/get',
             screenshots: { everything: 'fullpage' },
-            screenshot_flags: "load_images,dark_mode,block_banners,high_quality,print_media_format",
+            screenshot_flags: [
+                "load_images",
+                "dark_mode",
+                "block_banners",
+                "high_quality",
+                "print_media_format"
+            ],
             render_js: true,
         });
         expect(config.toApiParams({ key: '1234' })).toEqual({
