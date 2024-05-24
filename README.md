@@ -80,5 +80,5 @@ Build and test:
 
 ```shell
 $ npm run build
-$ npm run tests
+$ npm run test
 ```
