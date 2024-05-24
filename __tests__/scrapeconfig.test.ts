@@ -194,6 +194,27 @@ describe('url param generation', () => {
             'screenshots[everything]': 'fullpage',
         });
     });
+    it('screenshot flags converted to params', () => {
+        const config = new ScrapeConfig({
+            url: 'http://httpbin.dev/get',
+            screenshots: { everything: 'fullpage' },
+            screenshot_flags: [
+                "load_images",
+                "dark_mode",
+                "block_banners",
+                "high_quality",
+                "print_media_format"
+            ],
+            render_js: true,
+        });
+        expect(config.toApiParams({ key: '1234' })).toEqual({
+            key: '1234',
+            url: 'http://httpbin.dev/get',
+            'screenshots[everything]': 'fullpage',
+            screenshot_flags: "load_images,dark_mode,block_banners,high_quality,print_media_format",            
+            render_js: true,
+        });
+    });    
     it('asp enables', () => {
         const config = new ScrapeConfig({
             url: 'http://httpbin.dev/get',
@@ -238,6 +259,17 @@ describe('url param generation', () => {
             tags: 'foo,bar,gaz',
         });
     });
+    it('format set', () => {
+        const config = new ScrapeConfig({
+            url: 'http://httpbin.dev/get',
+            format: "markdown",
+        });
+        expect(config.toApiParams({ key: '1234' })).toEqual({
+            key: '1234',
+            url: 'http://httpbin.dev/get',
+            format: "markdown",
+        });
+    });    
     it('debug sets', () => {
         const config = new ScrapeConfig({
             url: 'http://httpbin.dev/get',
