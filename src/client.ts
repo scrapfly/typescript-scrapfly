@@ -1,20 +1,30 @@
 import { ScrapeConfig } from './scrapeconfig.js';
 import * as errors from './errors.js';
 import { ConfigData, ContextData, ResultData, ScrapeResult, AccountData } from './result.js';
-import axios, { AxiosResponse } from 'axios';
-import axiosRetry from 'axios-retry';
+import fetchRetry from 'fetch-retry';
+import nodeFetch from 'node-fetch';
 import { log } from './logger.js';
 
+function fetchTimeout(resource, options: RequestInit = {}): Promise<Response> {
+    const timeout = 160000; // 160 seconds
 
-axios.defaults.timeout = 160_000;  // 160 seconds
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const signal = controller.signal;
 
-axiosRetry(axios, {
-    retries: 3,
-    retryDelay: (retryCount) => {
-        return retryCount * 1000;
-    },
-    // note: default retryCondition is isNetworkOrIdempotentRequestError and it works us
-});
+    // Add the signal to the options object
+    options.signal = signal;
+
+    return nodeFetch(resource, options)
+        .then((response) => {
+            clearTimeout(timeoutId);
+            return response;
+        })
+        .catch((error) => {
+            clearTimeout(timeoutId);
+            throw error;
+        });
+}
 
 export class ScrapflyClient {
     public HOST = 'https://api.scrapfly.io';
@@ -28,10 +38,23 @@ export class ScrapflyClient {
         this.key = options.key;
         this.ua = 'Typescript Scrapfly SDK';
     }
+
+    fetch = fetchRetry(fetchTimeout, {
+        retryDelay: 1000,
+        retryOn: function (attempt, error, response) {
+            const maxRetries = 3;
+            // retry on any network errors or 5xx status codes
+            if (attempt <= maxRetries && (error !== null || (response && response.status >= 500))) {
+                return true;
+            }
+            return false;
+        },
+    });
+
     /**
      * Raise appropriate error for given response and scrape result
      */
-    errResult(response: AxiosResponse, result: ScrapeResult): errors.ScrapflyError {
+    errResult(response: Response, result: ScrapeResult): errors.ScrapflyError {
         const error = result.result.error;
         const message = error.message ?? '';
         const args = {
@@ -40,7 +63,7 @@ export class ScrapflyClient {
             is_retryable: error.retryable ?? false,
             api_response: result,
             resource: result.result.status ? result.result.status.split('::')[1] : null,
-            retry_delay: error.retryable ? 5 : (response.headers ?? {})['X-Retry'] ?? 5,
+            retry_delay: error.retryable ? 5 : response.headers.get('X-Retry') ?? 5,
             retry_times: 3,
             documentation_url: error.doc_url ?? 'https://scrapfly.io/docs/scrape-api/errors#api',
         };
@@ -86,16 +109,16 @@ export class ScrapflyClient {
     /**
      * Turn scrapfly API response to ScrapeResult or raise one of ScrapflyError
      */
-    async handleResponse(response: AxiosResponse): Promise<ScrapeResult> {
-        const data = response.data as {
+    async handleResponse(response: Response, data): Promise<ScrapeResult> {
+        data = data as {
             config: ConfigData;
             context: ContextData;
             result: ResultData;
             uuid: string;
         };
         const result = new ScrapeResult(data);
-        log.debug('scrape log url: ', result.result.log_url);
         // success
+        log.debug('scrape log url: ', result.result.log_url);
         if (result.result.status === 'DONE' && result.result.success === true) {
             return result;
         }
@@ -108,53 +131,65 @@ export class ScrapflyClient {
      */
     async account(): Promise<AccountData> {
         log.debug('retrieving account info');
+        let response;
         try {
-            const response = await axios.request({
+            const url = new URL(this.HOST + '/account');
+            const params = { key: this.key };
+            url.search = new URLSearchParams(params).toString();
+            response = await this.fetch(url.toString(), {
                 method: 'GET',
-                url: this.HOST + '/account',
                 headers: {
                     'user-agent': this.ua,
-                    'accept-ecoding': 'gzip, deflate, br',
+                    'accept-encoding': 'gzip, deflate, br',
                     accept: 'application/json',
                 },
-                params: { key: this.key },
             });
-            return response.data;
         } catch (e) {
             log.error('error', e);
-            if (e.response && e.response.status === 401) {
-                throw new errors.BadApiKeyError(JSON.stringify(e.response.data));
-            }
-            throw new errors.HttpError(`failed to get account details; status code ${e.response.status}`, e);
+            throw e;
         }
+        const data = await response.json();
+        if ('error_id' in data || Object.keys(data).length === 0) {
+            if (data.http_code || response.status == 401) {
+                throw new errors.BadApiKeyError(JSON.stringify(data));
+            }
+            throw new errors.ApiHttpClientError(JSON.stringify(data));
+        }
+        return data;
     }
+
     /**
      * Issue a single scrape command from a given scrape configuration
      */
     async scrape(config: ScrapeConfig): Promise<ScrapeResult> {
         log.debug('scraping', { method: config.method, url: config.url });
-        let response: AxiosResponse;
+        let response;
         try {
-            response = await axios.request({
+            const url = new URL(this.HOST + '/scrape');
+            const params = config.toApiParams({ key: this.key });
+            url.search = new URLSearchParams(params).toString();
+            response = await this.fetch(url.toString(), {
                 method: config.method,
-                url: this.HOST + '/scrape',
                 headers: {
                     'user-agent': this.ua,
                     'content-type': config.method === 'POST' ? config.headers['content-type'] : 'application/json',
-                    'accept-ecoding': 'gzip, deflate, br',
+                    'accept-encoding': 'gzip, deflate, br',
                     accept: 'application/json',
                 },
-                params: config.toApiParams({ key: this.key }),
-                data: config.body,
+                body: config.body,
             });
         } catch (e) {
             log.error('error', e);
-            if (e.response && e.response.status === 401) {
-                throw new errors.BadApiKeyError(JSON.stringify(e.response.data));
-            }
             throw e;
         }
-        const result = await this.handleResponse(response);
+        const data = await response.json();
+        if ('error_id' in data || Object.keys(data).length === 0) {
+            if (data.http_code || response.status_code == 401) {
+                throw new errors.BadApiKeyError(JSON.stringify(data));
+            }
+            throw new errors.ApiHttpClientError(JSON.stringify(data));
+        }
+        const result = await this.handleResponse(response, data);
         return result;
     }
 
