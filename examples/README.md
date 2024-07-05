@@ -11,12 +11,12 @@ node examples/basic-get.js
 Or compile `.ts` examples to `.js`:
 
 ```
-tsc examples/basic-get.ts -o examples/basic-get.js
-node examples/basic-get.js
+tsc examples/scrape/basic-get.ts -o examples/basic-get.js
+node examples/scrape/basic-get.js
 ```
 
 Or run typescript directly through runtimes like `.ts`:
 
 ```
-bun examples/basic-get.ts
+bun examples/scrape/basic-get.ts
 ```
