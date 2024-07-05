@@ -1,11 +1,10 @@
-import { ScrapeConfig } from './scrapeconfig.js';
 import * as errors from './errors.js';
+import { ScrapeConfig } from './scrapeconfig.js';
 import { ConfigData, ContextData, ResultData, ScrapeResult, AccountData } from './result.js';
 import fetchRetry from 'fetch-retry';
-import nodeFetch from 'node-fetch';
 import { log } from './logger.js';
 
-function fetchTimeout(resource, options: RequestInit = {}): Promise<Response> {
+function fetchTimeout(resource: Request, options: RequestInit = {}): Promise<Response> {
     const timeout = 160000; // 160 seconds
 
     const controller = new AbortController();
@@ -15,7 +14,7 @@ function fetchTimeout(resource, options: RequestInit = {}): Promise<Response> {
     // Add the signal to the options object
     options.signal = signal;
 
-    return nodeFetch(resource, options)
+    return fetch(resource, options)
         .then((response) => {
             clearTimeout(timeoutId);
             return response;
@@ -136,21 +135,23 @@ export class ScrapflyClient {
             const url = new URL(this.HOST + '/account');
             const params = { key: this.key };
             url.search = new URLSearchParams(params).toString();
-            response = await this.fetch(url.toString(), {
-                method: 'GET',
-                headers: {
-                    'user-agent': this.ua,
-                    'accept-encoding': 'gzip, deflate, br',
-                    accept: 'application/json',
-                },
-            });
+            response = await this.fetch(
+                new Request(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'user-agent': this.ua,
+                        'accept-encoding': 'gzip, deflate, br',
+                        accept: 'application/json',
+                    },
+                }),
+            );
         } catch (e) {
             log.error('error', e);
             throw e;
         }
         const data = await response.json();
         if ('error_id' in data || Object.keys(data).length === 0) {
-            if (data.http_code || response.status == 401) {
+            if (data.http_code == 401 || response.status == 401) {
                 throw new errors.BadApiKeyError(JSON.stringify(data));
             }
             throw new errors.ApiHttpClientError(JSON.stringify(data));
@@ -168,23 +169,25 @@ export class ScrapflyClient {
             const url = new URL(this.HOST + '/scrape');
             const params = config.toApiParams({ key: this.key });
             url.search = new URLSearchParams(params).toString();
-            response = await this.fetch(url.toString(), {
-                method: config.method,
-                headers: {
-                    'user-agent': this.ua,
-                    'content-type': config.method === 'POST' ? config.headers['content-type'] : 'application/json',
-                    'accept-encoding': 'gzip, deflate, br',
-                    accept: 'application/json',
-                },
-                body: config.body,
-            });
+            response = await this.fetch(
+                new Request(url.toString(), {
+                    method: config.method,
+                    headers: {
+                        'user-agent': this.ua,
+                        'content-type': config.method === 'POST' ? config.headers['content-type'] : 'application/json',
+                        'accept-encoding': 'gzip, deflate, br',
+                        accept: 'application/json',
+                    },
+                    body: config.body,
+                }),
+            );
         } catch (e) {
             log.error('error', e);
             throw e;
         }
         const data = await response.json();
         if ('error_id' in data || Object.keys(data).length === 0) {
-            if (data.http_code || response.status_code == 401) {
+            if (data.http_code == 401 || response.status_code == 401) {
                 throw new errors.BadApiKeyError(JSON.stringify(data));
             }
             throw new errors.ApiHttpClientError(JSON.stringify(data));

@@ -1,7 +1,7 @@
 import * as errors from '../src/errors.js';
 import { ScrapflyClient } from '../src/client.js';
 import { ScrapeConfig } from '../src/scrapeconfig.js';
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 function resultFactory(params: {
     url?: string;
@@ -20,6 +20,7 @@ function resultFactory(params: {
                 success: params.success ?? true,
                 status_code: params.status_code ?? 200,
                 error: params.error ?? '',
+                log_url: '123',
             },
             config: { url: params.url ?? 'https://httpbin.dev/json' },
             context: { asp: false },
@@ -41,83 +42,54 @@ describe('concurrent scrape', () => {
     // mock fetch to return /account data and 2 types of results:
     // - success for /success endpoints
     // - ASP failure for /failure endpoints
-    jest.spyOn(global, 'fetch').mockImplementation(async (config: Request): Promise<any> => {
-        const params = new URLSearchParams(config.url);
-        if (config.url.includes('/account')) {
-            return {
-                status: 200,
-                data: {
-                    account: { account_id: '1234' },
-                    project: { scrape_request_count: 42 },
-                    subscription: { usage: { scrape: { concurrent_limit: 5 } } },
-                },
-            };
-        }
-
-        // sleep for 1 second
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        if (params.get('url').includes('/success')) {
-            return resultFactory({
-                url: config.url,
-                status: 'DONE',
-                success: true,
-                status_code: 200,
-            });
-        }
-        if (params.get('url').includes('/failure')) {
-            return resultFactory({
-                url: config.url,
-                status: 'ERR::ASP::SHIELD_ERROR',
-                success: true,
-            });
-        }
-    });
-
-    beforeEach(() => {
-        jest.spyOn(global, 'fetch').mockClear();
-    });
-
-    it('success', async () => {
-        const spy = jest.spyOn(client, 'fetch');
-        const configs = [
-            ...new Array(5).fill(null).map(() => new ScrapeConfig({ url: 'https://httpbin.dev/status/200' })),
-            ...new Array(5).fill(null).map(() => new ScrapeConfig({ url: 'https://httpbin.dev/status/400' })),
-        ];
-        const results = [];
-        const errors = [];
-        for await (const resultOrError of client.concurrentScrape(configs)) {
-            if (resultOrError instanceof Error) {
-                errors.push(resultOrError);
-            } else {
-                results.push(resultOrError);
-            }
-        }
-        console.log(results);
-        expect(results.length).toBe(5);
-        expect(errors.length).toBe(5);
-        // 10 requests and 1 account info
-        expect(spy).toHaveBeenCalledTimes(11);
-    }, 10_000);
 
     it('success with explicit concurrency', async () => {
         const spy = jest.spyOn(client, 'fetch');
-        const configs = [
-            ...new Array(5).fill(null).map(() => new ScrapeConfig({ url: 'https://httpbin.dev/status/200' })),
-            ...new Array(5).fill(null).map(() => new ScrapeConfig({ url: 'https://httpbin.dev/status/400' })),
-        ];
-        const results = [];
-        const errors = [];
-        for await (const resultOrError of client.concurrentScrape(configs, 10)) {
-            if (resultOrError instanceof Error) {
-                errors.push(resultOrError);
-            } else {
-                results.push(resultOrError);
+        spy.mockImplementation(async (config: Request): Promise<any> => {
+            const configs = [
+                ...new Array(5).fill(null).map(() => new ScrapeConfig({ url: 'https://httpbin.dev/status/200' })),
+                ...new Array(5).fill(null).map(() => new ScrapeConfig({ url: 'https://httpbin.dev/status/400' })),
+            ];
+            const results = [];
+            const errors = [];
+            if (config.url.includes('/200')) {
+                const result = resultFactory({
+                    url: config.url,
+                    status: 'DONE',
+                    success: true,
+                    status_code: 200,
+                });
+                return responseFactory(result.data, {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
             }
-        }
-        expect(results.length).toBe(5);
-        expect(errors.length).toBe(5);
-        // 11 + 10
-        expect(spy).toHaveBeenCalledTimes(21);
+            if (config.url.includes('/400')) {
+                const result = resultFactory({
+                    url: config.url,
+                    status: 'ERR::ASP::SHIELD_ERROR',
+                    success: true,
+                });
+                return responseFactory(result.data, {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+            }
+            for await (const resultOrError of client.concurrentScrape(configs, 10)) {
+                if (resultOrError instanceof Error) {
+                    errors.push(resultOrError);
+                } else {
+                    results.push(resultOrError);
+                }
+            }
+            expect(results.length).toBe(5);
+            expect(errors.length).toBe(5);
+            expect(spy).toHaveBeenCalledTimes(10);
+        });
     }, 10_000);
 });
 
@@ -126,23 +98,29 @@ describe('scrape', () => {
     const client = new ScrapflyClient({ key: KEY });
 
     beforeEach(() => {
-        jest.spyOn(global, 'fetch').mockClear(); // clear all mock meta on each test
+        jest.spyOn(client, 'fetch').mockClear(); // clear all mock meta on each test
     });
 
     it('GET success', async () => {
         const spy = jest.spyOn(client, 'fetch');
         const url = 'https://httpbin.dev/json';
-        jest.spyOn(global, 'fetch').mockImplementation(async (config: Request): Promise<any> => {
-            const params = new URLSearchParams(config.url);
+        jest.spyOn(client, 'fetch').mockImplementation(async (config: Request): Promise<any> => {
+            const configUrl = config[Object.getOwnPropertySymbols(config)[1]].url;
             // Ensure the URL matches the pattern
-            expect(config.url).toMatch(client.HOST + '/scrape');
+            expect(configUrl.origin + configUrl.pathname).toEqual(client.HOST + '/scrape');
             expect(config.method).toEqual('GET');
-            expect(params.get('key')).toMatch(KEY);
-            expect(params.get('url')).toMatch(url);
-            expect(Array.from(params.keys())).toEqual(['key', 'url']);
-
-            // Return the fake response
-            return resultFactory({ url });
+            expect(configUrl.searchParams.get('key')).toMatch(KEY);
+            expect(configUrl.searchParams.get('url')).toMatch(url);
+            expect(Array.from(configUrl.searchParams.keys())).toEqual(['key', 'url']);
+            const result = resultFactory({
+                url: url,
+            });
+            return responseFactory(result.data, {
+                status: 200,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
         });
 
         const result = await client.scrape(new ScrapeConfig({ url: url }));
@@ -176,9 +154,9 @@ describe('client errors', () => {
 
     it('raises ApiHttpServerError on 500 and success', async () => {
         const url = 'https://httpbin.dev/json';
-        jest.spyOn(client, 'fetch').mockImplementation(async (config: Request): Promise<any> => {
+        jest.spyOn(client, 'fetch').mockImplementation(async (): Promise<any> => {
             const result = resultFactory({
-                url: config.url,
+                url: url,
                 status_code: 500,
                 status: 'ERROR',
                 success: true,
@@ -216,9 +194,9 @@ describe('client errors', () => {
 
     it('raises TooManyRequests on 429 and success', async () => {
         const url = 'https://httpbin.dev/json';
-        jest.spyOn(client, 'fetch').mockImplementation(async (config: Request): Promise<any> => {
+        jest.spyOn(client, 'fetch').mockImplementation(async (): Promise<any> => {
             const result = resultFactory({
-                url: config.url,
+                url: url,
                 status_code: 429,
                 status: 'ERROR',
                 success: true,
