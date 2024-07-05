@@ -1,6 +1,9 @@
+import fs from 'fs';
+import path from 'path';
 import * as errors from './errors.js';
 import { ScrapeConfig } from './scrapeconfig.js';
-import { ConfigData, ContextData, ResultData, ScrapeResult, AccountData } from './result.js';
+import { ScreenshotConfig } from './screenshotconfig.js';
+import { ConfigData, ContextData, ResultData, ScrapeResult, AccountData, ScreenshotResult } from './result.js';
 import fetchRetry from 'fetch-retry';
 import { log } from './logger.js';
 
@@ -250,5 +253,84 @@ export class ScrapflyClient {
             const resultOrError = await Promise.race(activePromises);
             yield resultOrError;
         }
+    }
+
+    /**
+     * Save screenshot response to a file
+     */
+    async saveScreenshot(result: ScreenshotResult, name: string, savePath?: string): Promise<any> {
+        if (!result.image) {
+            throw new Error('Screenshot binary does not exist');
+        }
+
+        const format = result.metadata.format;
+        let file_path;
+
+        if (savePath) {
+            fs.mkdirSync(savePath, { recursive: true });
+            file_path = path.join(savePath, `${name}.${format}`);
+        } else {
+            file_path = `${name}.${format}`;
+        }
+
+        const content = Buffer.from(result.image);
+        fs.writeFileSync(file_path, content, 'binary');
+    }
+
+    /**
+     * Turn scrapfly screenshot API response to ScreenshotResult or raise one of ScrapflyError
+     */
+    async handleScreenshotResponse(response: Response): Promise<ScreenshotResult> {
+        if (response.headers.get('content-encoding') != 'gzip') {
+            const data = (await response.json()) as any;
+            const errorMapping = {
+                UNABLE_TO_TAKE_SCREENSHOT: errors.UnableToTakeScreenshot,
+                INVALID_CONTENT_TYPE: errors.ScreenshotInvalidContent,
+            };
+            if (response.headers.get('content-encoding') !== 'gzip') {
+                if ('error_id' in data) {
+                    const rejectionCode = data.code.split('::')[2];
+                    const ErrorClass = errorMapping[rejectionCode];
+                    if (ErrorClass) {
+                        throw new ErrorClass(JSON.stringify(data));
+                    }
+                }
+            }
+            throw new errors.ApiHttpClientError(JSON.stringify(data));
+        }
+        if (!response.ok) {
+            throw new errors.ApiHttpClientError(JSON.stringify(await response.json()));
+        }
+        const data = await response.arrayBuffer();
+        const result = new ScreenshotResult(response, data);
+        return result;
+    }
+
+    /**
+     * Take a screenshot
+     */
+    async screenshot(config: ScreenshotConfig): Promise<ScreenshotResult> {
+        log.debug('screenshoting', { url: config.url });
+        let response;
+        try {
+            const url = new URL(this.HOST + '/screenshot');
+            const params = config.toApiParams({ key: this.key });
+            url.search = new URLSearchParams(params).toString();
+            response = await this.fetch(
+                new Request(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'user-agent': this.ua,
+                        'accept-encoding': 'gzip, deflate, br',
+                        accept: 'application/json',
+                    },
+                }),
+            );
+        } catch (e) {
+            log.error('error', e);
+            throw e;
+        }
+        const result = await this.handleScreenshotResponse(response);
+        return result;
     }
 }

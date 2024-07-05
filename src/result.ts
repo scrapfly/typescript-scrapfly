@@ -265,3 +265,33 @@ export class AccountData {
         };
     };
 }
+
+export type ScreenshotMetadata = {
+    format: string;
+    upstream_status_code: number;
+    upstream_url: string;
+};
+
+export class ScreenshotResult {
+    image: ArrayBuffer;
+    metadata: ScreenshotMetadata;
+
+    constructor(response: Response, data: ArrayBuffer) {
+        this.image = data;
+        this.metadata = this.defineMetadata(response);
+    }
+
+    private defineMetadata(response: Response): ScreenshotMetadata {
+        const contentType = response.headers.get('content-type');
+        let format;
+        if (contentType) {
+            format = contentType.split('/')[1].split(';')[0];
+            format = format === 'jpeg' ? 'jpg' : format;
+        }
+        return {
+            format: format,
+            upstream_status_code: parseInt(response.headers.get('X-Scrapfly-Upstream-Http-Code'), 10),
+            upstream_url: response.headers.get('X-Scrapfly-Upstream-Url'),
+        };
+    }
+}
