@@ -47,6 +47,7 @@ export class ScreenshotConfig {
     cache?: boolean = null;
     cache_ttl?: boolean = null;
     cache_clear?: boolean = null;
+    webhook?: string = null;
 
     constructor(options: {
         url: string;
@@ -63,6 +64,7 @@ export class ScreenshotConfig {
         cache?: boolean;
         cache_ttl?: boolean;
         cache_clear?: boolean;
+        webhook?: string;
     }) {
         if (options.format && !Object.values(Format).includes(options.format)) {
             throw new ScreenshotConfigError(`Invalid format param value: ${options.format}`);
@@ -70,7 +72,7 @@ export class ScreenshotConfig {
         this.format = options.format ?? this.format;
         // Validate options against the enum
         if (options.options) {
-            options.options.forEach(opt => {
+            options.options.forEach((opt) => {
                 if (!Object.values(Options).includes(opt)) {
                     throw new ScreenshotConfigError(`Invalid options param value: ${opt}`);
                 }
@@ -90,6 +92,7 @@ export class ScreenshotConfig {
         this.cache = options.cache ?? this.cache;
         this.cache_ttl = options.cache_ttl ?? this.cache_ttl;
         this.cache_clear = options.cache_clear ?? this.cache_clear;
+        this.webhook = options.webhook;
     }
 
     toApiParams(options: { key: string }): Record<string, any> {
@@ -155,6 +158,10 @@ export class ScreenshotConfig {
             }
         }
 
+        if (this.webhook) {
+            params.webhook_name = this.webhook;
+        }
+        
         return params;
     }
 }

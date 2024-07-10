@@ -24,7 +24,7 @@ const result = await client.screenshot(
     }),
 );
 
-// screenshot metadata (format, upstream_status_code, upstream_url)
+// screenshot metadata (extension_name, upstream_status_code, upstream_url)
 const metadata = result.metadata;
 
 // screenshot binary

@@ -10,6 +10,7 @@ export class ExtractionConfig {
     epehemeral_template?: object; // epehemeraly declared json template
     extraction_prompt?: string = null;
     extraction_model?: string = null;
+    webhook?: string = null;
 
     constructor(options: {
         body: string;
@@ -20,6 +21,7 @@ export class ExtractionConfig {
         epehemeral_template?: object; // epehemeraly declared json template
         extraction_prompt?: string;
         extraction_model?: string;
+        webhook?: string;
     }) {
         this.body = options.body;
         this.content_type = options.content_type;
@@ -29,6 +31,7 @@ export class ExtractionConfig {
         this.epehemeral_template = options.epehemeral_template;
         this.extraction_prompt = options.extraction_prompt;
         this.extraction_model = options.extraction_model;
+        this.webhook = options.webhook;
     }
 
     toApiParams(options: { key: string }): Record<string, any> {
@@ -65,6 +68,11 @@ export class ExtractionConfig {
         if (this.extraction_model) {
             params.extraction_model = this.extraction_model;
         }
+
+        if (this.webhook) {
+            params.webhook_name = this.webhook;
+        }
+        
         return params;
     }
 }

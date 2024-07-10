@@ -272,14 +272,14 @@ export class ScrapflyClient {
             throw new Error('Screenshot binary does not exist');
         }
 
-        const format = result.metadata.format;
+        const extension_name = result.metadata.extension_name;
         let file_path;
 
         if (savePath) {
             fs.mkdirSync(savePath, { recursive: true });
-            file_path = path.join(savePath, `${name}.${format}`);
+            file_path = path.join(savePath, `${name}.${extension_name}`);
         } else {
-            file_path = `${name}.${format}`;
+            file_path = `${name}.${extension_name}`;
         }
 
         const content = Buffer.from(result.image);
@@ -292,13 +292,11 @@ export class ScrapflyClient {
     async handleScreenshotResponse(response: Response): Promise<ScreenshotResult> {
         if (response.headers.get('content-encoding') != 'gzip') {
             const data = (await response.json()) as any;
-            if (response.headers.get('content-encoding') !== 'gzip') {
-                if (data.http_code == 401 || response.status == 401) {
-                    throw new errors.BadApiKeyError(JSON.stringify(data));
-                }
-                if ('error_id' in data) {
-                    throw new errors.ScreenshotApiError(JSON.stringify(data));
-                }
+            if (data.http_code == 401 || response.status == 401) {
+                throw new errors.BadApiKeyError(JSON.stringify(data));
+            }
+            if ('error_id' in data) {
+                throw new errors.ScreenshotApiError(JSON.stringify(data));
             }
         }
         if (!response.ok) {
@@ -350,7 +348,7 @@ export class ScrapflyClient {
         }
         if (!response.ok) {
             throw new errors.ApiHttpClientError(JSON.stringify(await response.json()));
-        }        
+        }
         const result = new ExtractionResult(data);
         return result;
     }
@@ -381,7 +379,7 @@ export class ScrapflyClient {
             log.error('error', e);
             throw e;
         }
-        const result = await this.handleExtractionResponse(response)
+        const result = await this.handleExtractionResponse(response);
         return result;
     }
 }

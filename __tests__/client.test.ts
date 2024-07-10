@@ -510,7 +510,7 @@ it('succeeds', async () => {
 
         const result = await client.screenshot(new ScreenshotConfig({ url: url }));
         expect(result).toBeDefined();
-        expect(result.metadata.format).toBe('png');
+        expect(result.metadata.extension_name).toBe('png');
         expect(result.metadata.upstream_url).toEqual(url);
         expect(result.metadata.upstream_status_code).toBe(200);
         expect(spy).toHaveBeenCalledTimes(1);
