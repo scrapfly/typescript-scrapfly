@@ -295,3 +295,13 @@ export class ScreenshotResult {
         };
     }
 }
+
+export class ExtractionResult {
+    data: string;
+    content_type: string;
+
+    constructor(response: { data: string; content_type: string }) {
+        this.data = response.data;
+        this.content_type = response.content_type;
+    }
+}

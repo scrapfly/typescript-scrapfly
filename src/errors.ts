@@ -11,6 +11,8 @@ export class ScrapflyError extends Error {
 export class ScrapeConfigError extends ScrapflyError {}
 // raised when screenshot config is invalid
 export class ScreenshotConfigError extends ScrapflyError {}
+// raised when extraction config is invalid
+export class ExtractionConfigError extends ScrapflyError {}
 
 // raised when scrape parameters cannot be encoded
 export class EncodeError extends ScrapflyError {}
@@ -43,7 +45,7 @@ export class ScrapflySessionError extends HttpError {}
 export class TooManyConcurrentRequests extends HttpError {}
 // raised when account is out of scrape credits
 export class QuotaLimitReached extends HttpError {}
-// raised when Scrapfly isn't able to take screenshot
-export class UnableToTakeScreenshot extends ApiHttpClientError {}
-// raised when the target's content type isn't text/htm
-export class ScreenshotInvalidContent extends ApiHttpClientError {}
+// raised with Scrapfly screenshot API related errors
+export class ScreenshotApiError extends ApiHttpClientError {}
+// raised with Scrapfly extraction API related errors
+export class ExtractionApiError extends ApiHttpClientError {}

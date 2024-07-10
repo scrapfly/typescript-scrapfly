@@ -3,7 +3,16 @@ import path from 'path';
 import * as errors from './errors.js';
 import { ScrapeConfig } from './scrapeconfig.js';
 import { ScreenshotConfig } from './screenshotconfig.js';
-import { ConfigData, ContextData, ResultData, ScrapeResult, AccountData, ScreenshotResult } from './result.js';
+import { ExtractionConfig } from './extractionconfig.js';
+import {
+    ConfigData,
+    ContextData,
+    ResultData,
+    ScrapeResult,
+    AccountData,
+    ScreenshotResult,
+    ExtractionResult,
+} from './result.js';
 import fetchRetry from 'fetch-retry';
 import { log } from './logger.js';
 
@@ -190,7 +199,7 @@ export class ScrapflyClient {
         }
         const data = await response.json();
         if ('error_id' in data || Object.keys(data).length === 0) {
-            if (data.http_code == 401 || response.status_code == 401) {
+            if (data.http_code == 401 || response.status == 401) {
                 throw new errors.BadApiKeyError(JSON.stringify(data));
             }
             throw new errors.ApiHttpClientError(JSON.stringify(data));
@@ -283,20 +292,14 @@ export class ScrapflyClient {
     async handleScreenshotResponse(response: Response): Promise<ScreenshotResult> {
         if (response.headers.get('content-encoding') != 'gzip') {
             const data = (await response.json()) as any;
-            const errorMapping = {
-                UNABLE_TO_TAKE_SCREENSHOT: errors.UnableToTakeScreenshot,
-                INVALID_CONTENT_TYPE: errors.ScreenshotInvalidContent,
-            };
             if (response.headers.get('content-encoding') !== 'gzip') {
+                if (data.http_code == 401 || response.status == 401) {
+                    throw new errors.BadApiKeyError(JSON.stringify(data));
+                }
                 if ('error_id' in data) {
-                    const rejectionCode = data.code.split('::')[2];
-                    const ErrorClass = errorMapping[rejectionCode];
-                    if (ErrorClass) {
-                        throw new ErrorClass(JSON.stringify(data));
-                    }
+                    throw new errors.ScreenshotApiError(JSON.stringify(data));
                 }
             }
-            throw new errors.ApiHttpClientError(JSON.stringify(data));
         }
         if (!response.ok) {
             throw new errors.ApiHttpClientError(JSON.stringify(await response.json()));
@@ -331,6 +334,54 @@ export class ScrapflyClient {
             throw e;
         }
         const result = await this.handleScreenshotResponse(response);
+        return result;
+    }
+
+    /**
+     * Turn scrapfly Extraction API response to ExtractionResult or raise one of ScrapflyError
+     */
+    async handleExtractionResponse(response: Response): Promise<ExtractionResult> {
+        const data = (await response.json()) as any;
+        if ('error_id' in data) {
+            if (data.http_code == 401 || response.status == 401) {
+                throw new errors.BadApiKeyError(JSON.stringify(data));
+            }
+            throw new errors.ExtractionApiError(JSON.stringify(data));
+        }
+        if (!response.ok) {
+            throw new errors.ApiHttpClientError(JSON.stringify(await response.json()));
+        }        
+        const result = new ExtractionResult(data);
+        return result;
+    }
+
+    /**
+     * Extract structured data from a web page
+     */
+    async extract(config: ExtractionConfig): Promise<ExtractionResult> {
+        log.debug('extacting data from', { content_type: config.content_type });
+        let response;
+        try {
+            const url = new URL(this.HOST + '/extraction');
+            const params = config.toApiParams({ key: this.key });
+            url.search = new URLSearchParams(params).toString();
+            response = await this.fetch(
+                new Request(url.toString(), {
+                    method: 'POST',
+                    headers: {
+                        'user-agent': this.ua,
+                        'accept-encoding': 'gzip, deflate, br',
+                        'content-type': config.content_type,
+                        accept: 'application/json',
+                    },
+                    body: config.body,
+                }),
+            );
+        } catch (e) {
+            log.error('error', e);
+            throw e;
+        }
+        const result = await this.handleExtractionResponse(response)
         return result;
     }
 }
