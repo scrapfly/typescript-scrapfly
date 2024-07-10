@@ -1,6 +1,6 @@
-import { ScrapeConfig, ScreenshotFlags, Format } from '../src/scrapeconfig.js';
-import { HttpMethod } from '../src/types.js';
-import { ScrapeConfigError } from '../src/errors.js';
+import { ScrapeConfig, ScreenshotFlags, Format } from '../../src/scrapeconfig.js';
+import { HttpMethod } from '../../src/types.js';
+import { ScrapeConfigError } from '../../src/errors.js';
 import { describe, it, expect } from '@jest/globals';
 
 describe('scrapeconfig', () => {
@@ -211,10 +211,10 @@ describe('url param generation', () => {
             key: '1234',
             url: 'http://httpbin.dev/get',
             'screenshots[everything]': 'fullpage',
-            screenshot_flags: "load_images,dark_mode,block_banners,high_quality,print_media_format",            
+            screenshot_flags: 'load_images,dark_mode,block_banners,high_quality,load_images',
             render_js: true,
         });
-    });    
+    });
     it('asp enables', () => {
         const config = new ScrapeConfig({
             url: 'http://httpbin.dev/get',
@@ -267,9 +267,9 @@ describe('url param generation', () => {
         expect(config.toApiParams({ key: '1234' })).toEqual({
             key: '1234',
             url: 'http://httpbin.dev/get',
-            format: "markdown",
+            format: 'markdown',
         });
-    });    
+    });
     it('debug sets', () => {
         const config = new ScrapeConfig({
             url: 'http://httpbin.dev/get',

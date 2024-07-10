@@ -1,5 +1,5 @@
-import { ScreenshotConfig, Format, Options } from '../src/screenshotconfig.js';
-import { ScreenshotConfigError } from '../src/errors.js';
+import { ScreenshotConfig, Format, Options } from '../../src/screenshotconfig.js';
+import { ScreenshotConfigError } from '../../src/errors.js';
 import { describe, it, expect } from '@jest/globals';
 
 describe('scrapeconfig', () => {

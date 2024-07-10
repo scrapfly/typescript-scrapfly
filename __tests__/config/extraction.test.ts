@@ -1,5 +1,4 @@
-import { ExtractionConfig } from '../src/extractionconfig.js';
-// import { ScreenshotConfigError } from '../src/errors.js';
+import { ExtractionConfig } from '../../src/extractionconfig.js';
 import { describe, it, expect } from '@jest/globals';
 
 const input_html = 'very long html file';
@@ -71,7 +70,7 @@ describe('url param generation', () => {
             key: '1234',
             body: input_html,
             content_type: input_content_type,
-            template: 'my_template',
+            extraction_template: 'my_template',
         });
     });
 
@@ -86,7 +85,7 @@ describe('url param generation', () => {
             key: '1234',
             body: input_html,
             content_type: input_content_type,
-            epehemeral_template: 'ephemeral:eyJzb3VyY2UiOiJodG1sIiwic2VsZWN0b3JzIjpbXX0',
+            extraction_template: 'ephemeral:eyJzb3VyY2UiOiJodG1sIiwic2VsZWN0b3JzIjpbXX0',
         });
     });
 
