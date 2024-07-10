@@ -361,17 +361,21 @@ export class ScrapflyClient {
         let response;
         try {
             const url = new URL(this.HOST + '/extraction');
-            const params = config.toApiParams({ key: this.key });
+            const params = await config.toApiParams({ key: this.key });
             url.search = new URLSearchParams(params).toString();
+            const headers: Record<string, string> = {
+                'user-agent': this.ua,
+                'accept-encoding': 'gzip, deflate, br',
+                'content-type': config.content_type,
+                accept: 'application/json',
+            };
+            if (config.document_compression_format && config.document_compression_format) {
+                headers['content-encoding'] = config.document_compression_format;
+            }
             response = await this.fetch(
                 new Request(url.toString(), {
                     method: 'POST',
-                    headers: {
-                        'user-agent': this.ua,
-                        'accept-encoding': 'gzip, deflate, br',
-                        'content-type': config.content_type,
-                        accept: 'application/json',
-                    },
+                    headers: headers,
                     body: config.body,
                 }),
             );
