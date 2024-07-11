@@ -27,7 +27,7 @@ export class ExtractionConfig {
     url?: string = null;
     charset?: string = null;
     template?: string; // saved template name
-    epehemeral_template?: object; // epehemeraly declared json template
+    ephemeral_template?: object; // ephemeraly declared json template
     extraction_prompt?: string = null;
     extraction_model?: string = null;
     is_document_compressed?: boolean = null;
@@ -40,7 +40,7 @@ export class ExtractionConfig {
         url?: string;
         charset?: string;
         template?: string; // saved template name
-        epehemeral_template?: object; // epehemeraly declared json template
+        ephemeral_template?: object; // ephemeraly declared json template
         extraction_prompt?: string;
         extraction_model?: string;
         is_document_compressed?: boolean;
@@ -52,7 +52,7 @@ export class ExtractionConfig {
         this.url = options.url;
         this.charset = options.charset;
         this.template = options.template;
-        this.epehemeral_template = options.epehemeral_template;
+        this.ephemeral_template = options.ephemeral_template;
         this.extraction_prompt = options.extraction_prompt;
         this.extraction_model = options.extraction_model;
         this.is_document_compressed = options.is_document_compressed;
@@ -75,9 +75,9 @@ export class ExtractionConfig {
             params.charset = this.charset;
         }
 
-        if (this.template && this.epehemeral_template) {
+        if (this.template && this.ephemeral_template) {
             throw new ExtractionConfigError(
-                'You cannot pass both parameters template and epehemeral_template. You must choose',
+                'You cannot pass both parameters template and ephemeral_template. You must choose',
             );
         }
 
@@ -85,8 +85,8 @@ export class ExtractionConfig {
             params.extraction_template = this.template;
         }
 
-        if (this.epehemeral_template) {
-            params.extraction_template = 'ephemeral:' + urlsafe_b64encode(JSON.stringify(this.epehemeral_template));
+        if (this.ephemeral_template) {
+            params.extraction_template = 'ephemeral:' + urlsafe_b64encode(JSON.stringify(this.ephemeral_template));
         }
 
         if (this.extraction_prompt) {

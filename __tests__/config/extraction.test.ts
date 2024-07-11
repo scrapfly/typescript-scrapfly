@@ -68,11 +68,11 @@ describe('url param generation', () => {
         });
     });
 
-    it('sets epehemeral_template', async () => {
+    it('sets ephemeral_template', async () => {
         const config = new ExtractionConfig({
             body: input_html,
             content_type: input_content_type,
-            epehemeral_template: { source: 'html', selectors: [] },
+            ephemeral_template: { source: 'html', selectors: [] },
         });
         const params = await config.toApiParams({ key: '1234' });
         expect(params).toEqual({

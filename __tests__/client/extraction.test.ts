@@ -43,7 +43,7 @@ describe('extract', () => {
                 new ExtractionConfig({
                     body: html,
                     content_type: 'text/html',
-                    epehemeral_template: { source: 'html' },
+                    ephemeral_template: { source: 'html' },
                     template: 'template',
                 }),
             ),

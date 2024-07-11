@@ -81,7 +81,7 @@ const extractionResult = await client.extract(
         body: html, // pass the HTML content
         content_type: 'text/html', // content data type
         charset: 'utf-8', // passed content charset, use `auto` if you aren't sure
-        epehemeral_template: extraction_template // declared template defintion
+        ephemeral_template: extraction_template // declared template defintion
     }),
 );
 
