@@ -3,13 +3,41 @@ import { log } from './logger.js';
 import { Rec, HttpMethod } from './types.js';
 import { ScrapeConfigError } from './errors.js';
 
-type ScreenshotFlags = "load_images" | "dark_mode" | "block_banners" | "high_quality" | "print_media_format";
-type Format = "raw" | "json" | "text" | "markdown" | "clean_html";
+export enum ScreenshotFlags {
+    /**
+    Options to customize the screenshot behavior
+    Attributes:
+        LOAD_IMAGES: Enable image rendering with the request, add extra usage for the bandwidth consumed.
+        DARK_MODE: Enable dark mode display.
+        BLOCK_BANNERS: Block cookies banners and overlay that cover the screen.
+        PRINT_MEDIA_FORMAT: Render the page in the print mode.
+    */
+    LOAD_IMAGES = 'load_images',
+    DARK_MODE = 'dark_mode',
+    BLOCK_BANNERS = 'block_banners',
+    PRINT_MEDIA_FORMAT = 'print_media_format',
+    HIGH_QUALITY = 'high_quality',
+}
+
+export enum Format {
+    /**
+    Format of the scraped content.
+    Attributes:
+        JSON: JSON format.
+        TEXT: Text format.
+        MARKDOWN: Markdown format.
+        CLEAN_HTML: Clean HTML format.
+    */
+    JSON = 'json',
+    TEXT = 'text',
+    MARKDOWN = 'markdown',
+    CLEAN_HTML = 'clean_html',
+}
 
 export class ScrapeConfig {
     static PUBLIC_DATACENTER_POOL = 'public_datacenter_pool';
     static PUBLIC_RESIDENTIAL_POOL = 'public_residential_pool';
-    
+
     url: string;
     retry = true;
     method: HttpMethod = 'GET';
@@ -17,7 +45,7 @@ export class ScrapeConfig {
     render_js = false;
     cache = false;
     cache_clear = false;
-    cost_budget?: number = null
+    cost_budget?: number = null;
     ssl = false;
     dns = false;
     asp = false;
@@ -85,6 +113,17 @@ export class ScrapeConfig {
         lang?: string[];
         auto_scroll?: boolean;
     }) {
+        if (options.format && !Object.values(Format).includes(options.format)) {
+            throw new ScrapeConfigError(`Invalid format param value: ${options.format}`);
+        }
+        this.format = options.format ?? this.format;
+        if (options.screenshot_flags) {
+            options.screenshot_flags.forEach((flag) => {
+                if (!Object.values(ScreenshotFlags).includes(flag)) {
+                    throw new ScrapeConfigError(`Invalid screenshot_flags param value: ${flag}`);
+                }
+            });
+        }
         this.url = options.url;
         this.retry = options.retry ?? this.retry;
         this.method = options.method ?? this.method;
@@ -209,7 +248,7 @@ export class ScrapeConfig {
             } else {
                 if (this.screenshot_flags) {
                     log.warn('Params "screenshot_flags" is ignored. Works only if screenshots is enabled');
-                }                
+                }
             }
             if (this.auto_scroll !== null) {
                 params.auto_scroll = this.auto_scroll;

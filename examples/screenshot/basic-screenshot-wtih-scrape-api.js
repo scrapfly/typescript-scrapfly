@@ -42,15 +42,12 @@ console.log(result.result.screenshots);
 */
 
 // To save screenshot to file you can download the screenshot from the result urls
-import axios from 'axios';
 import fs from 'fs';
 for (let [name, screenshot] of Object.entries(result.result.screenshots)) {
-    let response = await axios.get(screenshot.url, {
-        // note: don't forget to add your API key parameter:
-        params: { key: key },
-        // this indicates that response is binary data:
-        responseType: 'arraybuffer',
-    });
-    // write to screenshot data to a file in currenct directory:
-    fs.writeFileSync(`example-screenshot-${name}.${screenshot.extension}`, response.data);
+    const url = new URL(screenshot.url);
+    // note: don't forget to add your API key parameter:        
+    url.searchParams.append('key', key);
+    const response = await fetch(url.href);
+    const content = Buffer.from(await response.arrayBuffer());
+    fs.writeFileSync(`screenshots/example-screenshot-${name}.${screenshot.extension}`, content, 'binary');
 }

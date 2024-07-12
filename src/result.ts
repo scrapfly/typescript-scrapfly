@@ -265,3 +265,53 @@ export class AccountData {
         };
     };
 }
+
+export type ScreenshotMetadata = {
+    extension_name: string;
+    upstream_status_code: number;
+    upstream_url: string;
+};
+
+export class ScreenshotResult {
+    image: ArrayBuffer;
+    metadata: ScreenshotMetadata;
+    result: object;
+
+    constructor(response: Response, data: ArrayBuffer) {
+        this.image = data;
+        this.metadata = this.defineMetadata(response);
+        this.result = this.returnRaw(response, data); // raw result
+    }
+
+    private defineMetadata(response: Response): ScreenshotMetadata {
+        const contentType = response.headers.get('content-type');
+        let extension_name;
+        if (contentType) {
+            extension_name = contentType.split('/')[1].split(';')[0];
+        }
+        return {
+            extension_name: extension_name,
+            upstream_status_code: parseInt(response.headers.get('X-Scrapfly-Upstream-Http-Code'), 10),
+            upstream_url: response.headers.get('X-Scrapfly-Upstream-Url'),
+        };
+    }
+
+    private returnRaw(response: Response, data: ArrayBuffer): Promise<any> {
+        if (response.headers.get('content-encoding') == 'gzip') {
+            return null
+        }
+        return JSON.parse(new TextDecoder().decode(data));
+    }
+}
+
+export class ExtractionResult {
+    data: string;
+    content_type: string;
+    result: object;
+
+    constructor(response: { data: string; content_type: string }) {
+        this.data = response.data;
+        this.content_type = response.content_type;
+        this.result = response; // raw data
+    }
+}

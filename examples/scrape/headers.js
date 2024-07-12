@@ -1,7 +1,7 @@
 /*
 This example shows how to set custom headers in scrapfly requests
 */
-import { ScrapflyClient, ScrapeConfig } from '../build/src/main.js';
+import { ScrapflyClient, ScrapeConfig } from 'scrapfly-sdk';
 
 const key = 'YOUR SCRAPFLY KEY';
 const client = new ScrapflyClient({ key });

@@ -1,5 +1,4 @@
-import { ScrapflyClient, ScrapeConfig } from '../build/src/main.js';
-import { BadApiKeyError } from '../build/src/errors.js';
+import { ScrapflyClient, ScrapeConfig } from 'scrapfly-sdk';
 
 const key = 'YOUR SCRAPFLY KEY';
 const client = new ScrapflyClient({ key });
@@ -11,4 +10,5 @@ const result = await client.scrape(
         url: 'https://httpbin.dev/html',
     }),
 );
+
 console.log(result);
