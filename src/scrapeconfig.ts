@@ -70,7 +70,6 @@ export class ScrapeConfig {
     webhook?: string = null;
     timeout?: number = null; // in milliseconds
     js_scenario?: Rec<any> = null;
-    extract?: Rec<any> = null;
     lang?: string[] = null;
     os?: string = null;
     auto_scroll?: boolean = null;
@@ -108,7 +107,6 @@ export class ScrapeConfig {
         webhook?: string;
         timeout?: number; // in milliseconds
         js_scenario?: Rec<any>;
-        extract?: Rec<any>;
         os?: string;
         lang?: string[];
         auto_scroll?: boolean;
@@ -157,7 +155,6 @@ export class ScrapeConfig {
         this.webhook = options.webhook ?? this.webhook;
         this.timeout = options.timeout ?? this.timeout;
         this.js_scenario = options.js_scenario ?? this.js_scenario;
-        this.extract = options.extract ?? this.extract;
         this.os = options.os ?? this.os;
         this.lang = options.lang ?? this.lang;
         this.auto_scroll = options.auto_scroll ?? this.auto_scroll;
@@ -331,7 +328,6 @@ export class ScrapeConfig {
             params.os = this.os;
         }
 
-        // XXX: mising this.extract(?)
         return params;
     }
 }
