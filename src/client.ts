@@ -195,6 +195,7 @@ export class ScrapflyClient {
             );
         } catch (e) {
             log.error('error', e);
+            e.scrapeConfig = config;
             throw e;
         }
         const data = await response.json();
