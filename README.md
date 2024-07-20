@@ -70,15 +70,19 @@ new ScrapeConfig({
 
 ## Development
 
-Install and setup environment:
+This is a Deno Typescript project that builds to NPM through [DNT](https://github.com/denoland/dnt).
 
-```shell
-$ npm install
-```
+- `/src` directory contains all of the source code with `main.ts` being the entry point.
+- `__tests__` directory contains tests for the source code.
+- `deno.json` contains meta information
+- `build.ts` is the build script that builds the project to nodejs ESM package.
+- `/npm` directory will be produced when `buil.ts` is executed for building node package.
 
-Build and test:
-
-```shell
-$ npm run build
-$ npm run test
+```bash
+# make modifications and run tests
+$ deno task test
+# format
+$ deno fmt
+# lint
+$ deno linst
 ```

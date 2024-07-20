@@ -1,390 +1,368 @@
-import fs from 'fs';
-import path from 'path';
-import * as errors from './errors.js';
-import { ScrapeConfig } from './scrapeconfig.js';
-import { ScreenshotConfig } from './screenshotconfig.js';
-import { ExtractionConfig } from './extractionconfig.js';
-import {
-    ConfigData,
-    ContextData,
-    ResultData,
-    ScrapeResult,
-    AccountData,
-    ScreenshotResult,
-    ExtractionResult,
-} from './result.js';
-import fetchRetry from 'fetch-retry';
-import { log } from './logger.js';
-
-function fetchTimeout(resource: Request, options: RequestInit = {}): Promise<Response> {
-    const timeout = 160000; // 160 seconds
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    const signal = controller.signal;
-
-    // Add the signal to the options object
-    options.signal = signal;
-
-    return fetch(resource, options)
-        .then((response) => {
-            clearTimeout(timeoutId);
-            return response;
-        })
-        .catch((error) => {
-            clearTimeout(timeoutId);
-            throw error;
-        });
-}
+import { path } from './deps.ts';
+import { fetchRetry } from './utils.ts';
+import * as errors from './errors.ts';
+import type { ScrapeConfig } from './scrapeconfig.ts';
+import type { ScreenshotConfig } from './screenshotconfig.ts';
+import type { ExtractionConfig } from './extractionconfig.ts';
+import { type AccountData, ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
+import { log } from './logger.ts';
+import type { Rec } from './types.ts';
 
 export class ScrapflyClient {
-    public HOST = 'https://api.scrapfly.io';
-    private key: string;
-    private ua: string;
+  public HOST = 'https://api.scrapfly.io';
+  private key: string;
+  private ua: string;
+  fetch = fetchRetry;
 
-    constructor(options: { key: string }) {
-        if (typeof options.key !== 'string' || options.key.trim() === '') {
-            throw new errors.BadApiKeyError('Invalid key. Key must be a non-empty string');
-        }
-        this.key = options.key;
-        this.ua = 'Typescript Scrapfly SDK';
+  constructor(options: { key: string }) {
+    if (typeof options.key !== 'string' || options.key.trim() === '') {
+      throw new errors.BadApiKeyError('Invalid key. Key must be a non-empty string');
     }
+    this.key = options.key;
+    this.ua = 'Typescript Scrapfly SDK';
+  }
 
-    fetch = fetchRetry(fetchTimeout, {
-        retryDelay: 1000,
-        retryOn: function (attempt, error, response) {
-            const maxRetries = 3;
-            // retry on any network errors or 5xx status codes
-            if (attempt <= maxRetries && (error !== null || (response && response.status >= 500))) {
-                return true;
-            }
-            return false;
-        },
-    });
-
-    /**
-     * Raise appropriate error for given response and scrape result
-     */
-    errResult(response: Response, result: ScrapeResult): errors.ScrapflyError {
-        const error = result.result.error;
-        const message = error.message ?? '';
-        const args = {
-            code: result.result.status,
-            http_status_code: result.result.status_code,
-            is_retryable: error.retryable ?? false,
-            api_response: result,
-            resource: result.result.status ? result.result.status.split('::')[1] : null,
-            retry_delay: error.retryable ? 5 : response.headers.get('X-Retry') ?? 5,
-            retry_times: 3,
-            documentation_url: error.doc_url ?? 'https://scrapfly.io/docs/scrape-api/errors#api',
-        };
-        const resourceErrMap = {
-            SCRAPE: errors.ScrapflyScrapeError,
-            WEBHOOK: errors.ScrapflyWebhookError,
-            PROXY: errors.ScrapflyProxyError,
-            SCHEDULE: errors.ScrapflyScheduleError,
-            ASP: errors.ScrapflyAspError,
-            SESSION: errors.ScrapflySessionError,
-        };
-        const httpStatusErrMap = {
-            401: errors.BadApiKeyError,
-            429: errors.TooManyRequests,
-        };
-        if (result.result.success === true) {
-            if (args.http_status_code >= 500) {
-                return new errors.ApiHttpServerError(message, args);
-            }
-            if (httpStatusErrMap[args.http_status_code]) {
-                return new httpStatusErrMap[args.http_status_code](message, args);
-            }
-            if (resourceErrMap[args.resource]) {
-                return new resourceErrMap[args.resource](message, args);
-            }
-            return new errors.ApiHttpClientError(message, args);
-        } else {
-            if (args.code === 'ERR::SCRAPE::BAD_UPSTREAM_RESPONSE') {
-                if (args.http_status_code >= 500) {
-                    return new errors.UpstreamHttpServerError(message, args);
-                }
-                if (args.http_status_code >= 400) {
-                    return new errors.UpstreamHttpClientError(message, args);
-                }
-            }
-            if (resourceErrMap[args.resource]) {
-                return new resourceErrMap[args.resource](message, args);
-            }
-            throw new errors.ScrapflyError(message, args);
+  /**
+   * Raise appropriate error for given response and scrape result
+   */
+  errResult(response: Response, result: ScrapeResult): errors.ScrapflyError {
+    const error = result.result.error;
+    const message = error?.message ?? '';
+    const args = {
+      code: result.result.status,
+      http_status_code: result.result.status_code,
+      is_retryable: error?.retryable ?? false,
+      api_response: result,
+      resource: result.result.status ? result.result.status.split('::')[1] : null,
+      retry_delay: error?.retryable ? 5 : response.headers.get('X-Retry') ?? 5,
+      retry_times: 3,
+      documentation_url: error?.doc_url ?? 'https://scrapfly.io/docs/scrape-api/errors#api',
+    };
+    if (result.result.success === true) {
+      switch (args.http_status_code) {
+        case 500:
+          return new errors.ApiHttpServerError(message, args);
+        case 401:
+          return new errors.BadApiKeyError(message, args);
+        case 429:
+          return new errors.TooManyRequests(message, args);
+      }
+      switch (args.resource) {
+        case 'SCRAPE':
+          return new errors.ScrapflyScrapeError(message, args);
+        case 'WEBHOOK':
+          return new errors.ScrapflyWebhookError(message, args);
+        case 'PROXY':
+          return new errors.ScrapflyProxyError(message, args);
+        case 'SCHEDULE':
+          return new errors.ScrapflyScheduleError(message, args);
+        case 'ASP':
+          return new errors.ScrapflyAspError(message, args);
+        case 'SESSION':
+          return new errors.ScrapflySessionError(message, args);
+      }
+      if (args.resource) {
+        return new errors.ApiHttpClientError(message, args);
+      }
+    } else {
+      if (args.code === 'ERR::SCRAPE::BAD_UPSTREAM_RESPONSE') {
+        if (args.http_status_code >= 400 && args.http_status_code < 500) {
+          return new errors.UpstreamHttpClientError(message, args);
         }
+        if (args.http_status_code >= 500 && args.http_status_code < 600) {
+          return new errors.UpstreamHttpServerError(message, args);
+        }
+      }
+      switch (args.resource) {
+        case 'SCRAPE':
+          return new errors.ScrapflyScrapeError(message, args);
+        case 'WEBHOOK':
+          return new errors.ScrapflyWebhookError(message, args);
+        case 'PROXY':
+          return new errors.ScrapflyProxyError(message, args);
+        case 'SCHEDULE':
+          return new errors.ScrapflyScheduleError(message, args);
+        case 'ASP':
+          return new errors.ScrapflyAspError(message, args);
+        case 'SESSION':
+          return new errors.ScrapflySessionError(message, args);
+      }
     }
+    return new errors.ScrapflyError(message, args);
+  }
 
-    /**
-     * Turn scrapfly API response to ScrapeResult or raise one of ScrapflyError
-     */
-    async handleResponse(response: Response, data): Promise<ScrapeResult> {
-        data = data as {
-            config: ConfigData;
-            context: ContextData;
-            result: ResultData;
-            uuid: string;
-        };
-        const result = new ScrapeResult(data);
-        // success
-        log.debug('scrape log url: ', result.result.log_url);
-        if (result.result.status === 'DONE' && result.result.success === true) {
-            return result;
-        }
-        // something went wrong
-        throw this.errResult(response, result);
+  /**
+   * Turn scrapfly API response to ScrapeResult or raise one of ScrapflyError
+   */
+  handleResponse(response: Response, result: ScrapeResult): ScrapeResult {
+    // success
+    log.debug('scrape log url: ', result.result.log_url);
+    if (result.result.status === 'DONE' && result.result.success === true) {
+      return result;
     }
+    // something went wrong
+    throw this.errResult(response, result);
+  }
 
-    /**
-     * Retrieve Scrapfly account details
-     */
-    async account(): Promise<AccountData> {
-        log.debug('retrieving account info');
-        let response;
-        try {
-            const url = new URL(this.HOST + '/account');
-            const params = { key: this.key };
-            url.search = new URLSearchParams(params).toString();
-            response = await this.fetch(
-                new Request(url.toString(), {
-                    method: 'GET',
-                    headers: {
-                        'user-agent': this.ua,
-                        'accept-encoding': 'gzip, deflate, br',
-                        accept: 'application/json',
-                    },
-                }),
-            );
-        } catch (e) {
-            log.error('error', e);
-            throw e;
-        }
-        const data = await response.json();
-        if ('error_id' in data || Object.keys(data).length === 0) {
-            if (data.http_code == 401 || response.status == 401) {
-                throw new errors.BadApiKeyError(JSON.stringify(data));
-            }
-            throw new errors.ApiHttpClientError(JSON.stringify(data));
-        }
-        return data;
+  /**
+   * Retrieve Scrapfly account details
+   */
+  async account(): Promise<AccountData> {
+    log.debug('retrieving account info');
+    let response: Response;
+    try {
+      const url = new URL(this.HOST + '/account');
+      const params = { key: this.key };
+      url.search = new URLSearchParams(params).toString();
+      response = await this.fetch(
+        new Request(url.toString(), {
+          method: 'GET',
+          headers: {
+            'user-agent': this.ua,
+            'accept-encoding': 'gzip, deflate, br',
+            accept: 'application/json',
+          },
+        }),
+      );
+    } catch (e) {
+      log.error('error', e);
+      throw e;
     }
-
-    /**
-     * Issue a single scrape command from a given scrape configuration
-     */
-    async scrape(config: ScrapeConfig): Promise<ScrapeResult> {
-        log.debug('scraping', { method: config.method, url: config.url });
-        let response;
-        try {
-            const url = new URL(this.HOST + '/scrape');
-            const params = config.toApiParams({ key: this.key });
-            url.search = new URLSearchParams(params).toString();
-            response = await this.fetch(
-                new Request(url.toString(), {
-                    method: config.method,
-                    headers: {
-                        'user-agent': this.ua,
-                        'content-type': config.method === 'POST' ? config.headers['content-type'] : 'application/json',
-                        'accept-encoding': 'gzip, deflate, br',
-                        accept: 'application/json',
-                    },
-                    body: config.body,
-                }),
-            );
-        } catch (e) {
-            log.error('error', e);
-            e.scrapeConfig = config;
-            throw e;
-        }
-        const data = await response.json();
-        if ('error_id' in data || Object.keys(data).length === 0) {
-            if (data.http_code == 401 || response.status == 401) {
-                throw new errors.BadApiKeyError(JSON.stringify(data));
-            }
-            throw new errors.ApiHttpClientError(JSON.stringify(data));
-        }
-        const result = await this.handleResponse(response, data);
-        return result;
+    const data: Rec<any> = await response.json() as Rec<any>;
+    if ('error_id' in data || Object.keys(data).length === 0) {
+      if (data.http_code == 401 || response.status == 401) {
+        throw new errors.BadApiKeyError(JSON.stringify(data));
+      }
+      throw new errors.ApiHttpClientError(JSON.stringify(data));
     }
+    return data as AccountData;
+  }
 
-    /**
-        Concurrently scrape multiple configs
-        This is a async generator call it like this:
-  
-          const results = [];
-          const errors = [];
-          for await (const resultOrError of client.concurrentScrape(configs)) {
-              if (resultOrError instanceof Error) {
-                  errors.push(resultOrError);
-              } else {
-                  results.push(resultOrError);
-              }
+  /**
+   * Issue a single scrape command from a given scrape configuration
+   */
+  async scrape(config: ScrapeConfig): Promise<ScrapeResult> {
+    log.debug('scraping', { method: config.method, url: config.url });
+    let response;
+    try {
+      const url = new URL(this.HOST + '/scrape');
+      const params = config.toApiParams({ key: this.key });
+      url.search = new URLSearchParams(params).toString();
+      response = await this.fetch(
+        new Request(url.toString(), {
+          method: config.method,
+          headers: {
+            'user-agent': this.ua,
+            'content-type': config.method === 'POST'
+              ? config.headers?.['content-type'] ?? 'application/json'
+              : 'application/json',
+            'accept-encoding': 'gzip, deflate, br',
+            accept: 'application/json',
+          },
+          body: config.body,
+        }),
+      );
+    } catch (e) {
+      log.error('error', e);
+      e.scrapeConfig = config;
+      throw e;
+    }
+    const data: Rec<any> = await response.json() as Rec<any>;
+    if ('error_id' in data || Object.keys(data).length === 0) {
+      if (data.http_code == 401 || response.status == 401) {
+        throw new errors.BadApiKeyError(JSON.stringify(data));
+      }
+      throw new errors.ApiHttpClientError(JSON.stringify(data));
+    }
+    const result = this.handleResponse(
+      response,
+      new ScrapeResult({
+        config: data.config,
+        context: data.context,
+        result: data.result,
+        uuid: data.uuid,
+      }),
+    );
+    return result;
+  }
+
+  /**
+    Concurrently scrape multiple configs
+    This is a async generator call it like this:
+
+      const results = [];
+      const errors = [];
+      for await (const resultOrError of client.concurrentScrape(configs)) {
+          if (resultOrError instanceof Error) {
+              errors.push(resultOrError);
+          } else {
+              results.push(resultOrError);
           }
-        
-         @param concurrencyLimit: if not set it will be taken from your account info 
-       */
-    async *concurrentScrape(
-        configs: ScrapeConfig[],
-        concurrencyLimit?: number,
-    ): AsyncGenerator<ScrapeResult | Error | undefined, void, undefined> {
-        if (concurrencyLimit === undefined) {
-            const account = await this.account();
-            concurrencyLimit = account.subscription.usage.scrape.concurrent_limit;
-            log.info(`concurrency not provided - setting it to ${concurrencyLimit} from account info`);
-        }
-        const activePromises = new Set<Promise<ScrapeResult | Error>>();
-        const configsIterator = configs[Symbol.iterator]();
+      }
 
-        // Helper function to start a new scrape and add it to activePromises
-        const startNewScrape = () => {
-            const { value: config, done } = configsIterator.next();
-            if (done) return; // No more configs
+    @param concurrencyLimit: if not set it will be taken from your account info
+    */
+  async *concurrentScrape(
+    configs: ScrapeConfig[],
+    concurrencyLimit?: number,
+  ): AsyncGenerator<ScrapeResult | Error | undefined, void, undefined> {
+    if (concurrencyLimit === undefined) {
+      const account = await this.account();
+      concurrencyLimit = account.subscription.usage.scrape.concurrent_limit;
+      log.info(`concurrency not provided - setting it to ${concurrencyLimit} from account info`);
+    }
+    const activePromises = new Set<Promise<ScrapeResult | Error>>();
+    const configsIterator = configs[Symbol.iterator]();
 
-            const promise = this.scrape(config).catch((error) => error); // Catch errors and return them
-            activePromises.add(promise);
+    // Helper function to start a new scrape and add it to activePromises
+    const startNewScrape = () => {
+      const { value: config, done } = configsIterator.next();
+      if (done) return; // No more configs
 
-            promise.finally(() => {
-                activePromises.delete(promise);
-                // After each scrape, start a new one if there are remaining configs
-                startNewScrape();
-            });
-        };
+      const promise = this.scrape(config).catch((error) => error); // Catch errors and return them
+      activePromises.add(promise);
 
-        // Initially start as many scrapes as the concurrency limit
-        for (let i = 0; i < concurrencyLimit; i++) {
-            startNewScrape();
-        }
+      promise.finally(() => {
+        activePromises.delete(promise);
+        // After each scrape, start a new one if there are remaining configs
+        startNewScrape();
+      });
+    };
 
-        // As each scrape finishes, yield the result or error and start a new one if there are remaining configs
-        while (activePromises.size > 0) {
-            log.debug(`concurrently scraping ${activePromises.size}/${configs.length}}`);
-            const resultOrError = await Promise.race(activePromises);
-            yield resultOrError;
-        }
+    // Initially start as many scrapes as the concurrency limit
+    for (let i = 0; i < concurrencyLimit; i++) {
+      startNewScrape();
     }
 
-    /**
-     * Save screenshot response to a file
-     */
-    async saveScreenshot(result: ScreenshotResult, name: string, savePath?: string): Promise<any> {
-        if (!result.image) {
-            throw new Error('Screenshot binary does not exist');
-        }
+    // As each scrape finishes, yield the result or error and start a new one if there are remaining configs
+    while (activePromises.size > 0) {
+      log.debug(`concurrently scraping ${activePromises.size}/${configs.length}}`);
+      const resultOrError = await Promise.race(activePromises);
+      yield resultOrError;
+    }
+  }
 
-        const extension_name = result.metadata.extension_name;
-        let file_path;
-
-        if (savePath) {
-            fs.mkdirSync(savePath, { recursive: true });
-            file_path = path.join(savePath, `${name}.${extension_name}`);
-        } else {
-            file_path = `${name}.${extension_name}`;
-        }
-
-        const content = Buffer.from(result.image);
-        fs.writeFileSync(file_path, content, 'binary');
+  /**
+   * Save screenshot response to a file
+   */
+  async saveScreenshot(result: ScreenshotResult, name: string, savePath?: string): Promise<any> {
+    if (!result.image) {
+      throw new Error('Screenshot binary does not exist');
     }
 
-    /**
-     * Turn scrapfly screenshot API response to ScreenshotResult or raise one of ScrapflyError
-     */
-    async handleScreenshotResponse(response: Response): Promise<ScreenshotResult> {
-        if (response.headers.get('content-encoding') != 'gzip') {
-            const data = (await response.json()) as any;
-            if (data.http_code == 401 || response.status == 401) {
-                throw new errors.BadApiKeyError(JSON.stringify(data));
-            }
-            if ('error_id' in data) {
-                throw new errors.ScreenshotApiError(JSON.stringify(data));
-            }
-        }
-        if (!response.ok) {
-            throw new errors.ApiHttpClientError(JSON.stringify(await response.json()));
-        }
-        const data = await response.arrayBuffer();
-        const result = new ScreenshotResult(response, data);
-        return result;
+    const extension_name = result.metadata.extension_name;
+    let file_path;
+
+    if (savePath) {
+      Deno.mkdir(savePath, { recursive: true });
+      file_path = path.join(savePath, `${name}.${extension_name}`);
+    } else {
+      file_path = `${name}.${extension_name}`;
     }
 
-    /**
-     * Take a screenshot
-     */
-    async screenshot(config: ScreenshotConfig): Promise<ScreenshotResult> {
-        log.debug('screenshoting', { url: config.url });
-        let response;
-        try {
-            const url = new URL(this.HOST + '/screenshot');
-            const params = config.toApiParams({ key: this.key });
-            url.search = new URLSearchParams(params).toString();
-            response = await this.fetch(
-                new Request(url.toString(), {
-                    method: 'GET',
-                    headers: {
-                        'user-agent': this.ua,
-                        'accept-encoding': 'gzip, deflate, br',
-                        accept: 'application/json',
-                    },
-                }),
-            );
-        } catch (e) {
-            log.error('error', e);
-            throw e;
-        }
-        const result = await this.handleScreenshotResponse(response);
-        return result;
-    }
+    const content = new Uint8Array(result.image);
+    // Use Deno's write file method
+    await Deno.writeFile(file_path, content);
+  }
 
-    /**
-     * Turn scrapfly Extraction API response to ExtractionResult or raise one of ScrapflyError
-     */
-    async handleExtractionResponse(response: Response): Promise<ExtractionResult> {
-        const data = (await response.json()) as any;
-        if ('error_id' in data) {
-            if (data.http_code == 401 || response.status == 401) {
-                throw new errors.BadApiKeyError(JSON.stringify(data));
-            }
-            throw new errors.ExtractionApiError(JSON.stringify(data));
-        }
-        if (!response.ok) {
-            throw new errors.ApiHttpClientError(JSON.stringify(await response.json()));
-        }
-        const result = new ExtractionResult(data);
-        return result;
+  /**
+   * Turn scrapfly screenshot API response to ScreenshotResult or raise one of ScrapflyError
+   */
+  async handleScreenshotResponse(response: Response): Promise<ScreenshotResult> {
+    if (response.headers.get('content-type') === 'application/json') {
+      const data: Rec<any> = (await response.json()) as Rec<any>;
+      if (data.http_code == 401 || response.status == 401) {
+        throw new errors.BadApiKeyError(JSON.stringify(data));
+      }
+      if ('error_id' in data) {
+        throw new errors.ScreenshotApiError(JSON.stringify(data));
+      }
     }
+    if (!response.ok) {
+      throw new errors.ScreenshotApiError(JSON.stringify(await response.json()));
+    }
+    const data = await response.arrayBuffer();
+    const result = new ScreenshotResult(response, data);
+    return result;
+  }
 
-    /**
-     * Extract structured data from a web page
-     */
-    async extract(config: ExtractionConfig): Promise<ExtractionResult> {
-        log.debug('extacting data from', { content_type: config.content_type });
-        let response;
-        try {
-            const url = new URL(this.HOST + '/extraction');
-            const params = await config.toApiParams({ key: this.key });
-            url.search = new URLSearchParams(params).toString();
-            const headers: Record<string, string> = {
-                'user-agent': this.ua,
-                'accept-encoding': 'gzip, deflate, br',
-                'content-type': config.content_type,
-                accept: 'application/json',
-            };
-            if (config.document_compression_format && config.document_compression_format) {
-                headers['content-encoding'] = config.document_compression_format;
-            }
-            response = await this.fetch(
-                new Request(url.toString(), {
-                    method: 'POST',
-                    headers: headers,
-                    body: config.body,
-                }),
-            );
-        } catch (e) {
-            log.error('error', e);
-            throw e;
-        }
-        const result = await this.handleExtractionResponse(response);
-        return result;
+  /**
+   * Take a screenshot
+   */
+  async screenshot(config: ScreenshotConfig): Promise<ScreenshotResult> {
+    let response;
+    try {
+      const url = new URL(this.HOST + '/screenshot');
+      const params = config.toApiParams({ key: this.key });
+      url.search = new URLSearchParams(params).toString();
+      const req = new Request(url.toString(), {
+        method: 'GET',
+        headers: {
+          'user-agent': this.ua,
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'application/json',
+        },
+      });
+      response = await this.fetch(req);
+    } catch (e) {
+      log.error('error', e);
+      throw e;
     }
+    const result = await this.handleScreenshotResponse(response);
+    return result;
+  }
+
+  /**
+   * Turn scrapfly Extraction API response to ExtractionResult or raise one of ScrapflyError
+   */
+  async handleExtractionResponse(response: Response): Promise<ExtractionResult> {
+    const data: Rec<any> = (await response.json()) as Rec<any>;
+    if ('error_id' in data) {
+      if (data.http_code == 401 || response.status == 401) {
+        throw new errors.BadApiKeyError(JSON.stringify(data));
+      }
+      throw new errors.ExtractionApiError(JSON.stringify(data));
+    }
+    if (!response.ok) {
+      throw new errors.ApiHttpClientError(JSON.stringify(await response.json()));
+    }
+    const result = new ExtractionResult({
+      data: data.data,
+      content_type: data.content_type,
+    });
+    return result;
+  }
+
+  /**
+   * Extract structured data from a web page
+   */
+  async extract(config: ExtractionConfig): Promise<ExtractionResult> {
+    log.debug('extacting data from', { content_type: config.content_type });
+    let response;
+    try {
+      const url = new URL(this.HOST + '/extraction');
+      const params = await config.toApiParams({ key: this.key });
+      url.search = new URLSearchParams(params).toString();
+      const headers: Record<string, string> = {
+        'user-agent': this.ua,
+        'accept-encoding': 'gzip, deflate, br',
+        'content-type': config.content_type,
+        'accept': 'application/json',
+      };
+      if (config.document_compression_format && config.document_compression_format) {
+        headers['content-encoding'] = config.document_compression_format;
+      }
+      const req = new Request(url.toString(), {
+        method: 'POST',
+        headers: headers,
+        body: config.body,
+      });
+      response = await this.fetch(req);
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+    const result = await this.handleExtractionResponse(response);
+    return result;
+  }
 }

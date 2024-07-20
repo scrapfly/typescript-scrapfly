@@ -1,16 +1,15 @@
-export { ScrapflyClient } from './client.js';
-export { ScrapeConfig, ScreenshotFlags, Format as ScrapeFormat } from './scrapeconfig.js';
-export { ScreenshotConfig, Format as ScreenshotFormat, Options as ScreenshotOptions } from './screenshotconfig.js';
-export { ExtractionConfig } from './extractionconfig.js';
-export * as errors from './errors.js';
+export { ScrapflyClient } from './client.ts';
 export {
-    AccountData,
-    ConfigData,
-    ResultData,
-    ScrapeResult,
-    ContextData,
-    ScreenshotMetadata,
-    ScreenshotResult,
-    ExtractionResult
-} from './result.js';
-export { log } from './logger.js';
+  Format as ScrapeFormat,
+  FormatOption as ScrapeFormatOptions,
+  ScrapeConfig,
+  ScreenshotFlags,
+} from './scrapeconfig.ts';
+export { Format as ScreenshotFormat, Options as ScreenshotOptions, ScreenshotConfig } from './screenshotconfig.ts';
+export { ExtractionConfig } from './extractionconfig.ts';
+export * as errors from './errors.ts';
+
+export { ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
+
+export type { AccountData, ConfigData, ContextData, ResultData, ScreenshotMetadata } from './result.ts';
+export { log } from './logger.ts';

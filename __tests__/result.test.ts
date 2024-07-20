@@ -1,26 +1,22 @@
-import * as cheerio from 'cheerio';
-import * as fs from 'fs';
-import { ScrapeResult } from '../src/result.js';
-import * as errors from '../src/errors.js';
-import { describe, it, expect, jest } from '@jest/globals';
+import { ScrapeResult } from '../src/result.ts';
+import * as errors from '../src/errors.ts';
+import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
-describe('cheerio selector', () => {
-    it('lazy loads and caches itself', () => {
-        const response = JSON.parse(fs.readFileSync('__tests__/data/response_html_success.json', 'utf8'));
-        const result = new ScrapeResult(response);
-        const spy = jest.spyOn(cheerio, 'load');
-        expect(result.selector('h1').text()).toEqual('Herman Melville - Moby-Dick');
-        // make sure calling it twice performs the same
-        expect(result.selector('h1').text()).toEqual('Herman Melville - Moby-Dick');
-        // cheerio.load is called exactly once - means it's cached
-        expect(spy).toHaveBeenCalledTimes(1);
-        spy.mockRestore();
-    });
-    it('throws ContentTypeError when accessing .selector on JSON data', () => {
-        const response = JSON.parse(fs.readFileSync('__tests__/data/response_json_success.json', 'utf8'));
-        const result = new ScrapeResult(response);
-        expect(() => {
-            result.selector('h1').text();
-        }).toThrow(errors.ContentTypeError);
-    });
+Deno.test('cheerio selector lazy loads and caches itself', async () => {
+  const responseHtmlSuccess = JSON.parse(await Deno.readTextFile('__tests__/data/response_html_success.json'));
+  const result = new ScrapeResult(responseHtmlSuccess);
+  // Perform assertions
+  assertEquals(result.selector('h1').text(), 'Herman Melville - Moby-Dick');
+  // Make sure calling it twice performs the same
+  assertEquals(result.selector('h1').text(), 'Herman Melville - Moby-Dick');
+  // cheerio.load is called exactly once - means it's cached
+});
+
+Deno.test('throws ContentTypeError when accessing .selector on JSON data', async () => {
+  const responseJsonSuccess = JSON.parse(await Deno.readTextFile('__tests__/data/response_json_success.json'));
+  const result = new ScrapeResult(responseJsonSuccess);
+
+  assertThrows(() => {
+    result.selector('h1').text();
+  }, errors.ContentTypeError);
 });

@@ -1,228 +1,232 @@
-import { ScreenshotConfig, Format, Options } from '../../src/screenshotconfig.js';
-import { ScreenshotConfigError } from '../../src/errors.js';
-import { describe, it, expect } from '@jest/globals';
+import { ScreenshotConfig, Format, Options } from '../../src/screenshotconfig.ts';
+import { ScreenshotConfigError } from '../../src/errors.ts';
+import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
-describe('scrapeconfig', () => {
-    it('loads', () => {
-        const config = new ScreenshotConfig({ url: 'http://httpbin.dev/get' });
-        expect(config.url).toBe('http://httpbin.dev/get');
+const input_url = 'http://httpbin.dev/get';
+
+Deno.test('screenshotconfig loads', () => {
+    const config = new ScreenshotConfig({ url: input_url });
+    assertEquals(config.url, input_url);
+});
+
+Deno.test('screenshotconfig throws on unknown options', () => {
+    assertThrows(() => {
+        new ScreenshotConfig({ url: 'http://httpbin.dev/get', foobar: 'baz' } as any);
+    }, ScreenshotConfigError, "Invalid option provided: foobar");
+});
+
+
+
+Deno.test('config invalid: sets invalid format', () => {
+    assertThrows(() => {
+        new ScreenshotConfig({
+            url: input_url,
+            format: 'invalid' as any,
+        });
+    }, ScreenshotConfigError);
+});
+
+Deno.test('config invalid: sets invalid options', () => {
+    assertThrows(() => {
+        new ScreenshotConfig({
+            url: input_url,
+            options: ['invalid', 'invalid_too'] as any,
+        });
+    }, ScreenshotConfigError);
+});
+
+Deno.test('url param generation: basic config', () => {
+    const config = new ScreenshotConfig({ url: input_url });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
     });
 });
 
-describe('config invalid', () => {
-    it('sets invalid format', async () => {
-        expect(() => {
-            new ScreenshotConfig({
-                url: 'http://httpbin.dev/get',
-                format: 'invalid' as any,
-            });
-        }).toThrow(ScreenshotConfigError);
+Deno.test('url param generation: sets format', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        format: Format.PNG,
     });
-
-    it('sets invalid options', async () => {
-        expect(() => {
-            new ScreenshotConfig({
-                url: 'http://httpbin.dev/get',
-                options: ['invalid', 'invalid_too'] as any,
-            });
-        }).toThrow(ScreenshotConfigError);
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        format: 'png',
     });
 });
 
-describe('url param generation', () => {
-    it('basic config', () => {
-        const config = new ScreenshotConfig({ url: 'http://httpbin.dev/get' });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-        });
+Deno.test('url param generation: sets capture', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        capture: 'fullpage',
     });
-
-    it('sets format', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            format: Format.PNG,
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            format: 'png',
-        });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        capture: 'fullpage',
     });
+});
 
-    it('sets capture', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            capture: 'fullpage',
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            capture: 'fullpage',
-        });
+Deno.test('url param generation: sets resolution', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        resolution: '1920x1080',
     });
-
-    it('sets resolution', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            resolution: '1920x1080',
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            resolution: '1920x1080',
-        });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        resolution: '1920x1080',
     });
+});
 
-    it('sets country', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            country: 'us,ca,mx',
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            country: 'us,ca,mx',
-        });
+Deno.test('url param generation: sets country', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        country: 'us,ca,mx',
     });
-
-    it('sets timeout', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            timeout: 60000,
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            timeout: 60000,
-        });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        country: 'us,ca,mx',
     });
+});
 
-    it('sets rendering_wait', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            rendering_wait: 5000,
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            rendering_wait: 5000,
-        });
+Deno.test('url param generation: sets timeout', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        timeout: 60000,
     });
-
-    it('sets wait_for_selector', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            wait_for_selector: '//div[@class="prouct"]',
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            wait_for_selector: '//div[@class="prouct"]',
-        });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        timeout: 60000,
     });
+});
 
-    it('sets options', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            options: [Options.BLOCK_BANNERS, Options.DARK_MODE, Options.LOAD_IMAGES, Options.PRINT_MEDIA_FORMAT],
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            options: 'block_banners,dark_mode,load_images,print_media_format',
-        });
+Deno.test('url param generation: sets rendering_wait', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        rendering_wait: 5000,
     });
-
-    it('sets auto_scroll', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            auto_scroll: true,
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            auto_scroll: true,
-        });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        rendering_wait: 5000,
     });
+});
 
-    it('sets js', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            js: 'return document.querySelectorAll(".review p").map(p=>p.outerText))',
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            js: 'cmV0dXJuIGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3JBbGwoIi5yZXZpZXcgcCIpLm1hcChwPT5wLm91dGVyVGV4dCkp',
-        });
+Deno.test('url param generation: sets wait_for_selector', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        wait_for_selector: '//div[@class="product"]',
     });
-
-    it('sets cache', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            cache: true,
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            cache: true,
-        });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        wait_for_selector: '//div[@class="product"]',
     });
+});
 
-    it('sets cache_ttl', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            cache: true,
-            cache_ttl: true,
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            cache: true,
-            cache_ttl: true,
-        });
+Deno.test('url param generation: sets options', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        options: [Options.BLOCK_BANNERS, Options.DARK_MODE, Options.LOAD_IMAGES, Options.PRINT_MEDIA_FORMAT],
     });
-
-    it('sets cache_clear', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            cache: true,
-            cache_clear: true,
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-            cache: true,
-            cache_clear: true,
-        });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        options: 'block_banners,dark_mode,load_images,print_media_format',
     });
+});
 
-    it('ignores cache_ttl and cache_clear with cache disabled', () => {
-        const config = new ScreenshotConfig({
-            url: 'http://httpbin.dev/get',
-            cache: false,
-            cache_ttl: true,
-            cache_clear: true,
-        });
-        const params = config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            url: 'http://httpbin.dev/get',
-        });
+Deno.test('url param generation: sets auto_scroll', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        auto_scroll: true,
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        auto_scroll: true,
+    });
+});
+
+Deno.test('url param generation: sets js', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        js: 'return document.querySelectorAll(".review p").map(p => p.outerText)',
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        js: 'cmV0dXJuIGRvY3VtZW50LnF1ZXJ5U2VsZWN0b3JBbGwoIi5yZXZpZXcgcCIpLm1hcChwID0-IHAub3V0ZXJUZXh0KQ',
+    });
+});
+
+Deno.test('url param generation: sets cache', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        cache: true,
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        cache: true,
+    });
+});
+
+Deno.test('url param generation: sets cache_ttl', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        cache: true,
+        cache_ttl: 3600,
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        cache: true,
+        cache_ttl: 3600,
+    });
+});
+
+Deno.test('url param generation: sets cache_clear', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        cache: true,
+        cache_clear: true,
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        cache: true,
+        cache_clear: true,
+    });
+});
+
+Deno.test('url param generation: ignores cache_ttl and cache_clear with cache disabled', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        cache: false,
+        cache_ttl: 3600,
+        cache_clear: true,
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
     });
 });
