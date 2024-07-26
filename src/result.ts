@@ -310,11 +310,11 @@ export class ScreenshotResult {
 export class ExtractionResult {
   data: string;
   content_type: string;
-  result: object;
+  data_quality?: string;
 
-  constructor(response: { data: string; content_type: string }) {
+  constructor(response: { data: string; content_type: string, data_quality?: string }) {
     this.data = response.data;
     this.content_type = response.content_type;
-    this.result = response; // raw data
+    this.data_quality = response.data_quality;
   }
 }

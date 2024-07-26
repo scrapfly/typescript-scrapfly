@@ -22,6 +22,7 @@ export async function fetchRetry(
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      // XXX: this breaks cloudflare workers as they don't support init options
       const response = await fetch(config, { ...init, signal: controller.signal });
       clearTimeout(timeoutId);
       // retry 5xx status codes

@@ -115,6 +115,7 @@ export class ExtractionConfig {
       }
       if (this.is_document_compressed === false) {
         if (this.document_compression_format === CompressionFormat.GZIP) {
+          // XXX: This breaks cloudflare workers as they don't support node:zlib
           const compressed = gzipSync(Buffer.from(this.body as string, 'utf-8'));
           this.body = new Uint8Array(compressed);
         } else {

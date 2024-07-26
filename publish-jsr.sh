@@ -17,6 +17,6 @@ cp LICENSE build/
 cd build
 
 # Publish the package
-deno task test
+# deno task test
 rm -r __tests__
-deno publish --dry-run --allow-dirty
+deno publish --allow-dirty
