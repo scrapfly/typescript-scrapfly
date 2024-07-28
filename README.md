@@ -24,7 +24,10 @@ The SDK is distributed through:
 3. Start scraping: 🚀
 
 ```javascript
+// node or bun:
 import { ScrapflyClient, ScrapeConfig } from 'scrapfly-sdk';
+// deno: 
+import { ScrapflyClient, ScrapeConfig } from 'jsr:@scrapfly/scrapfly-sdk';
 
 const key = 'YOUR SCRAPFLY KEY';
 const client = new ScrapflyClient({ key });
@@ -82,7 +85,7 @@ This is a Deno Typescript project that builds to NPM through [DNT](https://githu
 - `__tests__` directory contains tests for the source code.
 - `deno.json` contains meta information
 - `build.ts` is the build script that builds the project to nodejs ESM package.
-- `/npm` directory will be produced when `buil.ts` is executed for building node package.
+- `/npm` directory will be produced when `built.ts` is executed for building node package.
 
 ```bash
 # make modifications and run tests
@@ -90,5 +93,11 @@ $ deno task test
 # format
 $ deno fmt
 # lint
-$ deno linst
+$ deno lint
+# publish jsr:
+$ deno publish
+# build NPM package:
+$ deno run -A build.ts
+# publish NPM:
+$ cd npm && npm publish
 ```
