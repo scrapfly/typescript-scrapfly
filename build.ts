@@ -1,31 +1,4 @@
 import { build, emptyDir } from "@deno/dnt";
-import { rollup } from "npm:rollup";
-import resolve from "npm:@rollup/plugin-node-resolve";
-import commonjs from "npm:@rollup/plugin-commonjs";
-import { terser } from "npm:rollup-plugin-terser";
-
-async function bundleForBrowser() {
-  console.log("Bundling for browser...");
-  const bundle = await rollup({
-    input: "npm/esm/main.js",
-    plugins: [
-      resolve({ browser: true, preferBuiltins: false }),
-      commonjs(),
-      terser(),
-    ],
-    logLevel: 'debug',
-  });
-
-  console.log("Writing to npm/dist/bundle.js");
-  await bundle.write({
-    file: "npm/dist/bundle.js",
-    format: "esm",
-    sourcemap: true,
-  });
-  console.log("Closing Rollup");
-  await bundle.close();
-}
-
 await emptyDir("./npm");
 
 const { version, description } = JSON.parse(Deno.readTextFileSync("deno.json"));
@@ -53,13 +26,12 @@ await build({
       url: "https://github.com/scrapfly/typescript-scrapfly/issues",
     },
     homepage: "https://scrapfly.io/",
-    main: "./esm/src/main.js", // Point to the ESM output
-    types: "./esm/src/main.d.ts", // Point to the TypeScript declarations
+    main: "./esm/main.js", 
+    types: "./esm/main.d.ts",
   },
   postBuild: async () => {
     Deno.copyFileSync("LICENSE", "npm/LICENSE");
     Deno.copyFileSync("README.md", "npm/README.md");
-    await bundleForBrowser();
   },
 });
 

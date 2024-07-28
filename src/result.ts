@@ -312,7 +312,7 @@ export class ExtractionResult {
   content_type: string;
   data_quality?: string;
 
-  constructor(response: { data: string; content_type: string, data_quality?: string }) {
+  constructor(response: { data: string; content_type: string; data_quality?: string }) {
     this.data = response.data;
     this.content_type = response.content_type;
     this.data_quality = response.data_quality;

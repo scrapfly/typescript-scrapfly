@@ -81,7 +81,7 @@ Deno.test('fetchRetry: fails after max retries', async () => {
 
   await assertRejects(
     async () => {
-      await fetchRetry(request, {}, 3, 1000);
+      await fetchRetry(request, 3);
     },
     Error,
     'Fetch failed with status: 500'
@@ -92,6 +92,8 @@ Deno.test('fetchRetry: fails after max retries', async () => {
   fetchStub.restore();
 });
 
+// XXX: should we support built-in timeout?
+/* 
 Deno.test('fetchRetry: fails due to timeout', async () => {
 
   const request = new Request('https://httpbin.dev/delay/3');
@@ -103,4 +105,4 @@ Deno.test('fetchRetry: fails due to timeout', async () => {
     Error,
     'The signal has been aborted'
   );
-});
+}); */

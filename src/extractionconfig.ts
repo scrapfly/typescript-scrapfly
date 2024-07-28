@@ -1,7 +1,5 @@
 import * as errors from './errors.ts';
 import { urlsafe_b64encode } from './utils.ts';
-import { gzipSync } from 'node:zlib';
-import { Buffer } from 'node:buffer';
 
 export enum CompressionFormat {
   /**
@@ -114,17 +112,18 @@ export class ExtractionConfig {
         );
       }
       if (this.is_document_compressed === false) {
-        if (this.document_compression_format === CompressionFormat.GZIP) {
-          // XXX: This breaks cloudflare workers as they don't support node:zlib
-          const compressed = gzipSync(Buffer.from(this.body as string, 'utf-8'));
-          this.body = new Uint8Array(compressed);
-        } else {
-          throw new errors.ExtractionConfigError(
-            `Auto compression for ${this.document_compression_format} format isn't available. ` +
-              `You can manually compress to ${this.document_compression_format}` +
-              `or choose the gzip format for auto compression`,
-          );
-        }
+        // if (this.document_compression_format === CompressionFormat.GZIP) {
+        // XXX: This breaks cloudflare workers for some reason
+        // const compressed = gzip(new TextEncoder().encode(this.body as string));
+        // this.body = new Uint8Array(compressed);
+        // throw new Error("automatic gzip is not supported yet, pass gzipped ");
+        // } else {
+        throw new errors.ExtractionConfigError(
+          `Auto compression for ${this.document_compression_format} format isn't available. ` +
+            `You can manually compress to ${this.document_compression_format}` +
+            `or choose the gzip format for auto compression`,
+        );
+        // }
       }
     }
 

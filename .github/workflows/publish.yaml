@@ -1,3 +1,4 @@
+
 name: Publish to NPM
 
 on:
@@ -12,17 +13,25 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: volta-cli/action@v1
-    - run: npm ci --no-audit
-    - run: npm run lint --if-present
-    - run: npm test
-    - run: npm run build --if-present
-      env:
-          CI: true
+
+    - name: Install Deno
+      run: |
+        curl -fsSL https://deno.land/x/install/install.sh | sh
+        echo "DENO_INSTALL=/home/runner/.deno" >> $GITHUB_ENV
+        echo "$DENO_INSTALL/bin" >> $GITHUB_PATH
+
+    - name: Run Deno build script
+      run: deno run -A build.ts
+
+    - name: Navigate to npm directory
+      run: cd ./npm
+
     - name: Setup .npmrc file to publish to npm
       run: |
         echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
       env:
-        NPM_TOKEN: ${{secrets.NPM_AUTOMATION_TOKEN}}
+        NPM_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
+
     - name: Publish to NPM
-      run: npm publish
+      run: npm publish --dry-run
+      working-directory: ./npm

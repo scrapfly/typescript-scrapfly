@@ -1,8 +1,10 @@
 # Scrapfly SDK
 
-`npm install scrapfly-sdk`
+`npm install scrapfly-sdk`  
+`deno add jsr:@scrapfly/scrapfly-sdk`  
+`bun jsr add @scrapfly/scrapfly-sdk`  
 
-Typescript/NodeJS SDK for [Scrapfly.io](https://scrapfly.io/) web scraping API which allows to:
+Typescript/Javascript SDK for [Scrapfly.io](https://scrapfly.io/) web scraping API which allows to:
 
 -   Scrape the web without being blocked.
 -   Use headless browsers to access Javascript-powered page data.
@@ -10,6 +12,10 @@ Typescript/NodeJS SDK for [Scrapfly.io](https://scrapfly.io/) web scraping API w
 -   ... and [much more](https://scrapfly.io/docs/scrape-api/getting-started)!
 
 For web scraping guides see [our blog](https://scrapfly.io/blog/) and [#scrapeguide](https://scrapfly.io/blog/tag/scrapeguide/) tag for how to scrape specific targets.
+
+The SDK is distributed through:
+- [npmjs.com/package/scrapfly-sdk](https://www.npmjs.com/package/scrapfly-sdk)
+- [jsr.io/@scrapfly/scrapfly-sdk](https://jsr.io/@scrapfly/scrapfly-sdk)
 
 ## Quick Intro
 
