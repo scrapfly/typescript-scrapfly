@@ -12,26 +12,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - name: Clone repository
+        uses: actions/checkout@v3
 
-    - name: Install Deno
-      run: |
-        curl -fsSL https://deno.land/x/install/install.sh | sh
-        echo "DENO_INSTALL=/home/runner/.deno" >> $GITHUB_ENV
-        echo "$DENO_INSTALL/bin" >> $GITHUB_PATH
+      - name: Install Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
 
-    - name: Run Deno build script
-      run: deno run -A build.ts
+      - name: Run Deno build script
+        run: deno run -A build.ts
 
-    - name: Navigate to npm directory
-      run: cd ./npm
+      - name: Navigate to npm directory
+        run: cd ./npm
 
-    - name: Setup .npmrc file to publish to npm
-      run: |
-        echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
-      env:
-        NPM_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
+      - name: Setup .npmrc file to publish to npm
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
 
-    - name: Publish to NPM
-      run: npm publish --dry-run
-      working-directory: ./npm
+      - name: Publish to NPM
+        run: npm publish --dry-run
+        working-directory: ./npm
