@@ -94,10 +94,10 @@ $ deno task test
 $ deno fmt
 # lint
 $ deno lint
-# publish jsr:
+# publish JSR:
 $ deno publish
 # build NPM package:
-$ deno run -A build.ts
+$ deno build-npm
 # publish NPM:
 $ cd npm && npm publish
 ```

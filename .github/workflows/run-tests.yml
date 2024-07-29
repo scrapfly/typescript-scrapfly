@@ -20,3 +20,9 @@ jobs:
 
       - name: Run Deno Test
         run: deno task test
+
+      - name: Build JSR
+        run: deno task build-jsr
+
+      - name: Build NPM
+        run: deno task build-npm

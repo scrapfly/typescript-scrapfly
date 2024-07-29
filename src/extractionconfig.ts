@@ -120,8 +120,7 @@ export class ExtractionConfig {
         // } else {
         throw new errors.ExtractionConfigError(
           `Auto compression for ${this.document_compression_format} format isn't available. ` +
-            `You can manually compress to ${this.document_compression_format}` +
-            `or choose the gzip format for auto compression`,
+            `You can manually compress to ${this.document_compression_format}.`,
         );
         // }
       }

@@ -21,7 +21,7 @@ jobs:
           deno-version: v1.x
 
       - name: Run Deno build script
-        run: deno run -A build.ts
+        run: deno task build-npm
 
       - name: Navigate to npm directory
         run: cd ./npm

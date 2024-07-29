@@ -9,6 +9,8 @@
   "tasks": {
     "start": "deno run --allow-net --allow-read src/main.ts",
     "test": "deno test --allow-net --allow-read __tests__",
+    "build-npm": "deno run -A build.ts",
+    "build-jsr": "deno publish --dry-run --allow-dirty",
     "fmt": "deno fmt"
   },
   "fmt": {
