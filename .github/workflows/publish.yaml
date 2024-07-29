@@ -33,5 +33,5 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
 
       - name: Publish to NPM
-        run: npm publish --dry-run
+        run: npm publish
         working-directory: ./npm
