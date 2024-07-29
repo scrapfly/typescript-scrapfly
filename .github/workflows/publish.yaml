@@ -32,6 +32,12 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
 
-      - name: Publish to NPM
-        run: npm publish
+      - name: Verify .npmrc and Publish
+        run: |
+          if grep -qE "_authToken=.{1,}" .npmrc; then
+            npm publish
+          else
+            echo "Failed to create .npmrc file" && exit 1
+          fi
         working-directory: ./npm
+
