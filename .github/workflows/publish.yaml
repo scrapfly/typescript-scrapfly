@@ -26,18 +26,16 @@ jobs:
       - name: Navigate to npm directory
         run: cd ./npm
 
-      - name: Setup .npmrc file to publish to npm
+
+      - name: Publish
         run: |
           echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
-
-      - name: Verify .npmrc and Publish
-        run: |
           if grep -qE "_authToken=.{1,}" .npmrc; then
             npm publish
           else
             echo "Failed to create .npmrc file" && exit 1
           fi
         working-directory: ./npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
 
