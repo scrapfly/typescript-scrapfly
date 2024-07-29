@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.ns", "dom"]
+  },
+  "name": "@scrapfly/scrapfly-sdk",
+  "exports": "./src/main.ts",
+  "version": "0.6.1",
+  "description": "SDK for Scrapfly.io API for web scraping, screenshotting and data extraction",
+  "tasks": {
+    "start": "deno run --allow-net --allow-read src/main.ts",
+    "test": "deno test --allow-net --allow-read __tests__",
+    "build-npm": "deno run -A build.ts",
+    "build-jsr": "deno publish --dry-run --allow-dirty",
+    "fmt": "deno fmt"
+  },
+  "fmt": {
+    "include": ["src/**/*.ts", "tests/**/*.ts"],
+    "useTabs": false,
+    "lineWidth": 120,
+    "indentWidth": 2,
+    "singleQuote": true
+  },
+  "lint": {
+    "include": ["src/**/*.ts", "tests/**/*.ts"],
+    "rules": {
+      "exclude": ["no-explicit-any"]
+    }
+  },
+  "imports": {
+    "@deno/dnt": "jsr:@deno/dnt@^0.41.2"
+  }
+}

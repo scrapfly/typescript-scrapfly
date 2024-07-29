@@ -1,2 +1,8 @@
 node_modules
 coverage
+scripts
+npm
+dev
+cov_profile
+.vscode
+.history

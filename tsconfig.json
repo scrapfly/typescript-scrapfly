@@ -23,6 +23,6 @@
         "strictNullChecks": false,
         "esModuleInterop": true
     },
-    "include": ["src/**/*", "__tests__/**/*"],
-    "exclude": ["examples/**/*"]
+    "include": ["src/**/*", "__tests__/**/*", "typings.d.ts"],
+    "exclude": ["examples/**/*", "build", "node_modules"]
 }

@@ -1,152 +1,167 @@
-import { gzip } from 'zlib';
-import { ExtractionConfig, CompressionFormat } from '../../src/extractionconfig.js';
-import { describe, it, expect } from '@jest/globals';
-import { promisify } from 'util';
-import { ExtractionConfigError } from '../../src/errors.js';
+import { ExtractionConfig, CompressionFormat } from '../../src/extractionconfig.ts';
+import { ExtractionConfigError } from '../../src/errors.ts';
+import { gzipSync } from "node:zlib";
+import { Buffer } from "node:buffer";
+import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
-const gzipPromise = promisify(gzip);
 const input_html = 'very long html file';
 const input_content_type = 'text/html';
 
-describe('extactionconfig', () => {
-    it('loads', () => {
-        const config = new ExtractionConfig({ body: input_html, content_type: input_content_type });
-        expect(config.body).toBe(input_html);
-        expect(config.content_type).toBe(input_content_type);
+Deno.test('extractionconfig loads', () => {
+    const config = new ExtractionConfig({ body: input_html, content_type: input_content_type });
+    assertEquals(config.body, input_html);
+    assertEquals(config.content_type, input_content_type);
+});
+
+Deno.test('extractionconfig throws on unknown options', () => {
+    assertThrows(() => {
+      new ExtractionConfig({ url: 'http://httpbin.dev/get', foobar: 'baz' } as any);
+    }, ExtractionConfigError, "Invalid option provided: foobar");
+});
+
+
+
+Deno.test('url param generation: basic config', async () => {
+    const config = new ExtractionConfig({ body: input_html, content_type: input_content_type });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        content_type: input_content_type,
     });
 });
 
-describe('url param generation', () => {
-    it('basic config', async () => {
-        const config = new ExtractionConfig({ body: input_html, content_type: input_content_type });
-        const params = await config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            content_type: input_content_type,
-        });
+Deno.test('url param generation: sets url', async () => {
+    const config = new ExtractionConfig({
+        body: input_html,
+        content_type: input_content_type,
+        url: 'https://web-scraping.dev/products',
     });
-
-    it('sets url', async () => {
-        const config = new ExtractionConfig({
-            body: input_html,
-            content_type: input_content_type,
-            url: 'https://web-scraping.dev/products',
-        });
-        const params = await config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            content_type: input_content_type,
-            url: 'https://web-scraping.dev/products',
-        });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        content_type: input_content_type,
+        url: 'https://web-scraping.dev/products',
     });
+});
 
-    it('sets charset', async () => {
-        const config = new ExtractionConfig({
-            body: input_html,
-            content_type: input_content_type,
-            charset: 'utf-8',
-        });
-        const params = await config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            content_type: input_content_type,
-            charset: 'utf-8',
-        });
+Deno.test('url param generation: sets charset', async () => {
+    const config = new ExtractionConfig({
+        body: input_html,
+        content_type: input_content_type,
+        charset: 'utf-8',
     });
-
-    it('sets template', async () => {
-        const config = new ExtractionConfig({
-            body: input_html,
-            content_type: input_content_type,
-            template: 'my_template',
-        });
-        const params = await config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            content_type: input_content_type,
-            extraction_template: 'my_template',
-        });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        content_type: input_content_type,
+        charset: 'utf-8',
     });
+});
 
-    it('sets ephemeral_template', async () => {
-        const config = new ExtractionConfig({
-            body: input_html,
-            content_type: input_content_type,
-            ephemeral_template: { source: 'html', selectors: [] },
-        });
-        const params = await config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            content_type: input_content_type,
-            extraction_template: 'ephemeral:eyJzb3VyY2UiOiJodG1sIiwic2VsZWN0b3JzIjpbXX0',
-        });
+Deno.test('url param generation: sets template', async () => {
+    const config = new ExtractionConfig({
+        body: input_html,
+        content_type: input_content_type,
+        template: 'my_template',
     });
-
-    it('sets extraction_prompt', async () => {
-        const config = new ExtractionConfig({
-            body: input_html,
-            content_type: input_content_type,
-            extraction_prompt: 'summarize the document',
-        });
-        const params = await config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            content_type: input_content_type,
-            extraction_prompt: 'summarize the document',
-        });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        content_type: input_content_type,
+        extraction_template: 'my_template',
     });
+});
 
-    it('sets extraction_model', async () => {
-        const config = new ExtractionConfig({
-            body: input_html,
-            content_type: input_content_type,
-            extraction_model: 'review_list',
-        });
-        const params = await config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
-            key: '1234',
-            content_type: input_content_type,
-            extraction_model: 'review_list',
-        });
+Deno.test('url param generation: sets ephemeral_template', async () => {
+    const config = new ExtractionConfig({
+        body: input_html,
+        content_type: input_content_type,
+        ephemeral_template: { source: 'html', selectors: [] },
     });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        content_type: input_content_type,
+        extraction_template: 'ephemeral:eyJzb3VyY2UiOiJodG1sIiwic2VsZWN0b3JzIjpbXX0',
+    });
+});
 
-    it('compresses body', async () => {
+Deno.test('url param generation: sets extraction_prompt', async () => {
+    const config = new ExtractionConfig({
+        body: input_html,
+        content_type: input_content_type,
+        extraction_prompt: 'summarize the document',
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        content_type: input_content_type,
+        extraction_prompt: 'summarize the document',
+    });
+});
+
+Deno.test('url param generation: sets extraction_model', async () => {
+    const config = new ExtractionConfig({
+        body: input_html,
+        content_type: input_content_type,
+        extraction_model: 'review_list',
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        content_type: input_content_type,
+        extraction_model: 'review_list',
+    });
+});
+
+// XXX: could add auto compression but support is difficult
+/* Deno.test({
+    name: 'url param generation: compresses body', 
+    async fn() {
         const config = new ExtractionConfig({
             body: input_html,
             content_type: input_content_type,
             document_compression_format: CompressionFormat.GZIP,
             is_document_compressed: false,
         });
-        const params = await config.toApiParams({ key: '1234' });
-        expect(params).toEqual({
+        const params = config.toApiParams({ key: '1234' });
+        assertEquals(params, {
             key: '1234',
             content_type: input_content_type,
         });
-        expect(config.body).toEqual(await gzipPromise(Buffer.from(input_html as string, 'utf-8')));
+        function compressStringSync(input: string): Uint8Array {
+          const buffer = Buffer.from(input, "utf-8");
+          const compressed = gzipSync(buffer);
+          return new Uint8Array(compressed);
+        }
+        const compressedBody = compressStringSync(input_html);
+        assertEquals(config.body, compressedBody);
+    },
+    sanitizeResources: false,
+    sanitizeOps: false,
+});
+ */
+Deno.test('url param generation: fails to missing compression state with declared compression format', async () => {
+    const config = new ExtractionConfig({
+        body: input_html,
+        content_type: input_content_type,
+        document_compression_format: CompressionFormat.GZIP,
     });
 
-    it('fails to missing compression state with delcated compression format', async () => {
-        const config = new ExtractionConfig({
-            body: input_html,
-            content_type: input_content_type,
-            document_compression_format: CompressionFormat.GZIP,
-        });
+    assertThrows(() => {
+        config.toApiParams({ key: '1234' });
+    }, ExtractionConfigError);
+});
 
-        await expect(async () => {
-            await config.toApiParams({ key: '1234' });
-        }).rejects.toThrow(ExtractionConfigError);
+Deno.test('url param generation: fails to unsupported auto compression format', async () => {
+    const config = new ExtractionConfig({
+        body: input_html,
+        content_type: input_content_type,
+        document_compression_format: CompressionFormat.ZSTD,
+        is_document_compressed: false,
     });
 
-    it('fails to unsupported auto compression format', async () => {
-        const config = new ExtractionConfig({
-            body: input_html,
-            content_type: input_content_type,
-            document_compression_format: CompressionFormat.ZSTD,
-            is_document_compressed: false
-        });
-
-        await expect(async () => {
-            await config.toApiParams({ key: '1234' });
-        }).rejects.toThrow(ExtractionConfigError);        
-    });    
+    assertThrows(() => {
+        config.toApiParams({ key: '1234' });
+    }, ExtractionConfigError);
 });

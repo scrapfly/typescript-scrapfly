@@ -1,8 +1,10 @@
 # Scrapfly SDK
 
-`npm install scrapfly-sdk`
+`npm install scrapfly-sdk`  
+`deno add jsr:@scrapfly/scrapfly-sdk`  
+`bun jsr add @scrapfly/scrapfly-sdk`  
 
-Typescript/NodeJS SDK for [Scrapfly.io](https://scrapfly.io/) web scraping API which allows to:
+Typescript/Javascript SDK for [Scrapfly.io](https://scrapfly.io/) web scraping API which allows to:
 
 -   Scrape the web without being blocked.
 -   Use headless browsers to access Javascript-powered page data.
@@ -11,6 +13,10 @@ Typescript/NodeJS SDK for [Scrapfly.io](https://scrapfly.io/) web scraping API w
 
 For web scraping guides see [our blog](https://scrapfly.io/blog/) and [#scrapeguide](https://scrapfly.io/blog/tag/scrapeguide/) tag for how to scrape specific targets.
 
+The SDK is distributed through:
+- [npmjs.com/package/scrapfly-sdk](https://www.npmjs.com/package/scrapfly-sdk)
+- [jsr.io/@scrapfly/scrapfly-sdk](https://jsr.io/@scrapfly/scrapfly-sdk)
+
 ## Quick Intro
 
 1. Register a [Scrapfly account for free](https://scrapfly.io/register)
@@ -18,7 +24,10 @@ For web scraping guides see [our blog](https://scrapfly.io/blog/) and [#scrapegu
 3. Start scraping: 🚀
 
 ```javascript
+// node or bun:
 import { ScrapflyClient, ScrapeConfig } from 'scrapfly-sdk';
+// deno: 
+import { ScrapflyClient, ScrapeConfig } from 'jsr:@scrapfly/scrapfly-sdk';
 
 const key = 'YOUR SCRAPFLY KEY';
 const client = new ScrapflyClient({ key });
@@ -70,15 +79,25 @@ new ScrapeConfig({
 
 ## Development
 
-Install and setup environment:
+This is a Deno Typescript project that builds to NPM through [DNT](https://github.com/denoland/dnt).
 
-```shell
-$ npm install
-```
+- `/src` directory contains all of the source code with `main.ts` being the entry point.
+- `__tests__` directory contains tests for the source code.
+- `deno.json` contains meta information
+- `build.ts` is the build script that builds the project to nodejs ESM package.
+- `/npm` directory will be produced when `built.ts` is executed for building node package.
 
-Build and test:
-
-```shell
-$ npm run build
-$ npm run test
+```bash
+# make modifications and run tests
+$ deno task test
+# format
+$ deno fmt
+# lint
+$ deno lint
+# publish JSR:
+$ deno publish
+# build NPM package:
+$ deno build-npm
+# publish NPM:
+$ cd npm && npm publish
 ```

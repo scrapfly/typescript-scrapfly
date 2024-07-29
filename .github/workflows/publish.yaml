@@ -1,3 +1,4 @@
+
 name: Publish to NPM
 
 on:
@@ -11,18 +12,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - uses: volta-cli/action@v1
-    - run: npm ci --no-audit
-    - run: npm run lint --if-present
-    - run: npm test
-    - run: npm run build --if-present
-      env:
-          CI: true
-    - name: Setup .npmrc file to publish to npm
-      run: |
-        echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
-      env:
-        NPM_TOKEN: ${{secrets.NPM_AUTOMATION_TOKEN}}
-    - name: Publish to NPM
-      run: npm publish
+      - name: Clone repository
+        uses: actions/checkout@v3
+
+      - name: Install Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Run Deno build script
+        run: deno task build-npm
+
+      - name: Navigate to npm directory
+        run: cd ./npm
+
+      - name: Setup .npmrc file to publish to npm
+        run: |
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
+
+      - name: Publish to NPM
+        run: npm publish --dry-run
+        working-directory: ./npm
