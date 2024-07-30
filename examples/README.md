@@ -1,22 +1,9 @@
 # Scrapfly Typescript SDK Examples
 
-This directory contains commonly used examples for the Scrapfly Typescript SDK which is available in Typescript runtimes (bun, deno) as well as javascript ones like Nodejs.
+In this directory, examples are provided by JavaScript runtime platform as Scrapfly's Typescript SDK supports multiple options:
 
-You can use `node` to run the `.js` examples:
-
-```
-node examples/basic-get.js
-```
-
-Or compile `.ts` examples to `.js`:
-
-```
-tsc examples/scrape/basic-get.ts -o examples/basic-get.js
-node examples/scrape/basic-get.js
-```
-
-Or run typescript directly through runtimes like `.ts`:
-
-```
-bun examples/scrape/basic-get.ts
-```
+- [node_commonjs](./node_commonjs) - Examples for NodeJS with CommonJS module system.
+- [node_esm](./node_esm) - Examples for NodeJS with ECMAScript Modules (ESM) module system.
+- [bun](./bun) - Examples for Bun Typescript runtime.
+- [deno](./deno) - Examples for Deno Typescript runtime.
+- [serverless: cloudflare workers, aws lambda, supabase](./cloudflareworker_awslambda_supabase) - Examples for serverless platforms like Cloudflare Workers, AWS Lambda and Supabase.
