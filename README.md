@@ -24,8 +24,10 @@ The SDK is distributed through:
 3. Start scraping: 🚀
 
 ```javascript
-// node or bun:
+// node 
 import { ScrapflyClient, ScrapeConfig } from 'scrapfly-sdk';
+// bun
+import { ScrapflyClient, ScrapeConfig} from '@scrapfly/scrapfly-sdk';
 // deno: 
 import { ScrapflyClient, ScrapeConfig } from 'jsr:@scrapfly/scrapfly-sdk';
 

@@ -6,3 +6,5 @@ dev
 cov_profile
 .vscode
 .history
+examples/**/package.json
+examples/**/package-lock.json

@@ -3,13 +3,14 @@ import { ScrapflyClient } from '../../src/client.ts';
 import { ScreenshotConfig } from '../../src/screenshotconfig.ts';
 import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { stub } from "https://deno.land/std/testing/mock.ts";
+import type { RequestOptions } from '../../src/utils.ts';
 import { mockedStream, responseFactory } from '../utils.ts';
 
 Deno.test('screenshot: succeeds', async () => {
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
     const url = 'https://web-scraping.dev/';
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const configUrl = new URL(config.url);
         // Ensure the URL matches the pattern
         assertEquals(configUrl.origin + configUrl.pathname, client.HOST + '/screenshot');
@@ -42,7 +43,7 @@ Deno.test('screenshot: fails due to failing upstream response', async () => {
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
     const url = 'https://domain.com/down-page/';
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const body = {
             code: 'ERR::SCREENSHOT::UNABLE_TO_TAKE_SCREENSHOT',
             error_id: '347bc6cb-1cba-467a-bd06-c932a9e7156d',
@@ -72,7 +73,7 @@ Deno.test('screenshot: fails to non html/text web page', async () => {
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
     const url = 'https://web-scraping.dev/assets/pdf/eula.pdf/';
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const body = {
             code: 'ERR::SCREENSHOT::INVALID_CONTENT_TYPE',
             error_id: 'f0e9a6af-846a-49ab-8321-e21bb12bf494',

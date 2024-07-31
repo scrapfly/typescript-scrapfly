@@ -4,6 +4,7 @@ import { ScrapeConfig } from '../../src/scrapeconfig.ts';
 import { log } from '../../src/logger.ts';
 import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { resultFactory, responseFactory } from '../utils.ts';
+import type { RequestOptions } from '../../src/utils.ts';
 import { stub } from "https://deno.land/std/testing/mock.ts";
 
 log.setLevel('DEBUG');
@@ -12,7 +13,7 @@ Deno.test('scrape: GET success', async () => {
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const configUrl = new URL(config.url);
         assertEquals(configUrl.origin + configUrl.pathname, client.HOST + '/scrape');
         assertEquals(config.method, 'GET');
@@ -42,7 +43,7 @@ Deno.test('scrape errors: raises ApiHttpServerError on 500 and success', async (
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: 'https://httpbin.dev/json',
             status_code: 500,
@@ -71,7 +72,7 @@ Deno.test('scrape errors: raises BadApiKeyError on 401', async () => {
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = {
             status: 'error',
             http_code: 401,
@@ -100,7 +101,7 @@ Deno.test('scrape errors: raises TooManyRequests on 429 and success', async () =
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: 'https://httpbin.dev/json',
             status_code: 429,
@@ -128,7 +129,7 @@ Deno.test('scrape errors: raises ScrapflyScrapeError on ::SCRAPE:: resource and 
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: config.url,
             status: 'ERR::SCRAPE::BAD_PROTOCOL',
@@ -155,7 +156,7 @@ Deno.test('scrape errors: raises ScrapflyWebhookError on ::WEBHOOK:: resource an
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: config.url,
             status: 'ERR::WEBHOOK::DISABLED ',
@@ -182,7 +183,7 @@ Deno.test('scrape errors: raises ScrapflyProxyError on ERR::PROXY::POOL_NOT_FOUN
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: config.url,
             status: 'ERR::PROXY::POOL_NOT_FOUND ',
@@ -209,7 +210,7 @@ Deno.test('scrape errors: raises ScrapflyScheduleError on ERR::SCHEDULE::DISABLE
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: config.url,
             status: 'ERR::SCHEDULE::DISABLED',
@@ -236,7 +237,7 @@ Deno.test('scrape errors: raises ScrapflyAspError on ERR::ASP::SHIELD_ERROR reso
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: config.url,
             status: 'ERR::ASP::SHIELD_ERROR',
@@ -263,7 +264,7 @@ Deno.test('scrape errors: raises ScrapflySessionError on ERR::SESSION::CONCURREN
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: config.url,
             status: 'ERR::SESSION::CONCURRENT_ACCESS',
@@ -290,7 +291,7 @@ Deno.test('scrape errors: raises ApiHttpClientError on success and unknown statu
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: config.url,
             status: 'ERR::NEW',
@@ -317,7 +318,7 @@ Deno.test('scrape errors: raises UpstreamHttpServerError on failure, ERR::SCRAPE
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: config.url,
             success: false,
@@ -346,7 +347,7 @@ Deno.test('scrape errors: raises UpstreamHttpClientError on failure, ERR::SCRAPE
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: config.url,
             success: false,
@@ -385,7 +386,7 @@ Deno.test('scrape errors: raises resource exceptions on failure', async () => {
     };
 
     for (const [resource, err] of Object.entries(resourceErrMap)) {
-        const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+        const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
             const result = resultFactory({
                 url: config.url,
                 success: false,
@@ -414,7 +415,7 @@ Deno.test('scrape errors: raises ScrapflyError on unhandled failure', async () =
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = resultFactory({
             url: config.url,
             success: false,
@@ -443,7 +444,7 @@ Deno.test('scrape errors: account retrieval status unhandled code (e.g. 404)', a
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         return responseFactory(
             {},
             {
@@ -466,7 +467,7 @@ Deno.test('scrape errors: account retrieval bad api key (status 401)', async () 
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         return responseFactory(
             {},
             {
@@ -496,7 +497,7 @@ Deno.test('concurrent scrape: success with explicit concurrency', async () => {
     const results = [];
     const errors = [];
 
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         await new Promise((resolve) => setTimeout(resolve, 100));  // XXX: NEEDS a delay!
         log.error(config.url);
         if (config.url.includes('200')) {

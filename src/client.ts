@@ -1,4 +1,5 @@
 import { path } from './deps.ts';
+import { mkdir, writeFile } from './polyfill.ts';
 import { fetchRetry } from './utils.ts';
 import * as errors from './errors.ts';
 import type { ScrapeConfig } from './scrapeconfig.ts';
@@ -114,16 +115,15 @@ export class ScrapflyClient {
       const url = new URL(this.HOST + '/account');
       const params = { key: this.key };
       url.search = new URLSearchParams(params).toString();
-      response = await this.fetch(
-        new Request(url.toString(), {
-          method: 'GET',
-          headers: {
-            'user-agent': this.ua,
-            'accept-encoding': 'gzip, deflate, br',
-            accept: 'application/json',
-          },
-        }),
-      );
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'GET',
+        headers: {
+          'user-agent': this.ua,
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'application/json',
+        },
+      });
     } catch (e) {
       log.error('error', e);
       throw e;
@@ -148,20 +148,19 @@ export class ScrapflyClient {
       const url = new URL(this.HOST + '/scrape');
       const params = config.toApiParams({ key: this.key });
       url.search = new URLSearchParams(params).toString();
-      response = await this.fetch(
-        new Request(url.toString(), {
-          method: config.method,
-          headers: {
-            'user-agent': this.ua,
-            'content-type': config.method === 'POST'
-              ? config.headers?.['content-type'] ?? 'application/json'
-              : 'application/json',
-            'accept-encoding': 'gzip, deflate, br',
-            accept: 'application/json',
-          },
-          body: config.body,
-        }),
-      );
+      response = await this.fetch({
+        url: url.toString(),
+        method: config.method,
+        headers: {
+          'user-agent': this.ua,
+          'content-type': config.method === 'POST'
+            ? config.headers?.['content-type'] ?? 'application/json'
+            : 'application/json',
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'application/json',
+        },
+        body: config.body,
+      });
     } catch (e) {
       log.error('error', e);
       e.scrapeConfig = config;
@@ -187,21 +186,21 @@ export class ScrapflyClient {
   }
 
   /**
-    Concurrently scrape multiple configs
-    This is a async generator call it like this:
+  Concurrently scrape multiple configs
+  This is a async generator call it like this:
 
-      const results = [];
-      const errors = [];
-      for await (const resultOrError of client.concurrentScrape(configs)) {
-          if (resultOrError instanceof Error) {
-              errors.push(resultOrError);
-          } else {
-              results.push(resultOrError);
-          }
-      }
+    const results = [];
+    const errors = [];
+    for await (const resultOrError of client.concurrentScrape(configs)) {
+        if (resultOrError instanceof Error) {
+            errors.push(resultOrError);
+        } else {
+            results.push(resultOrError);
+        }
+    }
 
-    @param concurrencyLimit: if not set it will be taken from your account info
-    */
+  @param concurrencyLimit: if not set it will be taken from your account info
+  */
   async *concurrentScrape(
     configs: ScrapeConfig[],
     concurrencyLimit?: number,
@@ -254,7 +253,7 @@ export class ScrapflyClient {
     let file_path;
 
     if (savePath) {
-      Deno.mkdir(savePath, { recursive: true });
+      await mkdir(savePath, { recursive: true });
       file_path = path.join(savePath, `${name}.${extension_name}`);
     } else {
       file_path = `${name}.${extension_name}`;
@@ -262,7 +261,7 @@ export class ScrapflyClient {
 
     const content = new Uint8Array(result.image);
     // Use Deno's write file method
-    await Deno.writeFile(file_path, content);
+    await writeFile(file_path, content);
   }
 
   /**
@@ -295,7 +294,8 @@ export class ScrapflyClient {
       const url = new URL(this.HOST + '/screenshot');
       const params = config.toApiParams({ key: this.key });
       url.search = new URLSearchParams(params).toString();
-      const req = new Request(url.toString(), {
+      response = await this.fetch({
+        url: url.toString(),
         method: 'GET',
         headers: {
           'user-agent': this.ua,
@@ -303,7 +303,6 @@ export class ScrapflyClient {
           accept: 'application/json',
         },
       });
-      response = await this.fetch(req);
     } catch (e) {
       log.error('error', e);
       throw e;
@@ -352,12 +351,12 @@ export class ScrapflyClient {
       if (config.document_compression_format && config.document_compression_format) {
         headers['content-encoding'] = config.document_compression_format;
       }
-      const req = new Request(url.toString(), {
+      response = await this.fetch({
+        url: url.toString(),
         method: 'POST',
         headers: headers,
         body: config.body,
       });
-      response = await this.fetch(req);
     } catch (e) {
       log.error('error', e);
       throw e;

@@ -4,7 +4,7 @@
   },
   "name": "@scrapfly/scrapfly-sdk",
   "exports": "./src/main.ts",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "SDK for Scrapfly.io API for web scraping, screenshotting and data extraction",
   "tasks": {
     "start": "deno run --allow-net --allow-read src/main.ts",
@@ -26,7 +26,5 @@
       "exclude": ["no-explicit-any"]
     }
   },
-  "imports": {
-    "@deno/dnt": "jsr:@deno/dnt@^0.41.2"
-  }
+  "imports": { "@deno/dnt": "jsr:@deno/dnt@^0.41.2", "@scrapfly/scrapfly-sdk": "jsr:@scrapfly/scrapfly-sdk@^0.6.2" }
 }

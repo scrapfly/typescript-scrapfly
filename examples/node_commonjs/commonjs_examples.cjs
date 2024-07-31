@@ -1,4 +1,6 @@
-const { ScrapflyClient, ScrapeConfig, ScreenshotConfig, ExtractionConfig } = require('scrapfly-sdk');
+const { ScrapflyClient, ScrapeConfig, ScreenshotConfig, ExtractionConfig, log } = require('scrapfly-sdk');
+// You can enable debug logs to see more details
+log.setLevel('DEBUG');
 
 
 /* To start, you can always get your account information using the .account() method
@@ -79,10 +81,162 @@ async function JSRender(apiKey) {
   console.log(scrape_result.result.browser_data);
 }
 
+/* Scrapfly Extraction API offers LLM (Language Learning Model) based extraction
+ * This example demonstrates how to use LLM query HTML files
+ * https://scrapfly.io/docs/extraction-api/llm-prompt
+ */
+async function extractionLLM(apiKey) {
+  const client = new ScrapflyClient({ key: apiKey});
+
+  // First, get HTML either from Web Scraping API or your own storage
+  let html = (await client.scrape(
+    new ScrapeConfig({
+      url: 'https://web-scraping.dev/product/1',
+    }),
+  )).result.content;
+  
+  // LLM Parsing - extract content using LLM queries
+  let llm_result = await client.extract(
+    new ExtractionConfig({
+      // identify content type like text/html or text/markdown etc.
+      content_type: "text/html",
+      body: html,
+      // use any prompt 
+      extraction_prompt: "get product price only"
+    })
+  )
+  
+  console.log('llm extraction');
+  console.log(llm_result);
+  
+  // You can also request LLM to output specific formats like JSON or CSV
+  let llm_format_result = await client.extract(
+    new ExtractionConfig({
+      content_type: "text/html",
+      body: html,
+      // directly request format
+      extraction_prompt: "get product price and currency in JSON"
+    })
+  )
+
+  console.log('llm extraction in JSON');
+  console.log(llm_format_result);
+}
+
+/* Scrapfly Extraction API offers Auto Extract engine
+ * Which can extract common web objects like products, articles etc.
+ * https://scrapfly.io/docs/extraction-api/automatic-ai
+ */
+async function extractionAutoExtract(apiKey){
+  const client = new ScrapflyClient({ key: apiKey});
+
+  // First, get HTML either from Web Scraping API or your own storage
+  let html = (await client.scrape(
+    new ScrapeConfig({
+      url: 'https://web-scraping.dev/product/1',
+    }),
+  )).result.content;
+  
+  // LLM Parsing - extract content using LLM queries
+  let product_result = await client.extract(
+    new ExtractionConfig({
+      // identify content type like text/html or text/markdown etc.
+      content_type: "text/html",
+      body: html,
+      // define model type: product, article etc. 
+      // see https://scrapfly.io/docs/extraction-api/automatic-ai#models
+      extraction_model: "product"
+    })
+  )
+  
+  console.log('product auto extract');
+  console.log(product_result);
+}
+
+/* Scrapfly Extraction API offers Template extraction engine
+ * Use JSON schemas to markup extraction rules using XPath or CSS selectors
+ * https://scrapfly.io/docs/extraction-api/rules-and-template
+ */
+async function extractionTemplates(apiKey){
+  const client = new ScrapflyClient({ key: apiKey});
+
+  // First, get HTML either from Web Scraping API or your own storage
+  let html = (await client.scrape(
+    new ScrapeConfig({
+      url: 'https://web-scraping.dev/reviews',
+      render_js: true,
+      wait_for_selector: '.review',
+    }),
+  )).result.content;
+
+  // Define your template, see https://scrapfly.io/docs/extraction-api/rules-and-template
+  let template = {  
+    "source": "html",
+    "selectors": [
+      {
+        "name": "date_posted",
+        "type": "css",
+        "query": "[data-testid='review-date']::text",
+        "multiple": true,
+        "formatters": [ {
+          "name": "datetime",
+          "args": {"format": "%Y, %b %d — %A"}
+        } ]
+      }
+    ]
+  }
+  let template_result = await client.extract(
+    new ExtractionConfig({
+      body: html,
+      content_type: "text/html",
+      // provide template:
+      ephemeral_template: template,
+    })
+  );
+  console.log('product  extract');
+  console.log(template_result);
+}
+
+/* Scrapfly Screenshot API made for super easy screenshot capture
+ * capture screenshots of full pages or specific sections
+ * https://scrapfly.io/docs/screenshot-api/getting-started
+ */
+async function screenshot(apiKey) {
+  const client = new ScrapflyClient({ key: apiKey});
+
+  let screenshot_result = await client.screenshot(
+    new ScreenshotConfig({
+      url: 'https://web-scraping.dev/product/1',
+      // by default 1920x1080 will be captured but resolution can take any value
+      resolution: '540x1200',  // for example - tall smartphone viewport
+      // to capture all visible parts use capture with full page
+      capture: "fullpage",
+
+      // you can also capture specific elements with css or xpath
+      // wait_for_selector: "#reviews", // wait for review to load
+      // capture: "#reviews",  // capture only reviews element
+      
+      // for pages that require scrolling to load elements (like endless paging) use 
+      auto_scroll: true,
+    }),
+  );
+
+  console.log("captured screenshot:");
+  console.log(screenshot_result);
+  
+  // use the shortcut to save screenshots to file:
+  client.saveScreenshot(screenshot_result, 'screenshot');
+  console.log("saved screenshot to ./screenshot.jpg");
+}
+
 module.exports = {
   getAccount,
   basicGet,
   JSRender,
+  extractionLLM,
+  extractionAutoExtract,
+  extractionTemplates,
+  screenshot,
 };
 
 
@@ -94,8 +248,13 @@ async function main() {
         `Usage: node commonjs_examples.js <functionName> <apiKey>\n` +
         `getAccount - Get account information\n` +
         `basicGet - Basic scrape\n` +
-        `JSRender - Scrape with JS rendering\n`
+        `JSRender - Scrape with JS rendering\n` +
+        `extractionLLM - Extract content using LLM queries\n` +
+        `extractionAutoExtract - Extract common web objects using Auto Extract\n` + 
+        `extractionTemplates - Extract content using Template engine\n` + 
+        `screenshots - Capture screenshots using Screenshot API\n`
       );
+      return
     }
     const args = process.argv.slice(2);
     const functionName = args[0];

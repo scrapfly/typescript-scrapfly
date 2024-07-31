@@ -23,8 +23,7 @@ Deno.test('fetchRetry: succeeds on first attempt', async () => {
     return new Response('Success', { status: 200 });
   });
 
-  const request = new Request('https://example.com');
-  const response = await fetchRetry(request);
+  const response = await fetchRetry({"url": "https://scrapfly.io/"});
 
   assertEquals(await response.text(), 'Success');
   assertEquals(response.status, 200);
@@ -43,8 +42,7 @@ Deno.test('fetchRetry: retries on 500 and succeeds', async () => {
     }
   });
 
-  const request = new Request('https://example.com');
-  const response = await fetchRetry(request);
+  const response = await fetchRetry({"url": "https://scrapfly.io/"});
 
   assertEquals(await response.text(), 'Success');
   assertEquals(response.status, 200);
@@ -60,8 +58,7 @@ Deno.test('fetchRetry: does not retry 4xx', async () => {
     return new Response('bad request', { status: 422 });
   });
 
-  const request = new Request('https://example.com');
-  const response = await fetchRetry(request);
+  const response = await fetchRetry({"url": "https://scrapfly.io/"});
 
   assertEquals(await response.text(), 'bad request');
   assertEquals(response.status, 422);
@@ -77,11 +74,9 @@ Deno.test('fetchRetry: fails after max retries', async () => {
     return new Response('Internal Server Error', { status: 500 });
   });
 
-  const request = new Request('https://example.com');
-
   await assertRejects(
     async () => {
-      await fetchRetry(request, 3);
+      await fetchRetry({"url": "https://scrapfly.io/"}, 3);
     },
     Error,
     'Fetch failed with status: 500'
@@ -91,6 +86,18 @@ Deno.test('fetchRetry: fails after max retries', async () => {
 
   fetchStub.restore();
 });
+
+Deno.test('fetchRetry: fails after max retries on real target', async () => {
+  await assertRejects(
+    async () => {
+      const resp = await fetchRetry({"url": "https://httpbin.dev/status/500"}, 3);
+    },
+    Error,
+    'Fetch failed with status: 500'
+  );
+  
+});
+
 
 // XXX: should we support built-in timeout?
 /* 

@@ -2,14 +2,15 @@ import * as errors from '../../src/errors.ts';
 import { ScrapflyClient } from '../../src/client.ts';
 import { ExtractionConfig } from '../../src/extractionconfig.ts';
 import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { stub } from "https://deno.land/std/testing/mock.ts";
+import { stub } from "https://deno.land/std@0.224.0/testing/mock.ts";
 import { responseFactory } from '../utils.ts';
+import type { RequestOptions } from '../../src/utils.ts';
 
 Deno.test('extract: succeeds', async () => {
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
     const html = 'very long html file';
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const configUrl = new URL(config.url);
         const configBody = await new Response(config.body).text();
         assertEquals(configUrl.origin + configUrl.pathname, client.HOST + '/extraction');
@@ -51,7 +52,7 @@ Deno.test('extract: fails due to invalid API key', async () => {
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
     const html = 'very long html file';
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = {
             status: 'error',
             http_code: 401,
@@ -81,7 +82,7 @@ Deno.test('extract: fails due to any extraction related error', async () => {
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
     const html = 'very long html file';
-    const fetchStub = stub(client, 'fetch', async (config: Request): Promise<Response> => {
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const result = {
             code: 'ERR::EXTRACTION::CONTENT_TYPE_NOT_SUPPORTED',
             error_id: 'f0e9a6af-846a-49ab-8321-e21bb12bf494',
