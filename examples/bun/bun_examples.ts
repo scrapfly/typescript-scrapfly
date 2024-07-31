@@ -1,4 +1,4 @@
-import { ScrapflyClient, ScrapeConfig, ScreenshotConfig, ExtractionConfig, log } from 'scrapfly-sdk';
+import { ScrapflyClient, ScrapeConfig, ScreenshotConfig, ExtractionConfig, log } from '@scrapfly/scrapfly-sdk';
 // You can enable debug logs to see more details
 log.setLevel('DEBUG');
 
