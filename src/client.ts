@@ -95,35 +95,34 @@ export class ScrapflyClient {
   /**
    * Handle clob and blob large objects
    */
-  async handleLargeObjects(result: any): Promise<ScrapeResult> {
-    const format = result.format
-    if (format === 'clob' || format === 'blob') {
-      let response: Response;
-      try {
-        const url = new URL(result.content);
-        const params = { key: this.key };
-        url.search = new URLSearchParams(params).toString();
-        response = await this.fetch({
-          url: url.toString(),
-          method: 'GET',
-          headers: {
-            'user-agent': this.ua,
-            'accept-encoding': 'gzip, deflate, br',
-            accept: 'application/json',
-          },
-        });
-      } catch (e) {
-        log.error('error', e);
-        throw e;
-      }
-      const content: string = await response.text();
-      result.content = content
-      if (format === 'clob') {
-        result.format = 'text'
-      }
-      if (format === 'blob') {
-        result.format = 'binary'
-      }
+  async handleLargeObjects(result: any, format: "clob" | "blob"): Promise<ScrapeResult> {
+    let response: Response;
+    
+    try {
+      const url = new URL(result.content);
+      const params = { key: this.key };
+      url.search = new URLSearchParams(params).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'GET',
+        headers: {
+          'user-agent': this.ua,
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'application/json',
+        },
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+
+    const content: string = await response.text();
+    result.content = content
+    if (format === 'clob') {
+      result.format = 'text'
+    }
+    if (format === 'blob') {
+      result.format = 'binary'
     }
     return result
   }
@@ -210,8 +209,11 @@ export class ScrapflyClient {
       throw new errors.ApiHttpClientError(JSON.stringify(data));
     }
 
-    const content = await this.handleLargeObjects(data.result)
-    data.result = content
+    const content_format = data.result.format
+    if (content_format === 'clob' || content_format === 'blob') {
+      const content = await this.handleLargeObjects(data.result, content_format)
+      data.result = content
+    }
 
     const result = this.handleResponse(
       response,
