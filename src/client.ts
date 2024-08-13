@@ -211,8 +211,7 @@ export class ScrapflyClient {
 
     const content_format = data.result.format
     if (content_format === 'clob' || content_format === 'blob') {
-      const content = await this.handleLargeObjects(data.result, content_format)
-      data.result = content
+      data.result = await this.handleLargeObjects(data.result, content_format)
     }
 
     const result = this.handleResponse(
