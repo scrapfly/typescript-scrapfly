@@ -12,6 +12,14 @@ Deno.test('cheerio selector lazy loads and caches itself', async () => {
   // cheerio.load is called exactly once - means it's cached
 });
 
+
+Deno.test('cheerio selector loads with case sensitive headers', async () => {
+  const response = JSON.parse(await Deno.readTextFile('__tests__/data/response_html_case_sensitive_headers.json'));
+  const result = new ScrapeResult(response);
+  assertEquals(result.selector('h1').text(), 'Herman Melville - Moby-Dick');
+});
+
+
 Deno.test('throws ContentTypeError when accessing .selector on JSON data', async () => {
   const responseJsonSuccess = JSON.parse(await Deno.readTextFile('__tests__/data/response_json_success.json'));
   const result = new ScrapeResult(responseJsonSuccess);

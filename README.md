@@ -99,7 +99,7 @@ $ deno lint
 # publish JSR:
 $ deno publish
 # build NPM package:
-$ deno build-npm
+$ deno task build-npm
 # publish NPM:
 $ cd npm && npm publish
 ```

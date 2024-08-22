@@ -1,6 +1,7 @@
 import type { HttpMethod, Rec } from './types.ts';
 import * as errors from './errors.ts';
 import { cheerio } from './deps.ts';
+import { normalizeHeaders } from './utils.ts';
 
 export type ConfigData = {
   url: string;
@@ -208,7 +209,8 @@ export class ScrapeResult {
 
   get selector(): cheerio.CheerioAPI {
     if (!this._selector) {
-      if (!this.result.response_headers['content-type'].includes('text/html')) {
+      const headers = normalizeHeaders(this.result.response_headers);
+      if (!headers['content-type'].includes('text/html')) {
         throw new errors.ContentTypeError(
           `Cannot use selector on non-html content-type, received: ${this.result.response_headers['content-type']}`,
         );
@@ -287,20 +289,22 @@ export class ScreenshotResult {
   }
 
   private defineMetadata(response: Response): ScreenshotMetadata {
-    const contentType = response.headers.get('content-type');
+    const headers = normalizeHeaders(response.headers);
+    const contentType = headers['content-type'];
     let extension_name = '';
     if (contentType) {
       extension_name = contentType.split('/')[1].split(';')[0];
     }
     return {
       extension_name: extension_name,
-      upstream_status_code: parseInt(response.headers.get('X-Scrapfly-Upstream-Http-Code') || '200', 10),
-      upstream_url: response.headers.get('X-Scrapfly-Upstream-Url') || '',
+      upstream_status_code: parseInt(headers['x-scrapfly-upstream-http-code'] || '200', 10),
+      upstream_url: headers['x-scrapfly-upstream-url'] || '',
     };
   }
 
   private decodeResponse(response: Response, data: ArrayBuffer): object | null {
-    if (response.headers.get('content-type') === 'json') {
+    const headers = normalizeHeaders(response.headers);
+    if (headers['content-type'] === 'json') {
       return JSON.parse(new TextDecoder().decode(data));
     }
     return null;

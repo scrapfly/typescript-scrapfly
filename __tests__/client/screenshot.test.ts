@@ -5,6 +5,7 @@ import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/asser
 import { stub } from "https://deno.land/std/testing/mock.ts";
 import type { RequestOptions } from '../../src/utils.ts';
 import { mockedStream, responseFactory } from '../utils.ts';
+import { ScreenshotResult } from '../../src/result.ts';
 
 Deno.test('screenshot: succeeds', async () => {
     const KEY = '__API_KEY__';
@@ -23,7 +24,7 @@ Deno.test('screenshot: succeeds', async () => {
             status: 200,
             headers: {
                 'content-encoding': 'gzip',
-                'content-type': 'image/png',
+                'ContEnT-TyPe': 'image/png',  // ensure case insensitivity
                 'x-scrapfly-upstream-http-code': '200',
                 'x-scrapfly-upstream-url': url,
             },

@@ -95,9 +95,9 @@ export class ScrapflyClient {
   /**
    * Handle clob and blob large objects
    */
-  async handleLargeObjects(result: any, format: "clob" | "blob"): Promise<ScrapeResult> {
+  async handleLargeObjects(result: any, format: 'clob' | 'blob'): Promise<ScrapeResult> {
     let response: Response;
-    
+
     try {
       const url = new URL(result.content);
       const params = { key: this.key };
@@ -117,14 +117,14 @@ export class ScrapflyClient {
     }
 
     const content: string = await response.text();
-    result.content = content
+    result.content = content;
     if (format === 'clob') {
-      result.format = 'text'
+      result.format = 'text';
     }
     if (format === 'blob') {
-      result.format = 'binary'
+      result.format = 'binary';
     }
-    return result
+    return result;
   }
 
   /**
@@ -209,9 +209,9 @@ export class ScrapflyClient {
       throw new errors.ApiHttpClientError(JSON.stringify(data));
     }
 
-    const content_format = data.result.format
+    const content_format = data.result.format;
     if (content_format === 'clob' || content_format === 'blob') {
-      data.result = await this.handleLargeObjects(data.result, content_format)
+      data.result = await this.handleLargeObjects(data.result, content_format);
     }
 
     const result = this.handleResponse(

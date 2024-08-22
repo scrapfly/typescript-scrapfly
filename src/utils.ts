@@ -1,4 +1,5 @@
 import { log } from './logger.ts';
+import type { Rec } from './types.ts';
 
 export function urlsafe_b64encode(data: string): string {
   const encoder = new TextEncoder();
@@ -52,4 +53,20 @@ export async function fetchRetry(
   }
 
   throw lastError;
+}
+
+export function normalizeHeaders(headers: Rec<string> | Headers): Rec<string> {
+  const normalizedHeaders: Rec<string> = {};
+
+  if (headers instanceof Headers) {
+    headers.forEach((value, key) => {
+      normalizedHeaders[key.toLowerCase()] = value;
+    });
+  } else {
+    Object.keys(headers).forEach((key) => {
+      normalizedHeaders[key.toLowerCase()] = headers[key];
+    });
+  }
+
+  return normalizedHeaders;
 }

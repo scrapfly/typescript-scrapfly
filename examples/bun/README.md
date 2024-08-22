@@ -4,7 +4,7 @@ Bun is a modern javascript runtime that can execute both javascript and typescri
 
 These examples demonstrate Typescript SDK usage with Bun and for that install the SDK using jsr.io which distributes Typescript files:
 
-```
+```bash
 $ bunx jsr add @scrapfly/scrapfly-sdk
 ```
 
