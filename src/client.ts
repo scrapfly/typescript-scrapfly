@@ -124,7 +124,7 @@ export class ScrapflyClient {
     }
     
     if (format === 'blob') {
-      content = Buffer.from(await response.arrayBuffer());
+      content = new Uint8Array(await response.arrayBuffer());
       result.format = 'binary';
     }
     
@@ -306,6 +306,7 @@ export class ScrapflyClient {
     }
 
     const content = new Uint8Array(result.image);
+
     // Use Deno's write file method
     await writeFile(file_path, content);
   }
