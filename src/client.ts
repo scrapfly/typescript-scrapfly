@@ -116,14 +116,19 @@ export class ScrapflyClient {
       throw e;
     }
 
-    const content: string = await response.text();
-    result.content = content;
+    let content;
+
     if (format === 'clob') {
+      content = await response.text();
       result.format = 'text';
     }
+    
     if (format === 'blob') {
+      content = Buffer.from(await response.arrayBuffer());
       result.format = 'binary';
     }
+    
+    result.content = content;
     return result;
   }
 
