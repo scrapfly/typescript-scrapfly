@@ -38,6 +38,7 @@ export enum Format {
 export enum FormatOption {
   NO_LINKS = 'no_links',
   NO_IMAGES = 'no_images',
+  NO_CONTENT = 'only_content'
 }
 
 type ScrapeConfigOptions = {
@@ -58,8 +59,8 @@ type ScrapeConfigOptions = {
   proxy_pool?: string;
   session?: string;
   tags?: string[];
-  format?: Format;
-  format_options?: FormatOption[];
+  format?: string | Format;
+  format_options?: string[] | FormatOption[];
   correlation_id?: string;
   cookies?: Rec<string>;
   body?: string;
@@ -69,7 +70,7 @@ type ScrapeConfigOptions = {
   rendering_wait?: number;
   wait_for_selector?: string;
   screenshots?: Rec<any>;
-  screenshot_flags?: ScreenshotFlags[];
+  screenshot_flags?: string[] | ScreenshotFlags[] ;
   session_sticky_proxy?: boolean;
   webhook?: string;
   timeout?: number;
@@ -100,8 +101,8 @@ export class ScrapeConfig {
   proxy_pool?: string;
   session?: string;
   tags: Set<string> = new Set<string>();
-  format?: Format; // raw(unchanged)
-  format_options?: FormatOption[];
+  format?: Format| string; // raw(unchanged)
+  format_options?: string[] | FormatOption[];
   correlation_id?: string;
   cookies?: Rec<string>;
   body?: string;
@@ -112,7 +113,7 @@ export class ScrapeConfig {
   wait_for_selector?: string;
   session_sticky_proxy = false;
   screenshots?: Rec<any>;
-  screenshot_flags?: ScreenshotFlags[];
+  screenshot_flags?: ScreenshotFlags[] | string[];
   webhook?: string;
   timeout?: number; // in milliseconds
   js_scenario?: Rec<any>;
@@ -122,14 +123,21 @@ export class ScrapeConfig {
 
   constructor(options: ScrapeConfigOptions) {
     this.validateOptions(options);
-    if (options.format && !Object.values(Format).includes(options.format)) {
-      throw new ScrapeConfigError(`Invalid format param value: ${options.format}`);
+    if (options.format && !Object.values(Format).includes(options.format as Format)) {
+      throw new ScrapeConfigError(`Invalid Format param value: ${options.format}`);
     }
     this.format = options.format ?? this.format;
+    if (options.format_options) {
+      options.format_options.forEach((flag) => {
+        if (!Object.values(FormatOption).includes(flag as FormatOption)) {
+          throw new ScrapeConfigError(`Invalid FormatOption param value: ${flag}`);
+        }
+      });
+    }
     if (options.screenshot_flags) {
       options.screenshot_flags.forEach((flag) => {
-        if (!Object.values(ScreenshotFlags).includes(flag)) {
-          throw new ScrapeConfigError(`Invalid screenshot_flags param value: ${flag}`);
+        if (!Object.values(ScreenshotFlags).includes(flag as ScreenshotFlags)) {
+          throw new ScrapeConfigError(`Invalid ScreenshotFlags param value: ${flag}`);
         }
       });
     }
