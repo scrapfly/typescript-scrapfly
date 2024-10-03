@@ -38,7 +38,7 @@ export enum Format {
 export enum FormatOption {
   NO_LINKS = 'no_links',
   NO_IMAGES = 'no_images',
-  NO_CONTENT = 'only_content'
+  ONLY_CONTENT = 'only_content'
 }
 
 type ScrapeConfigOptions = {
