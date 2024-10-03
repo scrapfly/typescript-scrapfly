@@ -59,8 +59,8 @@ type ScrapeConfigOptions = {
   proxy_pool?: string;
   session?: string;
   tags?: string[];
-  format?: string | Format;
-  format_options?: string[] | FormatOption[];
+  format?: 'json' | 'text' | 'markdown' | 'clean_html' | 'raw' | Format;
+  format_options?: ('no_links' | 'no_images' | 'only_content')[] | FormatOption[];
   correlation_id?: string;
   cookies?: Rec<string>;
   body?: string;
@@ -70,7 +70,7 @@ type ScrapeConfigOptions = {
   rendering_wait?: number;
   wait_for_selector?: string;
   screenshots?: Rec<any>;
-  screenshot_flags?: string[] | ScreenshotFlags[] ;
+  screenshot_flags?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | 'high_quality')[] | ScreenshotFlags[];
   session_sticky_proxy?: boolean;
   webhook?: string;
   timeout?: number;
@@ -101,8 +101,8 @@ export class ScrapeConfig {
   proxy_pool?: string;
   session?: string;
   tags: Set<string> = new Set<string>();
-  format?: Format| string; // raw(unchanged)
-  format_options?: string[] | FormatOption[];
+  format?: 'json' | 'text' | 'markdown' | 'clean_html' | 'raw' | Format;
+  format_options?: ('no_links' | 'no_images' | 'only_content')[] | FormatOption[];
   correlation_id?: string;
   cookies?: Rec<string>;
   body?: string;
@@ -113,7 +113,7 @@ export class ScrapeConfig {
   wait_for_selector?: string;
   session_sticky_proxy = false;
   screenshots?: Rec<any>;
-  screenshot_flags?: ScreenshotFlags[] | string[];
+  screenshot_flags?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | 'high_quality')[] | ScreenshotFlags[];
   webhook?: string;
   timeout?: number; // in milliseconds
   js_scenario?: Rec<any>;

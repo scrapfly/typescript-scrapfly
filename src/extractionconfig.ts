@@ -26,7 +26,7 @@ type ExtractionConfigOptions = {
   extraction_prompt?: string;
   extraction_model?: string;
   is_document_compressed?: boolean;
-  document_compression_format?: string | CompressionFormat;
+  document_compression_format?: 'gzip' | 'zstd' | 'deflate' | CompressionFormat;
   webhook?: string;
 };
 
@@ -40,7 +40,7 @@ export class ExtractionConfig {
   extraction_prompt?: string;
   extraction_model?: string;
   is_document_compressed?: boolean;
-  document_compression_format?: string | CompressionFormat;
+  document_compression_format?: 'gzip' | 'zstd' | 'deflate' | CompressionFormat;
   webhook?: string;
 
   constructor(options: ExtractionConfigOptions) {

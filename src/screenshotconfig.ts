@@ -34,14 +34,14 @@ export enum Format {
 
 type ScreenshotConfigOptions = {
   url: string;
-  format?: string | Format;
+  format?: 'jpg'| 'png' | 'webp'| 'gif' | Format;
   capture?: string;
   resolution?: string;
   country?: string;
   timeout?: number;
   rendering_wait?: number;
   wait_for_selector?: string;
-  options?: string[] | Options[];
+  options?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format')[] | Options[];
   auto_scroll?: boolean;
   js?: string;
   cache?: boolean;
@@ -52,14 +52,14 @@ type ScreenshotConfigOptions = {
 
 export class ScreenshotConfig {
   url: string;
-  format?: string | Format;
+  format?: 'jpg'| 'png' | 'webp'| 'gif' | Format;
   capture?: string;
   resolution?: string;
   country?: string = undefined;
   timeout?: number;
   rendering_wait?: number;
   wait_for_selector?: string;
-  options?: string[] | Options[];
+  options?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format')[] | Options[];
   auto_scroll?: boolean;
   js?: string;
   cache?: boolean;
