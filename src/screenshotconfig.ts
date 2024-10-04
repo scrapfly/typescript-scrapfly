@@ -41,7 +41,7 @@ type ScreenshotConfigOptions = {
   timeout?: number;
   rendering_wait?: number;
   wait_for_selector?: string;
-  options?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format')[] | Options[];
+  options?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | Options)[];
   auto_scroll?: boolean;
   js?: string;
   cache?: boolean;
@@ -59,7 +59,7 @@ export class ScreenshotConfig {
   timeout?: number;
   rendering_wait?: number;
   wait_for_selector?: string;
-  options?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format')[] | Options[];
+  options?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | Options)[];
   auto_scroll?: boolean;
   js?: string;
   cache?: boolean;
