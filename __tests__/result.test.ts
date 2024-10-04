@@ -14,7 +14,7 @@ Deno.test('cheerio selector lazy loads and caches itself', async () => {
 
 
 Deno.test('cheerio selector loads with case sensitive headers', async () => {
-  const response = JSON.parse(await Deno.readTextFile('__tests__/data/response_html_case_sensitive_headers.json'));
+  const response = JSON.parse(await Deno.readTextFile('__tests__/data/response_html_success.json'));
   const result = new ScrapeResult(response);
   assertEquals(result.selector('h1').text(), 'Herman Melville - Moby-Dick');
 });

@@ -34,14 +34,14 @@ export enum Format {
 
 type ScreenshotConfigOptions = {
   url: string;
-  format?: Format;
+  format?: 'jpg'| 'png' | 'webp'| 'gif' | Format;
   capture?: string;
   resolution?: string;
   country?: string;
   timeout?: number;
   rendering_wait?: number;
   wait_for_selector?: string;
-  options?: Options[];
+  options?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | Options)[];
   auto_scroll?: boolean;
   js?: string;
   cache?: boolean;
@@ -52,14 +52,14 @@ type ScreenshotConfigOptions = {
 
 export class ScreenshotConfig {
   url: string;
-  format?: Format;
+  format?: 'jpg'| 'png' | 'webp'| 'gif' | Format;
   capture?: string;
   resolution?: string;
   country?: string = undefined;
   timeout?: number;
   rendering_wait?: number;
   wait_for_selector?: string;
-  options?: Options[];
+  options?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | Options)[];
   auto_scroll?: boolean;
   js?: string;
   cache?: boolean;
@@ -69,18 +69,17 @@ export class ScreenshotConfig {
 
   constructor(options: ScreenshotConfigOptions) {
     this.validateOptions(options);
-    if (options.format && !Object.values(Format).includes(options.format)) {
-      throw new ScreenshotConfigError(`Invalid format param value: ${options.format}`);
+    if (options.format && !Object.values(Format).includes(options.format as Format)) {
+      throw new ScreenshotConfigError(`Invalid Format param value: ${options.format}`);
     }
     this.format = options.format ?? this.format;
-    // Validate options against the enum
     if (options.options) {
       options.options.forEach((opt) => {
-        if (!Object.values(Options).includes(opt)) {
-          throw new ScreenshotConfigError(`Invalid options param value: ${opt}`);
+        if (!Object.values(Options).includes(opt as Options)) {
+          throw new ScreenshotConfigError(`Invalid Options param value: ${opt}`);
         }
       });
-    }
+    }    
     this.url = options.url;
     this.format = options.format ?? this.format;
     this.capture = options.capture ?? this.capture;
