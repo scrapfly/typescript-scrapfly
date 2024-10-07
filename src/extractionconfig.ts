@@ -45,9 +45,14 @@ export class ExtractionConfig {
 
   constructor(options: ExtractionConfigOptions) {
     this.validateOptions(options);
-    if (options.document_compression_format && !Object.values(CompressionFormat).includes(options.document_compression_format as CompressionFormat)) {
-      throw new errors.ExtractionConfigError(`Invalid CompressionFormat param value: ${options.document_compression_format}`);
-    }    
+    if (
+      options.document_compression_format &&
+      !Object.values(CompressionFormat).includes(options.document_compression_format as CompressionFormat)
+    ) {
+      throw new errors.ExtractionConfigError(
+        `Invalid CompressionFormat param value: ${options.document_compression_format}`,
+      );
+    }
     this.body = options.body;
     this.content_type = options.content_type;
     this.url = options.url ?? this.url;

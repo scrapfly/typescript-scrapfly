@@ -34,7 +34,7 @@ export enum Format {
 
 type ScreenshotConfigOptions = {
   url: string;
-  format?: 'jpg'| 'png' | 'webp'| 'gif' | Format;
+  format?: 'jpg' | 'png' | 'webp' | 'gif' | Format;
   capture?: string;
   resolution?: string;
   country?: string;
@@ -52,7 +52,7 @@ type ScreenshotConfigOptions = {
 
 export class ScreenshotConfig {
   url: string;
-  format?: 'jpg'| 'png' | 'webp'| 'gif' | Format;
+  format?: 'jpg' | 'png' | 'webp' | 'gif' | Format;
   capture?: string;
   resolution?: string;
   country?: string = undefined;
@@ -79,7 +79,7 @@ export class ScreenshotConfig {
           throw new ScreenshotConfigError(`Invalid Options param value: ${opt}`);
         }
       });
-    }    
+    }
     this.url = options.url;
     this.format = options.format ?? this.format;
     this.capture = options.capture ?? this.capture;

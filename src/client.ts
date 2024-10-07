@@ -122,12 +122,12 @@ export class ScrapflyClient {
       content = await response.text();
       result.format = 'text';
     }
-    
+
     if (format === 'blob') {
       content = new Uint8Array(await response.arrayBuffer());
       result.format = 'binary';
     }
-    
+
     result.content = content;
     return result;
   }

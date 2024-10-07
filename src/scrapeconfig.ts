@@ -38,7 +38,7 @@ export enum Format {
 export enum FormatOption {
   NO_LINKS = 'no_links',
   NO_IMAGES = 'no_images',
-  ONLY_CONTENT = 'only_content'
+  ONLY_CONTENT = 'only_content',
 }
 
 type ScrapeConfigOptions = {
@@ -70,7 +70,8 @@ type ScrapeConfigOptions = {
   rendering_wait?: number;
   wait_for_selector?: string;
   screenshots?: Rec<any>;
-  screenshot_flags?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | 'high_quality' | ScreenshotFlags)[];
+  screenshot_flags?:
+    ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | 'high_quality' | ScreenshotFlags)[];
   session_sticky_proxy?: boolean;
   webhook?: string;
   timeout?: number;
@@ -113,7 +114,8 @@ export class ScrapeConfig {
   wait_for_selector?: string;
   session_sticky_proxy = false;
   screenshots?: Rec<any>;
-  screenshot_flags?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | 'high_quality' | ScreenshotFlags)[];
+  screenshot_flags?:
+    ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | 'high_quality' | ScreenshotFlags)[];
   webhook?: string;
   timeout?: number; // in milliseconds
   js_scenario?: Rec<any>;
@@ -202,7 +204,7 @@ export class ScrapeConfig {
             );
           }
         }
-      } else if (this.body && !this.data) {
+      } else if (this.body && !this.data && !this.headers['content-type']) {
         this.headers['content-type'] = 'text/plain';
       }
     }

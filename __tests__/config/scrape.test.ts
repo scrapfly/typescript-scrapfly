@@ -65,6 +65,17 @@ Deno.test('scrapeconfig POST/PUT/PATCH body defaults as content-type text/plain'
     assertEquals(config.body, 'foo+bar');
 });
 
+Deno.test('scrapeconfig POST/PUT/PATCH body does not override content-type when set', async () => {
+    const config = new ScrapeConfig({
+        url: 'http://httpbin.dev/get',
+        method: 'POST',
+        body: 'foo+bar',
+        headers: { 'content-type': 'application/json' },
+    });
+    assertEquals((config.headers || {})['content-type'], 'application/json');
+    assertEquals(config.body, 'foo+bar');
+});
+
 Deno.test('scrapeconfig POST/PUT/PATCH data encodes when formdata content-type is set', async () => {
     const config = new ScrapeConfig({
         url: 'http://httpbin.dev/get',
