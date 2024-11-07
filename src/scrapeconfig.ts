@@ -61,6 +61,10 @@ type ScrapeConfigOptions = {
   tags?: string[];
   format?: 'json' | 'text' | 'markdown' | 'clean_html' | 'raw' | Format;
   format_options?: ('no_links' | 'no_images' | 'only_content' | FormatOption)[];
+  extraction_template?: string; // saved template name
+  extraction_ephemeral_template?: object; // ephemeraly declared json template
+  extraction_prompt?: string;
+  extraction_model?: string;  
   correlation_id?: string;
   cookies?: Rec<string>;
   body?: string;
@@ -104,6 +108,10 @@ export class ScrapeConfig {
   tags: Set<string> = new Set<string>();
   format?: 'json' | 'text' | 'markdown' | 'clean_html' | 'raw' | Format;
   format_options?: ('no_links' | 'no_images' | 'only_content' | FormatOption)[];
+  extraction_template?: string; // saved template name
+  extraction_ephemeral_template?: object; // ephemeraly declared json template
+  extraction_prompt?: string;
+  extraction_model?: string;  
   correlation_id?: string;
   cookies?: Rec<string>;
   body?: string;
@@ -163,6 +171,10 @@ export class ScrapeConfig {
     this.tags = new Set(options.tags) ?? this.tags;
     this.format = options.format ?? this.format;
     this.format_options = options.format_options ?? this.format_options;
+    this.extraction_template = options.extraction_template ?? this.extraction_template;
+    this.extraction_ephemeral_template = options.extraction_ephemeral_template ?? this.extraction_ephemeral_template;
+    this.extraction_prompt = options.extraction_prompt ?? this.extraction_prompt;
+    this.extraction_model = options.extraction_model ?? this.extraction_model;    
     this.correlation_id = options.correlation_id ?? this.correlation_id;
     this.cookies = options.cookies
       ? Object.fromEntries(Object.entries(options.cookies).map(([k, v]) => [k.toLowerCase(), v]))
@@ -337,6 +349,27 @@ export class ScrapeConfig {
       if (this.format_options) {
         params.format += ':' + this.format_options.join(',');
       }
+    }
+    if (this.extraction_template && this.extraction_ephemeral_template) {
+      throw new ScrapeConfigError(
+        'You cannot pass both parameters extraction_template and extraction_ephemeral_template. You must choose',
+      );
+    }
+
+    if (this.extraction_template) {
+      params.extraction_template = this.extraction_template;
+    }
+
+    if (this.extraction_ephemeral_template) {
+      params.extraction_template = 'ephemeral:' + urlsafe_b64encode(JSON.stringify(this.extraction_ephemeral_template));
+    }
+
+    if (this.extraction_prompt) {
+      params.extraction_prompt = this.extraction_prompt;
+    }
+
+    if (this.extraction_model) {
+      params.extraction_model = this.extraction_model;
     }
     if (this.correlation_id) {
       params.correlation_id = this.correlation_id;

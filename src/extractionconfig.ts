@@ -1,5 +1,6 @@
 import * as errors from './errors.ts';
 import { urlsafe_b64encode } from './utils.ts';
+import { ExtractionConfigError } from './errors.ts';
 
 export enum CompressionFormat {
   /**
@@ -21,8 +22,8 @@ type ExtractionConfigOptions = {
   content_type: string;
   url?: string;
   charset?: string;
-  template?: string; // saved template name
-  ephemeral_template?: object; // ephemeraly declared json template
+  extraction_template?: string; // saved template name
+  extraction_ephemeral_template?: object; // ephemeraly declared json template
   extraction_prompt?: string;
   extraction_model?: string;
   is_document_compressed?: boolean;
@@ -35,8 +36,8 @@ export class ExtractionConfig {
   content_type: string;
   url?: string;
   charset?: string;
-  template?: string; // saved template name
-  ephemeral_template?: object; // ephemeraly declared json template
+  extraction_template?: string; // saved template name
+  extraction_ephemeral_template?: object; // ephemeraly declared json template
   extraction_prompt?: string;
   extraction_model?: string;
   is_document_compressed?: boolean;
@@ -57,8 +58,8 @@ export class ExtractionConfig {
     this.content_type = options.content_type;
     this.url = options.url ?? this.url;
     this.charset = options.charset ?? this.charset;
-    this.template = options.template ?? this.template;
-    this.ephemeral_template = options.ephemeral_template ?? this.ephemeral_template;
+    this.extraction_template = options.extraction_template ?? this.extraction_template;
+    this.extraction_ephemeral_template = options.extraction_ephemeral_template ?? this.extraction_ephemeral_template;
     this.extraction_prompt = options.extraction_prompt ?? this.extraction_prompt;
     this.extraction_model = options.extraction_model ?? this.extraction_model;
     this.is_document_compressed = options.is_document_compressed ?? this.is_document_compressed;
@@ -90,18 +91,18 @@ export class ExtractionConfig {
       params.charset = this.charset;
     }
 
-    if (this.template && this.ephemeral_template) {
-      throw new errors.ExtractionConfigError(
-        'You cannot pass both parameters template and ephemeral_template. You must choose',
+    if (this.extraction_template && this.extraction_ephemeral_template) {
+      throw new ExtractionConfigError(
+        'You cannot pass both parameters extraction_template and extraction_ephemeral_template. You must choose',
       );
     }
 
-    if (this.template) {
-      params.extraction_template = this.template;
+    if (this.extraction_template) {
+      params.extraction_template = this.extraction_template;
     }
 
-    if (this.ephemeral_template) {
-      params.extraction_template = 'ephemeral:' + urlsafe_b64encode(JSON.stringify(this.ephemeral_template));
+    if (this.extraction_ephemeral_template) {
+      params.extraction_template = 'ephemeral:' + urlsafe_b64encode(JSON.stringify(this.extraction_ephemeral_template));
     }
 
     if (this.extraction_prompt) {

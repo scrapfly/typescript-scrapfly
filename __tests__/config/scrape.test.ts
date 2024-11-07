@@ -3,6 +3,7 @@ import { HttpMethod } from '../../src/types.ts';
 import { ScrapeConfigError } from '../../src/errors.ts';
 import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
+const input_content_type = 'text/html';
 
 Deno.test('scrapeconfig loads', () => {
     const config = new ScrapeConfig({ url: 'http://httpbin.dev/get' });
@@ -14,8 +15,6 @@ Deno.test('scrapeconfig throws on unknown options', () => {
         new ScrapeConfig({ url: 'http://httpbin.dev/get', foobar: 'baz' } as any);
     }, ScrapeConfigError, "Invalid option provided: foobar");
 });
-
-
 
 Deno.test('scrapeconfig allowed methods', () => {
     (['GET', 'POST', 'PUT', 'PATCH', 'HEAD'] as HttpMethod[]).forEach((method) => {
@@ -357,6 +356,58 @@ Deno.test('url param generation: proxy_pool sets', () => {
         key: '1234',
         url: 'http://httpbin.dev/get',
         proxy_pool: 'public_residential_pool',
+    });
+});
+
+Deno.test('url param generation: sets extraction_template', async () => {
+    const config = new ScrapeConfig({
+        url: 'http://httpbin.dev/get',
+        extraction_template: 'my_template',
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: 'http://httpbin.dev/get',
+        extraction_template: 'my_template',
+    });
+});
+
+Deno.test('url param generation: sets extraction_ephemeral_template', async () => {
+    const config = new ScrapeConfig({
+        url: 'http://httpbin.dev/get',
+        extraction_ephemeral_template: { source: 'html', selectors: [] },
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: 'http://httpbin.dev/get',
+        extraction_template: 'ephemeral:eyJzb3VyY2UiOiJodG1sIiwic2VsZWN0b3JzIjpbXX0',
+    });
+});
+
+Deno.test('url param generation: sets extraction_prompt', async () => {
+    const config = new ScrapeConfig({
+        url: 'http://httpbin.dev/get',
+        extraction_prompt: 'summarize the document',
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: 'http://httpbin.dev/get',
+        extraction_prompt: 'summarize the document',
+    });
+});
+
+Deno.test('url param generation: sets extraction_model', async () => {
+    const config = new ScrapeConfig({
+        url: 'http://httpbin.dev/get',
+        extraction_model: 'review_list',
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: 'http://httpbin.dev/get',
+        extraction_model: 'review_list',
     });
 });
 

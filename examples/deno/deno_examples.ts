@@ -190,7 +190,7 @@ export async function extractionTemplates(apiKey: string){
       body: html,
       content_type: "text/html",
       // provide template:
-      ephemeral_template: template,
+      extraction_ephemeral_template: template,
     })
   );
   console.log('product  extract');
