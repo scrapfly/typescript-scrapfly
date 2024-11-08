@@ -29,6 +29,10 @@ type ExtractionConfigOptions = {
   is_document_compressed?: boolean;
   document_compression_format?: 'gzip' | 'zstd' | 'deflate' | CompressionFormat;
   webhook?: string;
+
+  // deprecated options
+  template?: string;
+  ephemeral_template?: object;
 };
 
 export class ExtractionConfig {
@@ -44,8 +48,29 @@ export class ExtractionConfig {
   document_compression_format?: 'gzip' | 'zstd' | 'deflate' | CompressionFormat;
   webhook?: string;
 
+  // // deprecated options
+  template?: string;
+  ephemeral_template?: object;
+
   constructor(options: ExtractionConfigOptions) {
     this.validateOptions(options);
+    if (options.template) {
+      console.warn(
+        `Deprecation warning: 'template' is deprecated. Use 'extraction_template' instead.`
+      );
+      this.extraction_template = options.template;
+    } else {
+      this.extraction_template = options.extraction_template;
+    }
+    if (options.ephemeral_template) {
+      console.warn(
+        `Deprecation warning: 'ephemeral_template' is deprecated. Use 'extraction_ephemeral_template' instead.`
+      );
+      this.extraction_ephemeral_template = options.ephemeral_template;
+    } else {
+      this.extraction_ephemeral_template = options.extraction_ephemeral_template;
+    }
+
     if (
       options.document_compression_format &&
       !Object.values(CompressionFormat).includes(options.document_compression_format as CompressionFormat)
