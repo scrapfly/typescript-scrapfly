@@ -39,8 +39,8 @@ Deno.test('extract: fails due to invalid config', async () => {
                 new ExtractionConfig({
                     body: html,
                     content_type: 'text/html',
-                    ephemeral_template: { source: 'html' },
-                    template: 'template',
+                    extraction_ephemeral_template: { source: 'html' },
+                    extraction_template: 'template',
                 }),
             );
         },

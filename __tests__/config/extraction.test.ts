@@ -58,11 +58,11 @@ Deno.test('url param generation: sets charset', async () => {
     });
 });
 
-Deno.test('url param generation: sets template', async () => {
+Deno.test('url param generation: sets extraction_template', async () => {
     const config = new ExtractionConfig({
         body: input_html,
         content_type: input_content_type,
-        template: 'my_template',
+        extraction_template: 'my_template',
     });
     const params = config.toApiParams({ key: '1234' });
     assertEquals(params, {
@@ -72,11 +72,11 @@ Deno.test('url param generation: sets template', async () => {
     });
 });
 
-Deno.test('url param generation: sets ephemeral_template', async () => {
+Deno.test('url param generation: sets extraction_ephemeral_template', async () => {
     const config = new ExtractionConfig({
         body: input_html,
         content_type: input_content_type,
-        ephemeral_template: { source: 'html', selectors: [] },
+        extraction_ephemeral_template: { source: 'html', selectors: [] },
     });
     const params = config.toApiParams({ key: '1234' });
     assertEquals(params, {

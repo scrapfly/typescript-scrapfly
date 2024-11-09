@@ -5,7 +5,7 @@
         "types": ["node", "jest"],
         "skipLibCheck": true,
         "module": "ESNext",
-        "lib": ["ES2022", "ESNext"],
+        "lib": ["ES2022", "ESNext", "dom"],
         "moduleResolution": "Node",
         "rootDir": ".",
         "outDir": "build",

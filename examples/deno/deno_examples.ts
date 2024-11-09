@@ -81,6 +81,28 @@ export async function JSRender(apiKey: string) {
   console.log(scrape_result.result.browser_data);
 }
 
+/* Use AI extraction capabilities with the the web scraping API
+ * all Extraction API methods are supported, see below examples for more
+ */
+export async function scrapeExtraction(apiKey: string) {
+  const client = new ScrapflyClient({ key: apiKey});
+
+  let scrape_result = await client.scrape(
+    new ScrapeConfig({
+      url: 'https://web-scraping.dev/product/1',
+      // enable browsers:
+      render_js: true,
+      // use LLM prompt for auto parsing
+      extraction_prompt: "Extract the product specification in json format",
+    })
+  );
+
+  // access the extraction result
+  console.log("extraction result:");
+  console.log(scrape_result.result.extracted_data);
+}
+
+
 /* Scrapfly Extraction API offers LLM (Language Learning Model) based extraction
  * This example demonstrates how to use LLM query HTML files
  * https://scrapfly.io/docs/extraction-api/llm-prompt
@@ -190,7 +212,7 @@ export async function extractionTemplates(apiKey: string){
       body: html,
       content_type: "text/html",
       // provide template:
-      ephemeral_template: template,
+      extraction_ephemeral_template: template,
     })
   );
   console.log('product  extract');
