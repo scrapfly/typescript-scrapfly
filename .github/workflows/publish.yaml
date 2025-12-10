@@ -7,6 +7,10 @@ on:
     tags:
       - 'v*' # This will run the workflow when you push a tag with a version format, like v1.0.0
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
