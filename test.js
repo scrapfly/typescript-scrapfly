@@ -1,11 +1,11 @@
-import { ScrapflyClient, ScrapeConfig, ScreenshotConfig, ExtractionConfig, log } from 'jsr:@scrapfly/scrapfly-sdk';
+const { ScrapflyClient, ScrapeConfig, ScreenshotConfig, ExtractionConfig, log } = require('./npm/esm/main.js');
 // You can enable debug logs to see more details
 log.setLevel('DEBUG');
 
 
 /* To start, you can always get your account information using the .account() method
  */
-export async function getAccount(apiKey: string) {
+async function getAccount(apiKey) {
   const client = new ScrapflyClient({ key: apiKey});
   const account = await client.account();
   console.log('account');
@@ -14,7 +14,7 @@ export async function getAccount(apiKey: string) {
 
 /* For a basic scrape the only required parameter is the URL
  */
-export async function basicGet(apiKey: string) {
+async function basicGet(apiKey) {
   const client = new ScrapflyClient({ key: apiKey});
 
   let scrape_result = await client.scrape(
@@ -46,7 +46,7 @@ export async function basicGet(apiKey: string) {
 /* Enabling js_render enabled scrapfly cloud browsers and enables
  * a bunch of other features like browser control, js execution, screenshots, etc.
  */
-export async function JSRender(apiKey: string) {
+async function JSRender(apiKey) {
   const client = new ScrapflyClient({ key: apiKey});
 
   let scrape_result = await client.scrape(
@@ -84,7 +84,7 @@ export async function JSRender(apiKey: string) {
 /* Use AI extraction capabilities with the the web scraping API
  * all Extraction API methods are supported, see below examples for more
  */
-export async function scrapeExtraction(apiKey: string) {
+async function scrapeExtraction(apiKey) {
   const client = new ScrapflyClient({ key: apiKey});
 
   let scrape_result = await client.scrape(
@@ -102,12 +102,11 @@ export async function scrapeExtraction(apiKey: string) {
   console.log(scrape_result.result.extracted_data);
 }
 
-
 /* Scrapfly Extraction API offers LLM (Language Learning Model) based extraction
  * This example demonstrates how to use LLM query HTML files
  * https://scrapfly.io/docs/extraction-api/llm-prompt
  */
-export async function extractionLLM(apiKey: string) {
+async function extractionLLM(apiKey) {
   const client = new ScrapflyClient({ key: apiKey});
 
   // First, get HTML either from Web Scraping API or your own storage
@@ -149,7 +148,7 @@ export async function extractionLLM(apiKey: string) {
  * Which can extract common web objects like products, articles etc.
  * https://scrapfly.io/docs/extraction-api/automatic-ai
  */
-export async function extractionAutoExtract(apiKey: string){
+async function extractionAutoExtract(apiKey){
   const client = new ScrapflyClient({ key: apiKey});
 
   // First, get HTML either from Web Scraping API or your own storage
@@ -179,7 +178,7 @@ export async function extractionAutoExtract(apiKey: string){
  * Use JSON schemas to markup extraction rules using XPath or CSS selectors
  * https://scrapfly.io/docs/extraction-api/rules-and-template
  */
-export async function extractionTemplates(apiKey: string){
+async function extractionTemplates(apiKey){
   const client = new ScrapflyClient({ key: apiKey});
 
   // First, get HTML either from Web Scraping API or your own storage
@@ -223,7 +222,7 @@ export async function extractionTemplates(apiKey: string){
  * capture screenshots of full pages or specific sections
  * https://scrapfly.io/docs/screenshot-api/getting-started
  */
-export async function screenshot(apiKey: string) {
+async function screenshot(apiKey) {
   const client = new ScrapflyClient({ key: apiKey});
 
   let screenshot_result = await client.screenshot(
@@ -241,8 +240,7 @@ export async function screenshot(apiKey: string) {
       // for pages that require scrolling to load elements (like endless paging) use 
       auto_scroll: true,
 
-      // simulate vision deficiency for accessibility testing
-      // vision_deficiency: 'deuteranopia',      
+      vision_deficiency: 'deuteranopia',
     }),
   );
 
@@ -254,35 +252,43 @@ export async function screenshot(apiKey: string) {
   console.log("saved screenshot to ./screenshot.jpg");
 }
 
+module.exports = {
+  getAccount,
+  basicGet,
+  JSRender,
+  scrapeExtraction,
+  extractionLLM,
+  extractionAutoExtract,
+  extractionTemplates,
+  screenshot,
+};
+
 
 // CLI entry point
-async function main(): Promise<void> {
-    if (Deno.args.length < 2) {
-        console.log(
-            `Usage: deno run --allow-net deno_examples.ts <functionName> <apiKey>\n` +
-            `getAccount - Get account information\n` +
-            `basicGet - Basic scrape\n` +
-            `JSRender - Scrape with JS rendering\n` +
-            `extractionLLM - Extract content using LLM queries\n` +
-            `extractionAutoExtract - Extract common web objects using Auto Extract\n` + 
-            `extractionTemplates - Extract content using Template engine\n` + 
-            `screenshots - Capture screenshots using Screenshot API\n`
-        );
-        return;
+async function main() {
+  if (require.main === module) {
+    if (process.argv.length < 4) {
+      console.log(
+        `Usage: node commonjs_examples.js <functionName> <apiKey>\n` +
+        `getAccount - Get account information\n` +
+        `basicGet - Basic scrape\n` +
+        `JSRender - Scrape with JS rendering\n` +
+        `extractionLLM - Extract content using LLM queries\n` +
+        `extractionAutoExtract - Extract common web objects using Auto Extract\n` + 
+        `extractionTemplates - Extract content using Template engine\n` + 
+        `screenshots - Capture screenshots using Screenshot API\n`
+      );
+      return
     }
-    const [functionName, apiKey] = Deno.args;
+    const args = process.argv.slice(2);
+    const functionName = args[0];
+    const apiKey = args[1];
 
-    // Dynamically import the current module
-    const module = await import('./deno_examples.ts');
-
-    if (module[functionName]) {
-        (module[functionName] as Function)(apiKey);
+    if (module.exports[functionName]) {
+      module.exports[functionName](apiKey);
     } else {
-        console.log(`Function ${functionName} not found.`);
+      console.log(`Function ${functionName} not found.`);
     }
+  }
 }
-
-// Check if the script is being run directly
-if (import.meta.main) {
-    main();
-}
+main();

@@ -1,4 +1,4 @@
-import { ScreenshotConfig, Format, Options } from '../../src/screenshotconfig.ts';
+import { ScreenshotConfig, Format, Options, VisionDeficiency } from '../../src/screenshotconfig.ts';
 import { ScreenshotConfigError } from '../../src/errors.ts';
 import { assertEquals, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
 
@@ -228,5 +228,18 @@ Deno.test('url param generation: ignores cache_ttl and cache_clear with cache di
     assertEquals(params, {
         key: '1234',
         url: input_url,
+    });
+});
+
+Deno.test('url param generation: sets vision_deficiency', () => {
+    const config = new ScreenshotConfig({
+        url: input_url,
+        vision_deficiency: VisionDeficiency.DEUTERANOPIA,
+    });
+    const params = config.toApiParams({ key: '1234' });
+    assertEquals(params, {
+        key: '1234',
+        url: input_url,
+        vision_deficiency: 'deuteranopia',
     });
 });

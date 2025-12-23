@@ -239,6 +239,9 @@ async function screenshot(apiKey) {
       
       // for pages that require scrolling to load elements (like endless paging) use 
       auto_scroll: true,
+
+      // simulate vision deficiency for accessibility testing
+      // vision_deficiency: 'deuteranopia',
     }),
   );
 

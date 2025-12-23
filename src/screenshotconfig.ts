@@ -32,6 +32,23 @@ export enum Format {
   GIF = 'gif',
 }
 
+export enum VisionDeficiency {
+  /**
+    Simulate vision deficiency for accessibility testing (WCAG compliance)
+    Attributes:
+      DEUTERANOPIA: Red-green color blindness (green-blind), affects ~6% of males.
+      PROTANOPIA: Red-green color blindness (red-blind), affects ~2% of males
+      TRITANOPIA: Simulate color blindness.
+      ACHROMATOPSIA: Complete color blindness (monochromacy), affects ~0.003%
+      BLURREDVISION: Blurred/unfocused vision, affects ~2.2B globally
+   */
+  DEUTERANOPIA = 'deuteranopia',
+  PROTANOPIA = 'protanopia',
+  TRITANOPIA = 'tritanopia',
+  ACHROMATOPSIA = 'achromatopsia',
+  BLURREDVISION = 'blurredvision',
+}
+
 type ScreenshotConfigOptions = {
   url: string;
   format?: 'jpg' | 'png' | 'webp' | 'gif' | Format;
@@ -47,6 +64,7 @@ type ScreenshotConfigOptions = {
   cache?: boolean;
   cache_ttl?: number;
   cache_clear?: boolean;
+  vision_deficiency?: 'deuteranopia' | 'protanopia' | 'tritanopia' | 'achromatopsia' | 'blurredvision' | VisionDeficiency;
   webhook?: string;
 };
 
@@ -65,6 +83,7 @@ export class ScreenshotConfig {
   cache?: boolean;
   cache_ttl?: number;
   cache_clear?: boolean;
+  vision_deficiency?: 'deuteranopia' | 'protanopia' | 'tritanopia' | 'achromatopsia' | 'blurredvision' | VisionDeficiency;
   webhook?: string;
 
   constructor(options: ScreenshotConfigOptions) {
@@ -94,6 +113,7 @@ export class ScreenshotConfig {
     this.cache = options.cache ?? this.cache;
     this.cache_ttl = options.cache_ttl ?? this.cache_ttl;
     this.cache_clear = options.cache_clear ?? this.cache_clear;
+    this.vision_deficiency = options.vision_deficiency ?? this.vision_deficiency;
     this.webhook = options.webhook;
   }
 
@@ -167,6 +187,10 @@ export class ScreenshotConfig {
       if (this.cache_clear) {
         log.warn('Params "cache_clear" is ignored. Works only if cache is enabled');
       }
+    }
+
+    if (this.vision_deficiency) {
+      params.vision_deficiency = this.vision_deficiency;
     }
 
     if (this.webhook) {
