@@ -36,17 +36,19 @@ export enum VisionDeficiency {
   /**
     Simulate vision deficiency for accessibility testing (WCAG compliance)
     Attributes:
-      DEUTERANOPIA: Red-green color blindness (green-blind), affects ~6% of males.
-      PROTANOPIA: Red-green color blindness (red-blind), affects ~2% of males
-      TRITANOPIA: Simulate color blindness.
-      ACHROMATOPSIA: Complete color blindness (monochromacy), affects ~0.003%
-      BLURREDVISION: Blurred/unfocused vision, affects ~2.2B globally
+      DEUTERANOPIA: Difficulty distinguishing green from red; green appears beige/gray
+      PROTANOPIA: Reduced sensitivity to red light; red appears dark/black
+      TRITANOPIA: Difficulty distinguishing blue from yellow and violet from red
+      ACHROMATOPSIA: Complete inability to perceive color; sees only in grayscale
+      REDUCED_CONTRAST: Simulates reduced contrast due to aging, low light, or other factors
+      BLURRED_VISION: Simulates uncorrected refractive errors or age-related vision loss
    */
   DEUTERANOPIA = 'deuteranopia',
   PROTANOPIA = 'protanopia',
   TRITANOPIA = 'tritanopia',
   ACHROMATOPSIA = 'achromatopsia',
-  BLURREDVISION = 'blurredvision',
+  REDUCED_CONTRAST = 'reducedContrast',
+  BLURRED_VISION = 'blurredVision',
 }
 
 type ScreenshotConfigOptions = {
