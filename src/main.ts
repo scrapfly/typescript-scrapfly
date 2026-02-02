@@ -13,3 +13,5 @@ export { ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
 
 export type { AccountData, ConfigData, ContextData, ResultData, ScreenshotMetadata } from './result.ts';
 export { log } from './logger.ts';
+
+export { createServer, verifySignature } from './webhookserver.ts';
