@@ -28,6 +28,9 @@ await build({
     homepage: "https://scrapfly.io/",
     main: "./esm/main.js", 
     types: "./esm/main.d.ts",
+    devDependencies: {
+      "@types/express": "^4.17.21",
+    },
   },
   postBuild: async () => {
     Deno.copyFileSync("LICENSE", "npm/LICENSE");
