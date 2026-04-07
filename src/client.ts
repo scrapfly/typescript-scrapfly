@@ -1,26 +1,35 @@
 import { path } from './deps.ts';
-import { mkdir, writeFile } from './polyfill.ts';
+import { mkdir, writeFile, readFileSync } from './polyfill.ts';
 import { fetchRetry } from './utils.ts';
 import * as errors from './errors.ts';
 import type { ScrapeConfig } from './scrapeconfig.ts';
 import type { ScreenshotConfig } from './screenshotconfig.ts';
 import type { ExtractionConfig } from './extractionconfig.ts';
+import { BrowserConfig } from './browserconfig.ts';
 import { type AccountData, ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
 import { log } from './logger.ts';
 import type { Rec } from './types.ts';
 
 export class ScrapflyClient {
   public HOST = 'https://api.scrapfly.io';
+  public CLOUD_BROWSER_HOST = 'wss://browser.scrapfly.io';
+  public CLOUD_BROWSER_API_HOST = 'https://browser.scrapfly.io';
   private key: string;
   private ua: string;
+  private cloudBrowserHost: string;
+  private cloudBrowserApiHost: string;
   fetch = fetchRetry;
 
-  constructor(options: { key: string }) {
+  constructor(options: { key: string; cloudBrowserHost?: string }) {
     if (typeof options.key !== 'string' || options.key.trim() === '') {
       throw new errors.BadApiKeyError('Invalid key. Key must be a non-empty string');
     }
     this.key = options.key;
     this.ua = 'Typescript Scrapfly SDK';
+    this.cloudBrowserHost = options.cloudBrowserHost || this.CLOUD_BROWSER_HOST;
+    this.cloudBrowserApiHost = options.cloudBrowserHost
+      ? options.cloudBrowserHost.replace('wss://', 'https://')
+      : this.CLOUD_BROWSER_API_HOST;
   }
 
   /**
@@ -410,5 +419,261 @@ export class ScrapflyClient {
     }
     const result = await this.handleExtractionResponse(response);
     return result;
+  }
+
+  // --- Cloud Browser ---
+
+  /**
+   * Get the WebSocket URL for a Cloud Browser session.
+   */
+  cloudBrowser(config?: BrowserConfig): string {
+    const browserConfig = config || new BrowserConfig();
+    return browserConfig.websocketUrl(this.key, this.cloudBrowserHost);
+  }
+
+  /**
+   * Call the Cloud Browser Unblock API.
+   */
+  async cloudBrowserUnblock(options: {
+    url: string;
+    proxy_pool?: string;
+    country?: string;
+    os?: string;
+    timeout?: number;
+    browser_timeout?: number;
+    headers?: Record<string, string>;
+    body?: string;
+    method?: string;
+  }): Promise<{ ws_url: string; session_id: string; run_id: string }> {
+    const proxyPoolMap: Record<string, string> = {
+      datacenter: 'public_datacenter_pool',
+      residential: 'public_residential_pool',
+    };
+
+    const jsonBody: Record<string, unknown> = { url: options.url };
+    if (options.proxy_pool) jsonBody.proxy_pool = proxyPoolMap[options.proxy_pool] || options.proxy_pool;
+    if (options.country) jsonBody.country = options.country;
+    if (options.os) jsonBody.os = options.os;
+    if (options.timeout) jsonBody.timeout = options.timeout;
+    if (options.browser_timeout) jsonBody.browser_timeout = options.browser_timeout;
+    if (options.headers) jsonBody.headers = options.headers;
+    if (options.body) jsonBody.body = options.body;
+    if (options.method) jsonBody.method = options.method;
+
+    const url = new URL(this.cloudBrowserApiHost + '/unblock');
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'user-agent': this.ua,
+      },
+      body: JSON.stringify(jsonBody),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Unblock failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { ws_url: string; session_id: string; run_id: string };
+  }
+
+  /**
+   * Stop a Cloud Browser session.
+   */
+  async cloudBrowserSessionStop(sessionId: string): Promise<void> {
+    const url = new URL(this.cloudBrowserApiHost + '/session/' + sessionId + '/stop');
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Session stop failed: ${response.status} ${await response.text()}`);
+    }
+  }
+
+  /**
+   * List all browser extensions.
+   */
+  async cloudBrowserExtensionList(): Promise<{ extensions: any[]; quota: { used: number; limit: number } }> {
+    const url = new URL(this.cloudBrowserApiHost + '/extension');
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'GET',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Extension list failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { extensions: any[]; quota: { used: number; limit: number } };
+  }
+
+  /**
+   * Delete a browser extension.
+   */
+  async cloudBrowserExtensionDelete(extensionId: string): Promise<{ success: boolean; message: string }> {
+    const url = new URL(this.cloudBrowserApiHost + '/extension/' + extensionId);
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'DELETE',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Extension delete failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { success: boolean; message: string };
+  }
+
+  /**
+   * Get details of a specific browser extension.
+   */
+  async cloudBrowserExtensionGet(extensionId: string): Promise<Record<string, any>> {
+    const url = new URL(this.cloudBrowserApiHost + '/extension/' + extensionId);
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'GET',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Extension get failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as Record<string, any>;
+  }
+
+  /**
+   * Upload a browser extension from a local file (.zip or .crx).
+   * Pass a file path — the file is read and sent as multipart/form-data.
+   */
+  async cloudBrowserExtensionUpload(filePath: string): Promise<{ extension: Record<string, any>; is_update: boolean }> {
+    const fileBytes = readFileSync(filePath);
+    const fileName = filePath.split('/').pop() || filePath.split('\\').pop() || 'extension.zip';
+    const boundary = '----ScrapflyBoundary' + Date.now();
+
+    const encoder = new TextEncoder();
+    const header = encoder.encode(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`
+    );
+    const footer = encoder.encode(`\r\n--${boundary}--\r\n`);
+
+    const body = new Uint8Array(header.length + fileBytes.length + footer.length);
+    body.set(header, 0);
+    body.set(fileBytes, header.length);
+    body.set(footer, header.length + fileBytes.length);
+
+    const url = new URL(this.cloudBrowserApiHost + '/extension');
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers: {
+        'content-type': `multipart/form-data; boundary=${boundary}`,
+        'user-agent': this.ua,
+      },
+      body: body,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Extension upload failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { extension: Record<string, any>; is_update: boolean };
+  }
+
+  /**
+   * Install a browser extension from a URL (.crx file).
+   * URL-based extensions auto-update on each browser session start.
+   */
+  async cloudBrowserExtensionUploadFromUrl(extensionUrl: string): Promise<{ extension: Record<string, any>; is_update: boolean }> {
+    const url = new URL(this.cloudBrowserApiHost + '/extension');
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'user-agent': this.ua,
+      },
+      body: JSON.stringify({ extension_url: extensionUrl }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Extension upload from URL failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { extension: Record<string, any>; is_update: boolean };
+  }
+
+  /**
+   * Download a debug session recording video.
+   * Returns the video as an ArrayBuffer (stream from server).
+   */
+  async cloudBrowserVideo(runId: string): Promise<{ data: ArrayBuffer; filename: string }> {
+    const url = new URL(this.cloudBrowserApiHost + '/run/' + runId + '/video');
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'GET',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Video download failed: ${response.status} ${await response.text()}`);
+    }
+
+    const filename = runId + '.webm';
+    return { data: await response.arrayBuffer(), filename };
+  }
+
+  /**
+   * Get playback info for a debug session recording.
+   */
+  async cloudBrowserPlayback(runId: string): Promise<Record<string, any>> {
+    const url = new URL(this.cloudBrowserApiHost + '/run/' + runId + '/playback');
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'GET',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Playback get failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as Record<string, any>;
+  }
+
+  /**
+   * List all running Cloud Browser sessions.
+   */
+  async cloudBrowserSessions(): Promise<{ sessions: any[]; total: number }> {
+    const url = new URL(this.cloudBrowserApiHost + '/sessions');
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'GET',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Sessions list failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { sessions: any[]; total: number };
   }
 }

@@ -8,3 +8,4 @@ cov_profile
 .history
 examples/**/package.json
 examples/**/package-lock.json
+deno.lock

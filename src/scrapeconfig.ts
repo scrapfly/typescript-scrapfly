@@ -83,6 +83,7 @@ type ScrapeConfigOptions = {
   os?: string;
   lang?: string[];
   auto_scroll?: boolean;
+  browser_brand?: string;
 };
 
 export class ScrapeConfig {
@@ -130,6 +131,7 @@ export class ScrapeConfig {
   lang?: string[];
   os?: string;
   auto_scroll?: boolean;
+  browser_brand?: string;
 
   constructor(options: ScrapeConfigOptions) {
     this.validateOptions(options);
@@ -192,6 +194,7 @@ export class ScrapeConfig {
     this.os = options.os ?? this.os;
     this.lang = options.lang ?? this.lang;
     this.auto_scroll = options.auto_scroll ?? this.auto_scroll;
+    this.browser_brand = options.browser_brand ?? this.browser_brand;
     this.dns = options.dns ?? this.dns;
     this.ssl = options.ssl ?? this.ssl;
     this.debug = options.debug ?? this.debug;
@@ -395,6 +398,9 @@ export class ScrapeConfig {
     }
     if (this.os !== undefined) {
       params.os = this.os;
+    }
+    if (this.browser_brand !== undefined) {
+      params.browser_brand = this.browser_brand;
     }
 
     return params;

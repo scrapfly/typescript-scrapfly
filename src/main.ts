@@ -7,6 +7,7 @@ export {
 } from './scrapeconfig.ts';
 export { Format as ScreenshotFormat, Options as ScreenshotOptions, ScreenshotConfig } from './screenshotconfig.ts';
 export { ExtractionConfig } from './extractionconfig.ts';
+export { BrowserConfig, ProxyPool, OperatingSystem } from './browserconfig.ts';
 export * as errors from './errors.ts';
 
 export { ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
