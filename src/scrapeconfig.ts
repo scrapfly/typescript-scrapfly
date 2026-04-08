@@ -274,6 +274,9 @@ export class ScrapeConfig {
     if (this.timeout) {
       params.timeout = this.timeout;
     }
+    if (this.cost_budget !== undefined) {
+      params.cost_budget = this.cost_budget;
+    }
     if (this.render_js === true) {
       params.render_js = true;
       if (this.wait_for_selector !== undefined) {
