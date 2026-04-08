@@ -30,12 +30,15 @@ export async function fetchRetry(
       // XXX: note that cloudflare workers don't support init options
       const { url, ...reqInit } = config;
       // The `body` field on RequestOptions is typed as string | Uint8Array for
-      // historical reasons (pre-DOM type merging). Coerce to BodyInit so the
-      // DOM fetch() type accepts it without complaint.
+      // historical reasons. The dnt (deno-to-node) build does not expose the
+      // DOM `BodyInit` alias in every lib target, so we cast to `any` here to
+      // stay portable across Deno, Node, Bun and Cloudflare Workers. The
+      // runtime values (string | Uint8Array) are all valid fetch body inputs.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const init: RequestInit = {
         method: reqInit.method,
         headers: reqInit.headers,
-        body: reqInit.body as BodyInit | undefined,
+        body: reqInit.body as any,
       };
       const response = await fetch(new Request(url, init));
       // retry 5xx status codes
