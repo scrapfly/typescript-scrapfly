@@ -847,85 +847,6 @@ export class ScrapflyClient {
     }
     return response.ok;
   }
-}
-
-// ---------------------------------------------------------------------------
-// multipart/related parser
-// ---------------------------------------------------------------------------
-//
-// Tiny inline parser for the response of `POST /crawl/{uuid}/contents/batch`.
-// Avoids pulling in a multipart npm dep so the SDK stays dependency-free.
-//
-// Each part has at minimum a `Content-Location: <url>` header and a body. The
-// `Content-Type` may also be set, indicating the format. We map URL → format → body
-// using the `formats` argument as the inferred-format fallback when the part has
-// no `Content-Type`.
-
-function parseMultipartRelated(
-  body: string,
-  contentType: string,
-  formats: string[],
-): Record<string, Record<string, string>> {
-  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;\s]+))/);
-  if (!boundaryMatch) {
-    throw new errors.ApiHttpClientError(
-      `crawlContentsBatch: response has no multipart boundary in content-type "${contentType}"`,
-    );
-  }
-  const boundary = boundaryMatch[1] ?? boundaryMatch[2];
-  const delimiter = `--${boundary}`;
-  const result: Record<string, Record<string, string>> = {};
-
-  // Split on the delimiter; first segment is the preamble (ignored), last is the
-  // closing `--` (also ignored).
-  const segments = body.split(delimiter);
-  for (let i = 1; i < segments.length; i++) {
-    let segment = segments[i];
-    // Strip leading CRLF after the boundary
-    if (segment.startsWith('\r\n')) segment = segment.slice(2);
-    else if (segment.startsWith('\n')) segment = segment.slice(1);
-    // The closing boundary is `--{boundary}--`; segment starts with `--` then EOL
-    if (segment.startsWith('--')) break;
-    // Trim trailing CRLF before the next boundary
-    if (segment.endsWith('\r\n')) segment = segment.slice(0, -2);
-    else if (segment.endsWith('\n')) segment = segment.slice(0, -1);
-
-    // Header/body split: first blank line
-    const headerEnd = segment.indexOf('\r\n\r\n');
-    const altHeaderEnd = headerEnd === -1 ? segment.indexOf('\n\n') : headerEnd;
-    if (altHeaderEnd === -1) continue;
-    const headersRaw = segment.slice(0, altHeaderEnd);
-    const partBody = segment.slice(altHeaderEnd + (headerEnd === -1 ? 2 : 4));
-
-    // Parse headers
-    let url: string | undefined;
-    let format: string | undefined;
-    for (const line of headersRaw.split(/\r?\n/)) {
-      const colon = line.indexOf(':');
-      if (colon === -1) continue;
-      const name = line.slice(0, colon).trim().toLowerCase();
-      const value = line.slice(colon + 1).trim();
-      if (name === 'content-location') url = value;
-      else if (name === 'content-type') format = inferFormatFromContentType(value);
-    }
-    if (!url) continue;
-    if (!format) {
-      // Fall back to the first requested format if the part has no content-type
-      format = formats[0];
-    }
-    if (!result[url]) result[url] = {};
-    result[url][format] = partBody;
-  }
-  return result;
-}
-
-function inferFormatFromContentType(ct: string): string | undefined {
-  const lc = ct.toLowerCase().split(';')[0].trim();
-  if (lc === 'text/html') return 'html';
-  if (lc === 'text/markdown') return 'markdown';
-  if (lc === 'text/plain') return 'text';
-  if (lc === 'application/json') return 'json';
-  return undefined;
   // --- Cloud Browser ---
 
   /**
@@ -1181,4 +1102,83 @@ function inferFormatFromContentType(ct: string): string | undefined {
     }
     return await response.json() as { sessions: any[]; total: number };
   }
+}
+
+// ---------------------------------------------------------------------------
+// multipart/related parser
+// ---------------------------------------------------------------------------
+//
+// Tiny inline parser for the response of `POST /crawl/{uuid}/contents/batch`.
+// Avoids pulling in a multipart npm dep so the SDK stays dependency-free.
+//
+// Each part has at minimum a `Content-Location: <url>` header and a body. The
+// `Content-Type` may also be set, indicating the format. We map URL → format → body
+// using the `formats` argument as the inferred-format fallback when the part has
+// no `Content-Type`.
+
+function parseMultipartRelated(
+  body: string,
+  contentType: string,
+  formats: string[],
+): Record<string, Record<string, string>> {
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;\s]+))/);
+  if (!boundaryMatch) {
+    throw new errors.ApiHttpClientError(
+      `crawlContentsBatch: response has no multipart boundary in content-type "${contentType}"`,
+    );
+  }
+  const boundary = boundaryMatch[1] ?? boundaryMatch[2];
+  const delimiter = `--${boundary}`;
+  const result: Record<string, Record<string, string>> = {};
+
+  // Split on the delimiter; first segment is the preamble (ignored), last is the
+  // closing `--` (also ignored).
+  const segments = body.split(delimiter);
+  for (let i = 1; i < segments.length; i++) {
+    let segment = segments[i];
+    // Strip leading CRLF after the boundary
+    if (segment.startsWith('\r\n')) segment = segment.slice(2);
+    else if (segment.startsWith('\n')) segment = segment.slice(1);
+    // The closing boundary is `--{boundary}--`; segment starts with `--` then EOL
+    if (segment.startsWith('--')) break;
+    // Trim trailing CRLF before the next boundary
+    if (segment.endsWith('\r\n')) segment = segment.slice(0, -2);
+    else if (segment.endsWith('\n')) segment = segment.slice(0, -1);
+
+    // Header/body split: first blank line
+    const headerEnd = segment.indexOf('\r\n\r\n');
+    const altHeaderEnd = headerEnd === -1 ? segment.indexOf('\n\n') : headerEnd;
+    if (altHeaderEnd === -1) continue;
+    const headersRaw = segment.slice(0, altHeaderEnd);
+    const partBody = segment.slice(altHeaderEnd + (headerEnd === -1 ? 2 : 4));
+
+    // Parse headers
+    let url: string | undefined;
+    let format: string | undefined;
+    for (const line of headersRaw.split(/\r?\n/)) {
+      const colon = line.indexOf(':');
+      if (colon === -1) continue;
+      const name = line.slice(0, colon).trim().toLowerCase();
+      const value = line.slice(colon + 1).trim();
+      if (name === 'content-location') url = value;
+      else if (name === 'content-type') format = inferFormatFromContentType(value);
+    }
+    if (!url) continue;
+    if (!format) {
+      // Fall back to the first requested format if the part has no content-type
+      format = formats[0];
+    }
+    if (!result[url]) result[url] = {};
+    result[url][format] = partBody;
+  }
+  return result;
+}
+
+function inferFormatFromContentType(ct: string): string | undefined {
+  const lc = ct.toLowerCase().split(';')[0].trim();
+  if (lc === 'text/html') return 'html';
+  if (lc === 'text/markdown') return 'markdown';
+  if (lc === 'text/plain') return 'text';
+  if (lc === 'application/json') return 'json';
+  return undefined;
 }
