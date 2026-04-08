@@ -89,6 +89,13 @@ type ScrapeConfigOptions = {
    * when omitted. Invalid values are silently dropped by the server.
    */
   browser_brand?: string;
+  /**
+   * Return the raw upstream response (target's status, headers, body)
+   * instead of the JSON envelope. When true, ScrapflyClient.scrape()
+   * returns the raw fetch Response so callers can drive it like any
+   * HTTP response. Scrapfly metadata is on the X-Scrapfly-* headers.
+   */
+  proxified_response?: boolean;
 };
 
 export class ScrapeConfig {
@@ -137,6 +144,7 @@ export class ScrapeConfig {
   os?: string;
   auto_scroll?: boolean;
   browser_brand?: string;
+  proxified_response?: boolean;
 
   constructor(options: ScrapeConfigOptions) {
     this.validateOptions(options);
@@ -200,6 +208,7 @@ export class ScrapeConfig {
     this.lang = options.lang ?? this.lang;
     this.auto_scroll = options.auto_scroll ?? this.auto_scroll;
     this.browser_brand = options.browser_brand ?? this.browser_brand;
+    this.proxified_response = options.proxified_response ?? this.proxified_response;
     this.dns = options.dns ?? this.dns;
     this.ssl = options.ssl ?? this.ssl;
     this.debug = options.debug ?? this.debug;
@@ -276,6 +285,9 @@ export class ScrapeConfig {
     }
     if (this.cost_budget !== undefined) {
       params.cost_budget = this.cost_budget;
+    }
+    if (this.proxified_response !== undefined) {
+      params.proxified_response = this.proxified_response;
     }
     if (this.render_js === true) {
       params.render_js = true;

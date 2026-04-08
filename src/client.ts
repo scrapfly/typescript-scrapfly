@@ -44,12 +44,18 @@ export class ScrapflyClient {
   errResult(response: Response, result: ScrapeResult): errors.ScrapflyError {
     const error = result.result.error;
     const message = error?.message ?? '';
+    // When success=false the authoritative error code lives in result.result.error.code
+    // (e.g. "ERR::SCRAPE::BAD_UPSTREAM_RESPONSE"). result.result.status is only "DONE"
+    // or a job-level error and does not carry the upstream-failure code.
+    const effectiveCode = (result.result.success === false && error?.code)
+      ? error.code
+      : result.result.status;
     const args = {
-      code: result.result.status,
+      code: effectiveCode,
       http_status_code: result.result.status_code,
       is_retryable: error?.retryable ?? false,
       api_response: result,
-      resource: result.result.status ? result.result.status.split('::')[1] : null,
+      resource: effectiveCode ? effectiveCode.split('::')[1] : null,
       retry_delay: error?.retryable ? 5 : response.headers.get('X-Retry') ?? 5,
       retry_times: 3,
       documentation_url: error?.doc_url ?? 'https://scrapfly.io/docs/scrape-api/errors#api',
@@ -200,7 +206,7 @@ export class ScrapflyClient {
   /**
    * Issue a single scrape command from a given scrape configuration
    */
-  async scrape(config: ScrapeConfig): Promise<ScrapeResult> {
+  async scrape(config: ScrapeConfig): Promise<ScrapeResult | Response> {
     log.debug('scraping', { method: config.method, url: config.url });
     let response;
     try {
@@ -229,6 +235,17 @@ export class ScrapflyClient {
         (e as Record<string, unknown>).scrapeConfig = config;
       }
       throw e;
+    }
+    // Proxified mode: the API returns the raw upstream response (target's
+    // status, headers, body) instead of the JSON envelope. Return the raw
+    // fetch Response so callers can drive it like any HTTP response.
+    // Scrapfly metadata is on the X-Scrapfly-* response headers
+    // (Api-Cost, Content-Format, Log).
+    if (config.proxified_response === true) {
+      if (!response.ok) {
+        throw new errors.ApiHttpClientError(`Proxified scrape failed: HTTP ${response.status}`);
+      }
+      return response;
     }
     const data: Rec<any> = await response.json() as Rec<any>;
     if ('error_id' in data || Object.keys(data).length === 0) {
