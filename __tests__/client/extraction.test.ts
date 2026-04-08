@@ -12,7 +12,7 @@ Deno.test('extract: succeeds', async () => {
     const html = 'very long html file';
     const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const configUrl = new URL(config.url);
-        const configBody = await new Response(config.body).text();
+        const configBody = await new Response(config.body as BodyInit).text();
         assertEquals(configUrl.origin + configUrl.pathname, client.HOST + '/extraction');
         assertEquals(config.method, 'POST');
         assertEquals(configUrl.searchParams.get('key'), KEY);

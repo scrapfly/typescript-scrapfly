@@ -116,7 +116,7 @@ if (!SCRAPFLY_KEY) {
       asp: false,
       ...overrides,
     };
-    const crawl = new Crawl(client, new CrawlerConfig(baseConfig));
+    const crawl = new Crawl(client, new CrawlerConfig(baseConfig as { url: string } & Record<string, unknown>));
     await crawl.start();
     await crawl.wait({ pollInterval: 2, maxWait: 180 });
     return crawl;
