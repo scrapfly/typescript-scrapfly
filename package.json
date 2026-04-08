@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "scrapfly-sdk": "file:npm"
+  }
+}

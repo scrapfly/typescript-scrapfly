@@ -12,13 +12,8 @@ export {
   VisionDeficiency,
 } from './screenshotconfig.ts';
 export { ExtractionConfig } from './extractionconfig.ts';
-export {
-  BrowserConfig,
-  BrowserConfigError,
-  PROXY_POOL_DATACENTER,
-  PROXY_POOL_RESIDENTIAL,
-} from './browserconfig.ts';
-export type { BrowserConfigOptions, BrowserOS, ProxyPool } from './browserconfig.ts';
+export { BrowserConfig, ProxyPool, OperatingSystem } from './browserconfig.ts';
+export type { BrowserConfigOptions } from './browserconfig.ts';
 export * as errors from './errors.ts';
 
 export { ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
