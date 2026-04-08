@@ -23,13 +23,21 @@ export async function fetchRetry(
   retries: number = 3,
   retryDelay: number = 1000,
 ): Promise<Response> {
-  let lastError: any = null;
+  let lastError: unknown = null;
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       // XXX: note that cloudflare workers don't support init options
       const { url, ...reqInit } = config;
-      const response = await fetch(new Request(url, reqInit));
+      // The `body` field on RequestOptions is typed as string | Uint8Array for
+      // historical reasons (pre-DOM type merging). Coerce to BodyInit so the
+      // DOM fetch() type accepts it without complaint.
+      const init: RequestInit = {
+        method: reqInit.method,
+        headers: reqInit.headers,
+        body: reqInit.body as BodyInit | undefined,
+      };
+      const response = await fetch(new Request(url, init));
       // retry 5xx status codes
       if (response.status >= 500 && response.status < 600) {
         const _text = await response.text(); // consume response to prevent leak
@@ -44,7 +52,10 @@ export async function fetchRetry(
     } catch (error) {
       lastError = error;
 
-      if (attempt === retries || error.name === 'AbortError') {
+      // AbortError should never be retried: it means the caller explicitly
+      // gave up (cancel token, timeout, etc.) and we shouldn't paper over it.
+      const isAbort = error instanceof Error && error.name === 'AbortError';
+      if (attempt === retries || isAbort) {
         throw error;
       }
 

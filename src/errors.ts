@@ -13,6 +13,8 @@ export class ScrapeConfigError extends ScrapflyError {}
 export class ScreenshotConfigError extends ScrapflyError {}
 // raised when extraction config is invalid
 export class ExtractionConfigError extends ScrapflyError {}
+// raised when crawler config is invalid
+export class CrawlerConfigError extends ScrapflyError {}
 
 // raised when scrape parameters cannot be encoded
 export class EncodeError extends ScrapflyError {}
@@ -49,3 +51,5 @@ export class QuotaLimitReached extends HttpError {}
 export class ScreenshotApiError extends ApiHttpClientError {}
 // raised with Scrapfly extraction API related errors
 export class ExtractionApiError extends ApiHttpClientError {}
+// raised with Scrapfly crawler API related errors (job lifecycle: ALREADY_STARTED, NOT_STARTED, FAILED, CANCELLED, TIMEOUT, etc.)
+export class ScrapflyCrawlerError extends HttpError {}

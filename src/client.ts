@@ -5,9 +5,12 @@ import * as errors from './errors.ts';
 import type { ScrapeConfig } from './scrapeconfig.ts';
 import type { ScreenshotConfig } from './screenshotconfig.ts';
 import type { ExtractionConfig } from './extractionconfig.ts';
+import type { BrowserConfig } from './browserconfig.ts';
 import { type AccountData, ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
 import { log } from './logger.ts';
 import type { Rec } from './types.ts';
+import type { CrawlerConfig, CrawlerContentFormat } from './crawlerconfig.ts';
+import { CrawlerArtifact, type CrawlerArtifactType, CrawlerContents, CrawlerStatus, CrawlerUrls } from './crawlerresult.ts';
 
 export class ScrapflyClient {
   public HOST = 'https://api.scrapfly.io';
@@ -15,12 +18,79 @@ export class ScrapflyClient {
   private ua: string;
   fetch = fetchRetry;
 
-  constructor(options: { key: string }) {
+  constructor(options: { key: string; host?: string }) {
     if (typeof options.key !== 'string' || options.key.trim() === '') {
       throw new errors.BadApiKeyError('Invalid key. Key must be a non-empty string');
     }
     this.key = options.key;
+    if (options.host) {
+      // Trim trailing slash so callers can pass either form
+      this.HOST = options.host.replace(/\/+$/, '');
+    }
     this.ua = 'Typescript Scrapfly SDK';
+  }
+
+  /**
+   * Build the Cloud Browser CDP WebSocket URL for the given config.
+   *
+   * This is a pure URL builder — it does NOT make any network call. Pass the
+   * returned URL to your CDP client (Playwright, Puppeteer, Selenium, etc.)
+   * to allocate and connect to a browser session.
+   *
+   * @param config Optional {@link BrowserConfig}. When omitted, the browser
+   *   is started with the server's default settings.
+   *
+   * @example
+   * ```ts
+   * import { ScrapflyClient, BrowserConfig } from 'scrapfly-sdk';
+   * import { chromium } from 'playwright';
+   *
+   * const client = new ScrapflyClient({ key: 'YOUR_API_KEY' });
+   * const config = new BrowserConfig({ proxy_pool: 'public_datacenter_pool', os: 'linux' });
+   * const browser = await chromium.connectOverCDP(client.cloudBrowser(config));
+   * ```
+   *
+   * The host is derived from `this.HOST`: `api.scrapfly.io` →
+   * `browser.scrapfly.io`, `api.scrapfly.home` → `browser.scrapfly.home`.
+   * Override the derived host by setting the `SCRAPFLY_BROWSER_HOST` env var.
+   */
+  cloudBrowser(config?: BrowserConfig): string {
+    const params = new URLSearchParams();
+    params.set('api_key', this.key);
+    if (config) {
+      // Merge config params onto the api_key seed.
+      for (const [k, v] of config.toQueryParams().entries()) {
+        params.set(k, v);
+      }
+    }
+
+    // Map api.scrapfly.{io,home} → browser.scrapfly.{io,home}. Allow
+    // SCRAPFLY_BROWSER_HOST to override the derived host for custom edges.
+    // (env access is wrapped to support both Deno and Node.js.)
+    let hostOverride: string | undefined;
+    try {
+      // @ts-ignore — Deno global; not present in Node
+      hostOverride = (globalThis as any).Deno?.env?.get?.('SCRAPFLY_BROWSER_HOST');
+    } catch { /* not Deno */ }
+    if (!hostOverride) {
+      try {
+        // @ts-ignore — Node global; not present in browsers
+        hostOverride = (globalThis as any).process?.env?.SCRAPFLY_BROWSER_HOST;
+      } catch { /* not Node */ }
+    }
+
+    let browserHost: string;
+    if (hostOverride) {
+      browserHost = hostOverride;
+    } else {
+      browserHost = this.HOST.replace(/^https?:\/\//, '');
+      // api.scrapfly.io → browser.scrapfly.io
+      if (browserHost.startsWith('api.')) {
+        browserHost = 'browser.' + browserHost.slice('api.'.length);
+      }
+    }
+
+    return `wss://${browserHost}?${params.toString()}`;
   }
 
   /**
@@ -61,6 +131,8 @@ export class ScrapflyClient {
           return new errors.ScrapflyAspError(message, args);
         case 'SESSION':
           return new errors.ScrapflySessionError(message, args);
+        case 'CRAWLER':
+          return new errors.ScrapflyCrawlerError(message, args);
       }
       if (args.resource) {
         return new errors.ApiHttpClientError(message, args);
@@ -87,6 +159,8 @@ export class ScrapflyClient {
           return new errors.ScrapflyAspError(message, args);
         case 'SESSION':
           return new errors.ScrapflySessionError(message, args);
+        case 'CRAWLER':
+          return new errors.ScrapflyCrawlerError(message, args);
       }
     }
     return new errors.ScrapflyError(message, args);
@@ -203,7 +277,12 @@ export class ScrapflyClient {
       });
     } catch (e) {
       log.error('error', e);
-      e.scrapeConfig = config;
+      // Attach the scrape config to the thrown error for debuggability.
+      // The error is typed as `unknown` since TypeScript 4.4 strict catch
+      // clause variables, so we narrow to a mutable object before tagging.
+      if (e !== null && typeof e === 'object') {
+        (e as Record<string, unknown>).scrapeConfig = config;
+      }
       throw e;
     }
     const data: Rec<any> = await response.json() as Rec<any>;
@@ -411,4 +490,495 @@ export class ScrapflyClient {
     const result = await this.handleExtractionResponse(response);
     return result;
   }
+
+  // ---------------------------------------------------------------------------
+  // Crawler API
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Throw a typed error for a crawler JSON error envelope.
+   *
+   * The crawler endpoints (status, urls, contents, artifact, cancel) return either
+   * a clean JSON body on success or an error envelope `{error_id, http_code, message, ...}`.
+   * Use this to map the envelope to one of `BadApiKeyError` / `ScrapflyCrawlerError` /
+   * `ApiHttpClientError`.
+   */
+  private throwCrawlerError(response: Response, data: Rec<any>): never {
+    const httpCode = data.http_code ?? response.status;
+    const code = (data.code ?? '') as string;
+    const message = data.message ?? JSON.stringify(data);
+    if (httpCode === 401) {
+      throw new errors.BadApiKeyError(message, { http_status_code: httpCode, code, api_response: data });
+    }
+    if (httpCode === 429) {
+      throw new errors.TooManyRequests(message, { http_status_code: httpCode, code, api_response: data });
+    }
+    // Any ERR::CRAWLER::* code → typed crawler error
+    if (typeof code === 'string' && code.includes('::CRAWLER::')) {
+      throw new errors.ScrapflyCrawlerError(message, { http_status_code: httpCode, code, api_response: data });
+    }
+    throw new errors.ApiHttpClientError(message, { http_status_code: httpCode, code, api_response: data });
+  }
+
+  /**
+   * Schedule a new crawler job.
+   *
+   * `POST /crawl` — returns `{crawler_uuid, status}` on success. On failure throws
+   * `ScrapflyCrawlerError`, `BadApiKeyError`, or `ApiHttpClientError`.
+   */
+  async crawl(config: CrawlerConfig): Promise<{ crawler_uuid: string; status: string }> {
+    log.debug('crawling', { url: config.url });
+    let response: Response;
+    try {
+      const url = new URL(this.HOST + '/crawl');
+      url.search = new URLSearchParams({ key: this.key }).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'POST',
+        headers: {
+          'user-agent': this.ua,
+          'content-type': 'application/json',
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'application/json',
+        },
+        body: JSON.stringify(config.toApiParams()),
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+    const data: Rec<any> = (await response.json()) as Rec<any>;
+    if ('error_id' in data || data.http_code !== undefined) {
+      this.throwCrawlerError(response, data);
+    }
+    if (typeof data.uuid !== 'string' && typeof data.crawler_uuid !== 'string') {
+      throw new errors.ApiHttpClientError(
+        `Crawler API returned no uuid: ${JSON.stringify(data).slice(0, 500)}`,
+      );
+    }
+    return {
+      crawler_uuid: (data.crawler_uuid ?? data.uuid) as string,
+      status: (data.status ?? 'PENDING') as string,
+    };
+  }
+
+  /**
+   * Get the current status of a crawler job.
+   *
+   * `GET /crawl/{uuid}/status`
+   */
+  async crawlStatus(uuid: string): Promise<CrawlerStatus> {
+    let response: Response;
+    try {
+      const url = new URL(`${this.HOST}/crawl/${encodeURIComponent(uuid)}/status`);
+      url.search = new URLSearchParams({ key: this.key }).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'GET',
+        headers: {
+          'user-agent': this.ua,
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'application/json',
+        },
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+    const data: Rec<any> = (await response.json()) as Rec<any>;
+    if ('error_id' in data || data.http_code !== undefined) {
+      this.throwCrawlerError(response, data);
+    }
+    return new CrawlerStatus(data);
+  }
+
+  /**
+   * List crawled URLs for a job, optionally filtered by status and paginated.
+   *
+   * `GET /crawl/{uuid}/urls?status=<filter>&page=<n>&per_page=<n>`
+   *
+   * The server streams the response as `text/plain` — one record per line.
+   * JSON is intentionally NOT used here because this endpoint is expected to
+   * scale to millions of URLs per job, and materialising that as JSON would
+   * be prohibitively expensive on both the server and the client. See
+   * {@link CrawlerUrls.fromText} for the exact line format.
+   *
+   * Pagination: the wire protocol carries no global `total`. Request further
+   * pages by incrementing `page` until a response contains no records.
+   */
+  async crawlUrls(
+    uuid: string,
+    opts?: { status?: 'visited' | 'pending' | 'failed' | 'skipped'; page?: number; per_page?: number },
+  ): Promise<CrawlerUrls> {
+    const statusHint = opts?.status ?? 'visited';
+    const page = opts?.page ?? 1;
+    const perPage = opts?.per_page ?? 100;
+
+    let response: Response;
+    try {
+      const url = new URL(`${this.HOST}/crawl/${encodeURIComponent(uuid)}/urls`);
+      const params: Record<string, string> = { key: this.key };
+      if (opts?.status) params.status = opts.status;
+      if (opts?.page !== undefined) params.page = String(opts.page);
+      if (opts?.per_page !== undefined) params.per_page = String(opts.per_page);
+      url.search = new URLSearchParams(params).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'GET',
+        headers: {
+          'user-agent': this.ua,
+          'accept-encoding': 'gzip, deflate, br',
+          // text/plain is the canonical format; we also accept JSON because
+          // error envelopes come back as JSON regardless of the success type.
+          accept: 'text/plain, application/json',
+        },
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+
+    // Error envelopes are always JSON, even for text endpoints. Detect by
+    // content-type before consuming the body as text.
+    const ct = response.headers.get('content-type') ?? '';
+    if (ct.includes('application/json')) {
+      const data: Rec<any> = (await response.json()) as Rec<any>;
+      if ('error_id' in data || data.http_code !== undefined) {
+        this.throwCrawlerError(response, data);
+      }
+      // Unexpected: the server sent JSON on a success response for the text
+      // endpoint. Surface this as a client error so users see the mismatch
+      // instead of getting silent empty results.
+      throw new errors.ApiHttpClientError(
+        `crawlUrls expected text/plain, got JSON: ${JSON.stringify(data).slice(0, 500)}`,
+      );
+    }
+
+    const body = await response.text();
+    return CrawlerUrls.fromText(body, statusHint, page, perPage);
+  }
+
+  /**
+   * Get crawled content from a crawler job.
+   *
+   * Two modes:
+   *
+   * 1. **JSON mode** (default, `plain` omitted or false): returns a {@link CrawlerContents}
+   *    with a `contents` map (URL → format → content) and pagination links. Useful for
+   *    bulk retrieval. Honors `limit` (max 50, default 10) and `offset`.
+   *
+   * 2. **Plain mode** (`plain: true`): returns the raw content for a single URL/format
+   *    as a `string`, with content-type matching the format. Requires `url`. Useful for
+   *    piping markdown/text directly. **New in this SDK** (not in Python SDK as of 0.8.27).
+   *
+   * `GET /crawl/{uuid}/contents`
+   */
+  async crawlContents(
+    uuid: string,
+    opts: {
+      format: CrawlerContentFormat;
+      url?: string;
+      plain?: boolean;
+      limit?: number;
+      offset?: number;
+    },
+  ): Promise<CrawlerContents | string> {
+    if (opts.plain && !opts.url) {
+      throw new errors.CrawlerConfigError('plain=true requires a single `url` argument');
+    }
+    let response: Response;
+    try {
+      const url = new URL(`${this.HOST}/crawl/${encodeURIComponent(uuid)}/contents`);
+      // Note: the server query param is `formats` (plural), not `format`. The
+      // public docs say `format` but the actual server only accepts `formats`.
+      // We expose `format` (singular) as the SDK option since that's what users
+      // expect from the docs, and translate it here.
+      const params: Record<string, string> = { key: this.key, formats: opts.format };
+      if (opts.url) params.url = opts.url;
+      if (opts.plain) params.plain = 'true';
+      if (opts.limit !== undefined) params.limit = String(opts.limit);
+      if (opts.offset !== undefined) params.offset = String(opts.offset);
+      url.search = new URLSearchParams(params).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'GET',
+        headers: {
+          'user-agent': this.ua,
+          'accept-encoding': 'gzip, deflate, br',
+          // In plain mode the server returns the raw content with a format-matching
+          // content-type (text/markdown, text/html, etc.); accept anything.
+          accept: opts.plain ? '*/*' : 'application/json',
+        },
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+
+    if (opts.plain) {
+      // Plain mode: server returns raw text. Error envelopes still come back as JSON,
+      // so detect that by content-type before reading the body as text.
+      const ct = response.headers.get('content-type') ?? '';
+      if (ct.includes('application/json')) {
+        const data: Rec<any> = (await response.json()) as Rec<any>;
+        if ('error_id' in data || data.http_code !== undefined) {
+          this.throwCrawlerError(response, data);
+        }
+        // JSON came back without an error envelope — caller asked for plain but server
+        // returned JSON anyway (e.g. format=json). Stringify so the return type is stable.
+        return JSON.stringify(data);
+      }
+      return await response.text();
+    }
+
+    const data: Rec<any> = (await response.json()) as Rec<any>;
+    if ('error_id' in data || data.http_code !== undefined) {
+      this.throwCrawlerError(response, data);
+    }
+    return new CrawlerContents(data);
+  }
+
+  /**
+   * Batch-retrieve crawled content for up to 100 URLs in one round-trip.
+   *
+   * `POST /crawl/{uuid}/contents/batch`
+   *
+   * The request body is a newline-separated list of URLs (`text/plain`). The response
+   * is a `multipart/related` (RFC 2387) document with one part per found URL. Each
+   * part has `Content-Type` (matching the format) and `Content-Location` (the URL).
+   *
+   * Returns a map of `url → format → content`. Formats not requested for a given URL
+   * are simply absent from its inner map.
+   */
+  async crawlContentsBatch(
+    uuid: string,
+    urls: string[],
+    formats: CrawlerContentFormat[],
+  ): Promise<Record<string, Record<string, string>>> {
+    if (urls.length === 0) {
+      throw new errors.CrawlerConfigError('crawlContentsBatch requires at least one url');
+    }
+    if (urls.length > 100) {
+      throw new errors.CrawlerConfigError('crawlContentsBatch is limited to 100 urls per request');
+    }
+    if (formats.length === 0) {
+      throw new errors.CrawlerConfigError('crawlContentsBatch requires at least one format');
+    }
+    let response: Response;
+    try {
+      const url = new URL(`${this.HOST}/crawl/${encodeURIComponent(uuid)}/contents/batch`);
+      url.search = new URLSearchParams({ key: this.key, formats: formats.join(',') }).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'POST',
+        headers: {
+          'user-agent': this.ua,
+          'content-type': 'text/plain',
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'multipart/related, application/json',
+        },
+        body: urls.join('\n'),
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+
+    const ct = response.headers.get('content-type') ?? '';
+    if (ct.includes('application/json')) {
+      // Error envelope
+      const data: Rec<any> = (await response.json()) as Rec<any>;
+      if ('error_id' in data || data.http_code !== undefined) {
+        this.throwCrawlerError(response, data);
+      }
+      throw new errors.ApiHttpClientError(
+        `crawlContentsBatch expected multipart/related, got JSON: ${JSON.stringify(data).slice(0, 500)}`,
+      );
+    }
+
+    const text = await response.text();
+    return parseMultipartRelated(text, ct, formats);
+  }
+
+  /**
+   * Download a crawler job's WARC or HAR artifact as raw bytes.
+   *
+   * `GET /crawl/{uuid}/artifact?type=warc|har`
+   *
+   * The SDK does NOT bundle WARC/HAR parsers — use a dedicated library (e.g. `warcio`
+   * on npm) to walk the records. The returned {@link CrawlerArtifact} provides a
+   * `save(path)` helper for the common case of writing the artifact to disk.
+   */
+  async crawlArtifact(uuid: string, type: CrawlerArtifactType = 'warc'): Promise<CrawlerArtifact> {
+    let response: Response;
+    try {
+      const url = new URL(`${this.HOST}/crawl/${encodeURIComponent(uuid)}/artifact`);
+      url.search = new URLSearchParams({ key: this.key, type }).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'GET',
+        headers: {
+          'user-agent': this.ua,
+          // Accept the artifact's binary content type plus JSON for error envelopes
+          accept: type === 'har' ? 'application/json, application/octet-stream' : 'application/gzip, application/octet-stream',
+        },
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+
+    // Error envelope check (server returns JSON on errors regardless of artifact type)
+    const ct = response.headers.get('content-type') ?? '';
+    if (ct.includes('application/json') && type !== 'har') {
+      // For warc, JSON responses are always errors. For har, JSON IS the artifact —
+      // we need to peek at the body to distinguish.
+      const data: Rec<any> = (await response.json()) as Rec<any>;
+      if ('error_id' in data || data.http_code !== undefined) {
+        this.throwCrawlerError(response, data);
+      }
+      // Should not reach here for warc; treat as unexpected JSON.
+      throw new errors.ApiHttpClientError(
+        `crawlArtifact(${type}) expected binary, got JSON: ${JSON.stringify(data).slice(0, 500)}`,
+      );
+    }
+
+    const buf = new Uint8Array(await response.arrayBuffer());
+
+    // For HAR, the body IS JSON — but we still need to detect error envelopes
+    // (which set http_code or error_id at the top level of the JSON object).
+    if (type === 'har') {
+      try {
+        const text = new TextDecoder().decode(buf);
+        const parsed = JSON.parse(text) as Rec<any>;
+        if ('error_id' in parsed || parsed.http_code !== undefined) {
+          this.throwCrawlerError(response, parsed);
+        }
+      } catch (e) {
+        // If JSON parse fails, the body is not an error envelope — treat as raw HAR bytes.
+        if (e instanceof errors.ScrapflyError) throw e;
+      }
+    }
+
+    return new CrawlerArtifact(type, buf);
+  }
+
+  /**
+   * Cancel a running crawler job.
+   *
+   * `POST /crawl/{uuid}/cancel` — returns `true` on success. The endpoint
+   * is idempotent: cancelling a crawl that has already finished is a no-op
+   * and still returns success.
+   *
+   * Note: earlier versions of this SDK called `DELETE /crawl/{uuid}`, which
+   * is not a valid public route — that path silently 404'd against the
+   * public API. Fixed in 0.8.0 to use the correct documented endpoint.
+   */
+  async crawlCancel(uuid: string): Promise<boolean> {
+    let response: Response;
+    try {
+      const url = new URL(`${this.HOST}/crawl/${encodeURIComponent(uuid)}/cancel`);
+      url.search = new URLSearchParams({ key: this.key }).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'POST',
+        headers: {
+          'user-agent': this.ua,
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'application/json',
+        },
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+    // Empty body or JSON
+    const ct = response.headers.get('content-type') ?? '';
+    if (ct.includes('application/json')) {
+      const data: Rec<any> = (await response.json()) as Rec<any>;
+      if ('error_id' in data || data.http_code !== undefined) {
+        this.throwCrawlerError(response, data);
+      }
+    }
+    return response.ok;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// multipart/related parser
+// ---------------------------------------------------------------------------
+//
+// Tiny inline parser for the response of `POST /crawl/{uuid}/contents/batch`.
+// Avoids pulling in a multipart npm dep so the SDK stays dependency-free.
+//
+// Each part has at minimum a `Content-Location: <url>` header and a body. The
+// `Content-Type` may also be set, indicating the format. We map URL → format → body
+// using the `formats` argument as the inferred-format fallback when the part has
+// no `Content-Type`.
+
+function parseMultipartRelated(
+  body: string,
+  contentType: string,
+  formats: string[],
+): Record<string, Record<string, string>> {
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;\s]+))/);
+  if (!boundaryMatch) {
+    throw new errors.ApiHttpClientError(
+      `crawlContentsBatch: response has no multipart boundary in content-type "${contentType}"`,
+    );
+  }
+  const boundary = boundaryMatch[1] ?? boundaryMatch[2];
+  const delimiter = `--${boundary}`;
+  const result: Record<string, Record<string, string>> = {};
+
+  // Split on the delimiter; first segment is the preamble (ignored), last is the
+  // closing `--` (also ignored).
+  const segments = body.split(delimiter);
+  for (let i = 1; i < segments.length; i++) {
+    let segment = segments[i];
+    // Strip leading CRLF after the boundary
+    if (segment.startsWith('\r\n')) segment = segment.slice(2);
+    else if (segment.startsWith('\n')) segment = segment.slice(1);
+    // The closing boundary is `--{boundary}--`; segment starts with `--` then EOL
+    if (segment.startsWith('--')) break;
+    // Trim trailing CRLF before the next boundary
+    if (segment.endsWith('\r\n')) segment = segment.slice(0, -2);
+    else if (segment.endsWith('\n')) segment = segment.slice(0, -1);
+
+    // Header/body split: first blank line
+    const headerEnd = segment.indexOf('\r\n\r\n');
+    const altHeaderEnd = headerEnd === -1 ? segment.indexOf('\n\n') : headerEnd;
+    if (altHeaderEnd === -1) continue;
+    const headersRaw = segment.slice(0, altHeaderEnd);
+    const partBody = segment.slice(altHeaderEnd + (headerEnd === -1 ? 2 : 4));
+
+    // Parse headers
+    let url: string | undefined;
+    let format: string | undefined;
+    for (const line of headersRaw.split(/\r?\n/)) {
+      const colon = line.indexOf(':');
+      if (colon === -1) continue;
+      const name = line.slice(0, colon).trim().toLowerCase();
+      const value = line.slice(colon + 1).trim();
+      if (name === 'content-location') url = value;
+      else if (name === 'content-type') format = inferFormatFromContentType(value);
+    }
+    if (!url) continue;
+    if (!format) {
+      // Fall back to the first requested format if the part has no content-type
+      format = formats[0];
+    }
+    if (!result[url]) result[url] = {};
+    result[url][format] = partBody;
+  }
+  return result;
+}
+
+function inferFormatFromContentType(ct: string): string | undefined {
+  const lc = ct.toLowerCase().split(';')[0].trim();
+  if (lc === 'text/html') return 'html';
+  if (lc === 'text/markdown') return 'markdown';
+  if (lc === 'text/plain') return 'text';
+  if (lc === 'application/json') return 'json';
+  return undefined;
 }

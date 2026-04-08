@@ -66,7 +66,7 @@ type ScreenshotConfigOptions = {
   cache?: boolean;
   cache_ttl?: number;
   cache_clear?: boolean;
-  vision_deficiency?: 'deuteranopia' | 'protanopia' | 'tritanopia' | 'achromatopsia' | 'blurredvision' | VisionDeficiency;
+  vision_deficiency?: 'deuteranopia' | 'protanopia' | 'tritanopia' | 'achromatopsia' | 'blurredVision' | 'reducedContrast' | VisionDeficiency;
   webhook?: string;
 };
 
@@ -85,7 +85,7 @@ export class ScreenshotConfig {
   cache?: boolean;
   cache_ttl?: number;
   cache_clear?: boolean;
-  vision_deficiency?: 'deuteranopia' | 'protanopia' | 'tritanopia' | 'achromatopsia' | 'blurredvision' | VisionDeficiency;
+  vision_deficiency?: 'deuteranopia' | 'protanopia' | 'tritanopia' | 'achromatopsia' | 'blurredVision' | 'reducedContrast' | VisionDeficiency;
   webhook?: string;
 
   constructor(options: ScreenshotConfigOptions) {
