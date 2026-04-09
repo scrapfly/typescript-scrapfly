@@ -239,11 +239,33 @@ export class ScrapflyClient {
     // Proxified mode: the API returns the raw upstream response (target's
     // status, headers, body) instead of the JSON envelope. Return the raw
     // fetch Response so callers can drive it like any HTTP response.
-    // Scrapfly metadata is on the X-Scrapfly-* response headers
-    // (Api-Cost, Content-Format, Log).
+    //
+    // DO NOT throw on non-2xx: the response status is the UPSTREAM target's
+    // status, not a Scrapfly system error. A 503 from the target is a
+    // legitimate proxified response, not an API failure.
+    //
+    // Callers inspect:
+    //   response.status — the upstream status
+    //   response.headers.get("x-scrapfly-reject-code") — Scrapfly error (if any)
+    //   response.headers.get("x-scrapfly-api-cost") — credits charged
     if (config.proxified_response === true) {
-      if (!response.ok) {
-        throw new errors.ApiHttpClientError(`Proxified scrape failed: HTTP ${response.status}`);
+      // Error restoration: if X-Scrapfly-Reject-Code is present, the
+      // scrape failed. Reconstruct a typed error from the headers so
+      // callers get the same error interface as non-proxified mode.
+      const rejectCode = response.headers.get('x-scrapfly-reject-code');
+      if (rejectCode) {
+        const rejectDesc = response.headers.get('x-scrapfly-reject-description') ?? '';
+        const rejectRetryable = response.headers.get('x-scrapfly-reject-retryable') === 'true';
+        const retryAfter = rejectRetryable ? parseInt(response.headers.get('retry-after') ?? '0', 10) : 0;
+        const err = new errors.ApiHttpClientError(
+          `Proxified scrape error: ${rejectCode} — ${rejectDesc}`
+        );
+        (err as any).code = rejectCode;
+        (err as any).httpStatusCode = response.status;
+        (err as any).retryable = rejectRetryable;
+        (err as any).retryAfter = retryAfter;
+        (err as any).response = response;
+        throw err;
       }
       return response;
     }
