@@ -9,3 +9,4 @@ cov_profile
 examples/**/package.json
 examples/**/package-lock.json
 deno.lock
+deno.lock
