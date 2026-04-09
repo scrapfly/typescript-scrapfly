@@ -29,6 +29,7 @@ type ExtractionConfigOptions = {
   is_document_compressed?: boolean;
   document_compression_format?: 'gzip' | 'zstd' | 'deflate' | CompressionFormat;
   webhook?: string;
+  timeout?: number;
 
   // deprecated options
   template?: string;
@@ -47,6 +48,7 @@ export class ExtractionConfig {
   is_document_compressed?: boolean;
   document_compression_format?: 'gzip' | 'zstd' | 'deflate' | CompressionFormat;
   webhook?: string;
+  timeout?: number;
 
   // // deprecated options
   template?: string;
@@ -90,6 +92,7 @@ export class ExtractionConfig {
     this.is_document_compressed = options.is_document_compressed ?? this.is_document_compressed;
     this.document_compression_format = options.document_compression_format ?? this.document_compression_format;
     this.webhook = options.webhook ?? this.webhook;
+    this.timeout = options.timeout ?? this.timeout;
   }
 
   private validateOptions(options: Partial<ExtractionConfigOptions>) {
@@ -162,6 +165,9 @@ export class ExtractionConfig {
 
     if (this.webhook) {
       params.webhook_name = this.webhook;
+    }
+    if (this.timeout) {
+      params.timeout = this.timeout;
     }
 
     return params;

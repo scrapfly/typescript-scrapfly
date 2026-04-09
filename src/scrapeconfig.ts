@@ -96,6 +96,16 @@ type ScrapeConfigOptions = {
    * HTTP response. Scrapfly metadata is on the X-Scrapfly-* headers.
    */
   proxified_response?: boolean;
+  /**
+   * Controls when the browser considers the page loaded.
+   * "complete" (default) or "domcontentloaded" for faster scrapes.
+   */
+  rendering_stage?: 'complete' | 'domcontentloaded';
+  /**
+   * Spoof browser geolocation. Format: "latitude,longitude"
+   * e.g. "48.856614,2.3522219" for Paris.
+   */
+  geolocation?: string;
 };
 
 export class ScrapeConfig {
@@ -145,6 +155,8 @@ export class ScrapeConfig {
   auto_scroll?: boolean;
   browser_brand?: string;
   proxified_response?: boolean;
+  rendering_stage?: 'complete' | 'domcontentloaded';
+  geolocation?: string;
 
   constructor(options: ScrapeConfigOptions) {
     this.validateOptions(options);
@@ -183,7 +195,7 @@ export class ScrapeConfig {
     this.cache_ttl = options.cache_ttl ?? this.cache_ttl;
     this.proxy_pool = options.proxy_pool ?? this.proxy_pool;
     this.session = options.session ?? this.session;
-    this.tags = new Set(options.tags) ?? this.tags;
+    this.tags = options.tags ? new Set(options.tags) : this.tags;
     this.format = options.format ?? this.format;
     this.format_options = options.format_options ?? this.format_options;
     this.extraction_template = options.extraction_template ?? this.extraction_template;
@@ -209,6 +221,8 @@ export class ScrapeConfig {
     this.auto_scroll = options.auto_scroll ?? this.auto_scroll;
     this.browser_brand = options.browser_brand ?? this.browser_brand;
     this.proxified_response = options.proxified_response ?? this.proxified_response;
+    this.rendering_stage = options.rendering_stage ?? this.rendering_stage;
+    this.geolocation = options.geolocation ?? this.geolocation;
     this.dns = options.dns ?? this.dns;
     this.ssl = options.ssl ?? this.ssl;
     this.debug = options.debug ?? this.debug;
@@ -302,6 +316,12 @@ export class ScrapeConfig {
       }
       if (this.rendering_wait !== undefined) {
         params.rendering_wait = this.rendering_wait;
+      }
+      if (this.rendering_stage && this.rendering_stage !== 'complete') {
+        params.rendering_stage = this.rendering_stage;
+      }
+      if (this.geolocation) {
+        params.geolocation = this.geolocation;
       }
       if (this.screenshots !== undefined) {
         Object.keys(this.screenshots).forEach((key) => {

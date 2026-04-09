@@ -269,6 +269,30 @@ export class ScrapflyClient {
       }
       return response;
     }
+    // HEAD responses have no body per HTTP spec — the API returns headers
+    // only. Build a ScrapeResult from the HTTP response headers and the
+    // local config, mirroring the Python SDK's HEAD handler.
+    if (config.method === 'HEAD') {
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((v, k) => { responseHeaders[k] = v; });
+      return this.handleResponse(
+        response,
+        new ScrapeResult({
+          config: config.toApiParams({ key: this.key }) as any,
+          context: {} as any,
+          result: {
+            status_code: response.status,
+            content: '',
+            format: 'text',
+            success: response.status >= 200 && response.status < 300,
+            status: 'DONE',
+            response_headers: responseHeaders,
+            request_headers: {},
+          } as any,
+          uuid: '',
+        }),
+      );
+    }
     const data: Rec<any> = await response.json() as Rec<any>;
     if ('error_id' in data || Object.keys(data).length === 0) {
       if (data.http_code == 401 || response.status == 401) {
@@ -450,7 +474,7 @@ export class ScrapflyClient {
     let response;
     try {
       const url = new URL(this.HOST + '/extraction');
-      const params = await config.toApiParams({ key: this.key });
+      const params = config.toApiParams({ key: this.key });
       url.search = new URLSearchParams(params).toString();
       const headers: Record<string, string> = {
         'user-agent': this.ua,
