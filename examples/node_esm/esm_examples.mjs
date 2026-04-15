@@ -232,6 +232,30 @@ export async function screenshot(apiKey) {
   console.log("saved screenshot to ./screenshot.jpg");
 }
 
+/* Scrapfly Monitoring API exposes aggregate + per-target metrics.
+ * Enterprise plan only. https://scrapfly.io/docs/monitoring#api
+ */
+export async function monitoringMetrics(apiKey) {
+  const client = new ScrapflyClient({ key: apiKey });
+
+  const accountStats = await client.getMonitoringMetrics({
+    aggregation: ['account'],
+    period: 'last24h',
+  });
+  console.log('==== Account Metrics ====');
+  console.log(accountStats.account_metrics);
+
+  const end = new Date();
+  const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+  const targetStats = await client.getMonitoringTargetMetrics({
+    domain: 'httpbin.dev',
+    start,
+    end,
+  });
+  console.log('==== Target Metrics on httpbin.dev ====');
+  console.log(targetStats);
+}
+
 
 // CLI entry point
 async function main() {
@@ -244,7 +268,8 @@ async function main() {
             `extractionLLM - Extract content using LLM queries\n` +
             `extractionAutoExtract - Extract common web objects using Auto Extract\n` + 
             `extractionTemplates - Extract content using Template engine\n` + 
-            `screenshots - Capture screenshots using Screenshot API\n`
+            `screenshots - Capture screenshots using Screenshot API\n` +
+            `monitoringMetrics - Query Monitoring API aggregates (Enterprise plan)\n`
 
         );
         return;

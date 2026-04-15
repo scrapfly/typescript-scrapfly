@@ -46,6 +46,16 @@ export type {
   CrawlerWebhookPayload,
 } from './crawlerresult.ts';
 
+// Monitoring API
+export type {
+  CloudBrowserMonitoringOptions,
+  MonitoringAggregation,
+  MonitoringDataFormat,
+  MonitoringMetricsOptions,
+  MonitoringPeriod,
+  MonitoringTargetMetricsOptions,
+} from './monitoringconfig.ts';
+
 export { log } from './logger.ts';
 
 export { createServer, verifySignature } from './webhookserver.ts';

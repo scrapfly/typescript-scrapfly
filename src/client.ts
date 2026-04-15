@@ -11,6 +11,12 @@ import { log } from './logger.ts';
 import type { Rec } from './types.ts';
 import type { CrawlerConfig, CrawlerContentFormat } from './crawlerconfig.ts';
 import { CrawlerArtifact, type CrawlerArtifactType, CrawlerContents, CrawlerStatus, CrawlerUrls } from './crawlerresult.ts';
+import {
+  formatMonitoringDate,
+  type CloudBrowserMonitoringOptions,
+  type MonitoringMetricsOptions,
+  type MonitoringTargetMetricsOptions,
+} from './monitoringconfig.ts';
 
 export class ScrapflyClient {
   public HOST = 'https://api.scrapfly.io';
@@ -201,6 +207,133 @@ export class ScrapflyClient {
       throw new errors.ApiHttpClientError(JSON.stringify(data));
     }
     return data as AccountData;
+  }
+
+  // ── Monitoring API (Enterprise+ plan only) ──────────────────────
+  // The Monitoring API exposes per-product aggregates and per-target
+  // timeseries. Web Scraping / Screenshot / Extraction / Crawler share
+  // one shape (request-based) but live under different URL prefixes;
+  // Cloud Browser is session-based and exposes a distinct shape.
+  // See https://scrapfly.io/docs/monitoring#api
+
+  private async monitoringRequest(path: string, params: Rec<string>): Promise<Rec<any>> {
+    const url = new URL(this.HOST + path);
+    url.search = new URLSearchParams(params).toString();
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'GET',
+      headers: {
+        'user-agent': this.ua,
+        'accept-encoding': 'gzip, deflate, br',
+        accept: 'application/json',
+      },
+    });
+    const data: Rec<any> = (await response.json()) as Rec<any>;
+    if ('error_id' in data) {
+      if (data.http_code == 401 || response.status == 401) {
+        throw new errors.BadApiKeyError(JSON.stringify(data));
+      }
+      throw new errors.ApiHttpClientError(JSON.stringify(data));
+    }
+    return data;
+  }
+
+  private buildMetricsParams(options: MonitoringMetricsOptions): Rec<string> {
+    const params: Rec<string> = {
+      key: this.key,
+      format: options.format ?? 'structured',
+    };
+    if (options.period !== undefined) params.period = options.period;
+    if (options.aggregation !== undefined && options.aggregation.length > 0) {
+      params.aggregation = options.aggregation.join(',');
+    }
+    if (options.includeWebhook) params.include_webhook = 'true';
+    return params;
+  }
+
+  private buildTargetParams(options: MonitoringTargetMetricsOptions): Rec<string> {
+    if ((options.start && !options.end) || (!options.start && options.end)) {
+      throw new Error('You must provide both start and end date');
+    }
+    const params: Rec<string> = {
+      key: this.key,
+      domain: options.domain,
+      group_subdomain: String(options.groupSubdomain ?? false),
+    };
+    if (options.start && options.end) {
+      params.start = formatMonitoringDate(options.start);
+      params.end = formatMonitoringDate(options.end);
+    } else if (options.period !== undefined) {
+      params.period = options.period;
+    } else {
+      params.period = 'last24h';
+    }
+    if (options.includeWebhook) params.include_webhook = 'true';
+    return params;
+  }
+
+  // ── Web Scraping API (existing — kept for backward compat) ──────
+  async getMonitoringMetrics(options: MonitoringMetricsOptions = {}): Promise<Rec<any>> {
+    return this.monitoringRequest('/scrape/monitoring/metrics', this.buildMetricsParams(options));
+  }
+
+  async getMonitoringTargetMetrics(options: MonitoringTargetMetricsOptions): Promise<Rec<any>> {
+    return this.monitoringRequest('/scrape/monitoring/metrics/target', this.buildTargetParams(options));
+  }
+
+  // ── Screenshot API ───────────────────────────────────────────────
+  async getScreenshotMonitoringMetrics(options: MonitoringMetricsOptions = {}): Promise<Rec<any>> {
+    return this.monitoringRequest('/screenshot/monitoring/metrics', this.buildMetricsParams(options));
+  }
+
+  async getScreenshotMonitoringTargetMetrics(options: MonitoringTargetMetricsOptions): Promise<Rec<any>> {
+    return this.monitoringRequest('/screenshot/monitoring/metrics/target', this.buildTargetParams(options));
+  }
+
+  // ── Extraction API ───────────────────────────────────────────────
+  async getExtractionMonitoringMetrics(options: MonitoringMetricsOptions = {}): Promise<Rec<any>> {
+    return this.monitoringRequest('/extraction/monitoring/metrics', this.buildMetricsParams(options));
+  }
+
+  async getExtractionMonitoringTargetMetrics(options: MonitoringTargetMetricsOptions): Promise<Rec<any>> {
+    return this.monitoringRequest('/extraction/monitoring/metrics/target', this.buildTargetParams(options));
+  }
+
+  // ── Crawler API ──────────────────────────────────────────────────
+  async getCrawlerMonitoringMetrics(options: MonitoringMetricsOptions = {}): Promise<Rec<any>> {
+    return this.monitoringRequest('/crawl/monitoring/metrics', this.buildMetricsParams(options));
+  }
+
+  async getCrawlerMonitoringTargetMetrics(options: MonitoringTargetMetricsOptions): Promise<Rec<any>> {
+    return this.monitoringRequest('/crawl/monitoring/metrics/target', this.buildTargetParams(options));
+  }
+
+  // ── Cloud Browser API (session-based, distinct shape) ────────────
+  async getBrowserMonitoringMetrics(
+    options: CloudBrowserMonitoringOptions = {},
+  ): Promise<Rec<any>> {
+    return this.monitoringRequest('/browser/monitoring/metrics', this.buildBrowserParams(options));
+  }
+
+  async getBrowserMonitoringTimeseries(
+    options: CloudBrowserMonitoringOptions = {},
+  ): Promise<Rec<any>> {
+    return this.monitoringRequest('/browser/monitoring/metrics/timeseries', this.buildBrowserParams(options));
+  }
+
+  private buildBrowserParams(options: CloudBrowserMonitoringOptions): Rec<string> {
+    if ((options.start && !options.end) || (!options.start && options.end)) {
+      throw new Error('You must provide both start and end date');
+    }
+    const params: Rec<string> = { key: this.key };
+    if (options.start && options.end) {
+      params.start = formatMonitoringDate(options.start);
+      params.end = formatMonitoringDate(options.end);
+    } else if (options.period !== undefined) {
+      params.period = options.period;
+    }
+    if (options.proxyPool !== undefined) params.proxy_pool = options.proxyPool;
+    return params;
   }
 
   /**
