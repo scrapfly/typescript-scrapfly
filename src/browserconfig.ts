@@ -30,6 +30,7 @@ export type BrowserConfigOptions = {
   unblock?: boolean;
   unblock_timeout?: number;
   browser_brand?: string;
+  enable_mcp?: boolean;
 };
 
 export class BrowserConfig {
@@ -53,6 +54,7 @@ export class BrowserConfig {
   unblock?: boolean;
   unblock_timeout?: number;
   browser_brand?: string;
+  enable_mcp?: boolean;
 
   constructor(options: BrowserConfigOptions = {}) {
     if (options.timeout !== undefined && options.timeout > 1800) {
@@ -78,6 +80,7 @@ export class BrowserConfig {
     this.unblock = options.unblock;
     this.unblock_timeout = options.unblock_timeout;
     this.browser_brand = options.browser_brand;
+    this.enable_mcp = options.enable_mcp;
   }
 
   /**
@@ -107,6 +110,7 @@ export class BrowserConfig {
     if (this.unblock !== undefined) params.set('unblock', String(this.unblock));
     if (this.unblock_timeout !== undefined) params.set('unblock_timeout', String(this.unblock_timeout));
     if (this.browser_brand !== undefined) params.set('browser_brand', this.browser_brand);
+    if (this.enable_mcp !== undefined) params.set('enable_mcp', String(this.enable_mcp));
 
     const baseHost = host || 'wss://browser.scrapfly.io';
     return `${baseHost}?${params.toString()}`;
