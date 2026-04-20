@@ -6,7 +6,7 @@ import type { ScrapeConfig } from './scrapeconfig.ts';
 import type { ScreenshotConfig } from './screenshotconfig.ts';
 import type { ExtractionConfig } from './extractionconfig.ts';
 import { BrowserConfig } from './browserconfig.ts';
-import { type AccountData, ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
+import { type AccountData, type ClassifyOptions, type ClassifyResult, ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
 import { log } from './logger.ts';
 import type { Rec } from './types.ts';
 import type { CrawlerConfig, CrawlerContentFormat } from './crawlerconfig.ts';
@@ -207,6 +207,74 @@ export class ScrapflyClient {
       throw new errors.ApiHttpClientError(JSON.stringify(data));
     }
     return data as AccountData;
+  }
+
+  /**
+   * Classify an already-fetched HTTP response for anti-bot blocking.
+   *
+   * Runs the same anti-bot detection pipeline used by live Scrapfly
+   * scrapes against a response you already have (from your own proxy,
+   * cache, etc). 1 API credit per call. See
+   * https://scrapfly.io/docs/scrape-api/classify for the full contract.
+   */
+  async classify(options: ClassifyOptions): Promise<ClassifyResult> {
+    if (!options || !options.url) {
+      throw new errors.ScrapflyError('classify: url is required');
+    }
+    if (
+      typeof options.statusCode !== 'number' ||
+      options.statusCode < 100 ||
+      options.statusCode > 599
+    ) {
+      throw new errors.ScrapflyError(
+        'classify: status_code must be a valid HTTP status in [100, 599]',
+      );
+    }
+
+    const body: Rec<unknown> = {
+      url: options.url,
+      status_code: options.statusCode,
+      method: options.method ?? 'GET',
+    };
+    if (options.headers && Object.keys(options.headers).length > 0) {
+      const hdrs: Rec<string> = {};
+      for (const [k, v] of Object.entries(options.headers)) {
+        hdrs[String(k)] = String(v);
+      }
+      body.headers = hdrs;
+    }
+    if (options.body !== undefined && options.body !== null) {
+      body.body = options.body;
+    }
+
+    const url = new URL(this.HOST + '/classify');
+    url.search = new URLSearchParams({ key: this.key }).toString();
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers: {
+        'user-agent': this.ua,
+        'accept-encoding': 'gzip, deflate, br',
+        accept: 'application/json',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = (await response.json()) as Rec<unknown>;
+    if (response.status >= 400 || 'error_id' in data) {
+      if (response.status == 401) {
+        throw new errors.BadApiKeyError(JSON.stringify(data));
+      }
+      throw new errors.ApiHttpClientError(JSON.stringify(data));
+    }
+
+    return {
+      blocked: Boolean(data.blocked),
+      antibot: (data.antibot ?? null) as string | null,
+      cost: Number(data.cost ?? 0),
+    };
   }
 
   // ── Monitoring API (Enterprise+ plan only) ──────────────────────
@@ -504,6 +572,154 @@ export class ScrapflyClient {
       log.debug(`concurrently scraping ${activePromises.size}/${configs.length}}`);
       const resultOrError = await Promise.race(activePromises);
       yield resultOrError;
+    }
+  }
+
+  /**
+   * Issue a single batch request against POST /scrape/batch and
+   * stream results back as each scrape completes.
+   *
+   * Yields `[correlation_id, resultOrError]` tuples. Results arrive
+   * OUT OF ORDER — whichever scrape finishes first is yielded first.
+   * Every ScrapeConfig MUST carry a unique `correlation_id`; missing
+   * or duplicate values are caught client-side before the batch is
+   * sent (so callers fail fast on misconfiguration).
+   *
+   * Usage:
+   *   for await (const [id, result] of client.scrapeBatch(configs)) {
+   *     if (result instanceof errors.ScrapflyError) { ... }
+   *     else { ... }
+   *   }
+   */
+  async *scrapeBatch(
+    configs: ScrapeConfig[],
+    options: { format?: 'json' | 'msgpack' } = {},
+  ): AsyncGenerator<[string, ScrapeResult | Response | errors.ScrapflyError], void, undefined> {
+    const wireFormat = options.format ?? 'json';
+    const acceptHeader =
+      wireFormat === 'msgpack' ? 'application/msgpack' : 'application/json';
+    // Lazy-load the parser to avoid pulling Web Streams polyfills
+    // into the module graph for users who never call scrapeBatch.
+    const { iterBatchParts, decodePartBody, buildProxifiedResponseFromPart } = await import('./batch.ts');
+
+    if (!configs || configs.length === 0) {
+      throw new errors.ScrapflyError('scrapeBatch: configs list is empty');
+    }
+    if (configs.length > 100) {
+      throw new errors.ScrapflyError(
+        `scrapeBatch: max 100 configs per batch (got ${configs.length})`,
+      );
+    }
+
+    const seen = new Map<string, number>();
+    const configByCorrelation = new Map<string, ScrapeConfig>();
+    const bodyConfigs: Record<string, unknown>[] = [];
+
+    for (let i = 0; i < configs.length; i++) {
+      const cfg = configs[i];
+      const correlationId = (cfg as unknown as Record<string, string>).correlation_id;
+      if (!correlationId) {
+        throw new errors.ScrapflyError(
+          `scrapeBatch: configs[${i}] is missing correlation_id (required for matching streamed parts)`,
+        );
+      }
+      if (seen.has(correlationId)) {
+        throw new errors.ScrapflyError(
+          `scrapeBatch: correlation_id ${JSON.stringify(correlationId)} reused by configs[${seen.get(correlationId)}] and configs[${i}]`,
+        );
+      }
+      seen.set(correlationId, i);
+      configByCorrelation.set(correlationId, cfg);
+
+      // Reuse toApiParams to guarantee wire parity with /scrape.
+      // Drop `key` (batch key is in the URL).
+      const params = cfg.toApiParams({ key: this.key }) as Record<string, unknown>;
+      delete params.key;
+      bodyConfigs.push(params);
+    }
+
+    const url = new URL(this.HOST + '/scrape/batch');
+    url.search = new URLSearchParams({ key: this.key }).toString();
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers: {
+        'user-agent': this.ua,
+        'content-type': 'application/json',
+        // gzip is universally supported in fetch runtimes; skip zstd
+        // for streaming compatibility (Node < 22 / browsers don't
+        // auto-decompress zstd yet).
+        'accept-encoding': 'gzip',
+        accept: acceptHeader,
+      },
+      body: JSON.stringify({ configs: bodyConfigs }),
+    });
+
+    if (response.status !== 200) {
+      const body = await response.text();
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        parsed = { message: body, code: 'ERR::API::INTERNAL_ERROR' };
+      }
+      throw new errors.ApiHttpServerError(
+        `scrapeBatch: ${parsed.code ?? 'error'} (HTTP ${response.status}): ${parsed.message ?? body}`,
+      );
+    }
+
+    for await (const part of iterBatchParts(response)) {
+      const correlationId = part.headers['x-scrapfly-correlation-id'] ?? '';
+
+      // Proxified-response parts: the part body is the raw upstream
+      // bytes, not a JSON envelope. Surface a native fetch Response
+      // so callers get the same shape as a single proxified scrape
+      // (which returns Response from .scrape()).
+      if (part.headers['x-scrapfly-proxified'] === 'true') {
+        try {
+          const proxResponse = buildProxifiedResponseFromPart(part);
+          yield [correlationId, proxResponse];
+        } catch (proxErr) {
+          yield [
+            correlationId,
+            new errors.ScrapflyError(
+              `scrapeBatch: failed to build proxified response for correlation_id=${JSON.stringify(correlationId)}: ${proxErr}`,
+            ),
+          ];
+        }
+        continue;
+      }
+
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = decodePartBody(part);
+      } catch (decodeErr) {
+        yield [
+          correlationId,
+          new errors.ScrapflyError(
+            `scrapeBatch: failed to decode part for correlation_id=${JSON.stringify(correlationId)}: ${decodeErr}`,
+          ),
+        ];
+        continue;
+      }
+
+      try {
+        const result = new ScrapeResult({
+          config: (parsed as any).config,
+          context: (parsed as any).context,
+          result: (parsed as any).result,
+          uuid: (parsed as any).uuid,
+        });
+        yield [correlationId, result];
+      } catch (resultErr) {
+        yield [
+          correlationId,
+          resultErr instanceof errors.ScrapflyError
+            ? resultErr
+            : new errors.ScrapflyError(`scrapeBatch: ${resultErr}`),
+        ];
+      }
     }
   }
 
@@ -1066,7 +1282,8 @@ export class ScrapflyClient {
     headers?: Record<string, string>;
     body?: string;
     method?: string;
-  }): Promise<{ ws_url: string; session_id: string; run_id: string }> {
+    enable_mcp?: boolean;
+  }): Promise<{ ws_url: string; session_id: string; run_id: string; mcp_endpoint?: string }> {
     const proxyPoolMap: Record<string, string> = {
       datacenter: 'public_datacenter_pool',
       residential: 'public_residential_pool',
@@ -1081,6 +1298,7 @@ export class ScrapflyClient {
     if (options.headers) jsonBody.headers = options.headers;
     if (options.body) jsonBody.body = options.body;
     if (options.method) jsonBody.method = options.method;
+    if (options.enable_mcp !== undefined) jsonBody.enable_mcp = options.enable_mcp;
 
     const url = new URL(this.cloudBrowserApiHost + '/unblock');
     url.searchParams.set('key', this.key);

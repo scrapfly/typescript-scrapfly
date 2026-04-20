@@ -26,5 +26,10 @@
       "exclude": ["no-explicit-any"]
     }
   },
-  "imports": { "@deno/dnt": "jsr:@deno/dnt@^0.41.2", "@scrapfly/scrapfly-sdk": "jsr:@scrapfly/scrapfly-sdk@^0.6.2" }
+  "imports": {
+    "@deno/dnt": "jsr:@deno/dnt@^0.41.2",
+    "@scrapfly/scrapfly-sdk": "jsr:@scrapfly/scrapfly-sdk@^0.6.2",
+    "npm:@msgpack/msgpack@3.0.0": "npm:@msgpack/msgpack@3.0.0"
+  },
+  "nodeModulesDir": "auto"
 }

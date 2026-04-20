@@ -223,6 +223,20 @@ export class ScrapeResult {
 
 export type ScrapeResultData = Record<string | number | symbol, never>;
 
+export type ClassifyOptions = {
+  url: string;
+  statusCode: number;
+  headers?: Record<string, string>;
+  body?: string | null;
+  method?: string;
+};
+
+export type ClassifyResult = {
+  blocked: boolean;
+  antibot: string | null;
+  cost: number;
+};
+
 export type AccountData = {
   account: {
     account_id: string;

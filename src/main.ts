@@ -18,7 +18,7 @@ export * as errors from './errors.ts';
 
 export { ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
 
-export type { AccountData, ConfigData, ContextData, ResultData, ScreenshotMetadata } from './result.ts';
+export type { AccountData, ClassifyOptions, ClassifyResult, ConfigData, ContextData, ResultData, ScreenshotMetadata } from './result.ts';
 
 // Crawler API
 export { CrawlerConfig } from './crawlerconfig.ts';
