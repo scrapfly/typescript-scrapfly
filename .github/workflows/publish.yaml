@@ -1,11 +1,10 @@
-
 name: Publish to NPM + JSR
 
 on:
   workflow_dispatch:
   push:
     tags:
-      - 'v*' # This will run the workflow when you push a tag with a version format, like v1.0.0
+      - 'v*' # Runs when a version tag is pushed, e.g. v0.10.3
 
 permissions:
   id-token: write
@@ -13,36 +12,63 @@ permissions:
 
 jobs:
   build:
-    name: Publish to NPM
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
       - name: Clone repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Deno
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
 
-      - name: Run Deno build script
+      # Produces ./npm (dnt-generated Node package).
+      - name: Build npm package
         run: deno task build-npm
 
-      - name: Navigate to npm directory
-        run: cd ./npm
+      # Produces ./build (staged JSR payload: src + deno.json, no tests).
+      - name: Stage JSR package
+        run: ./stage-jsr.sh
 
+      - name: Upload npm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-package
+          path: npm/
+          retention-days: 1
+
+      - name: Upload jsr artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: jsr-package
+          path: build/
+          retention-days: 1
+
+  npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download npm artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: npm
 
       - name: Publish
-        run: |
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > .npmrc
-          if grep -qE "_authToken=.{1,}" .npmrc; then
-            npm publish
-          else
-            echo "Failed to create .npmrc file" && exit 1
-          fi
+        run: npm publish
         working-directory: ./npm
         env:
-          NPM_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
 
   jsr:
     name: Publish to JSR
@@ -50,17 +76,19 @@ jobs:
     needs: build
 
     steps:
-      - name: Clone repository
-        uses: actions/checkout@v3
-
       - name: Install Deno
         uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
 
-      - name: Publish to JSR
-        # publish-jsr.sh stages src + deno.json under ./build, strips
-        # __tests__, then runs `deno publish --allow-dirty`. With
-        # id-token: write set at the workflow level, deno publish
-        # exchanges the OIDC token with JSR — no PAT needed.
-        run: ./publish-jsr.sh
+      - name: Download jsr artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: jsr-package
+          path: build
+
+      # OIDC authenticates via the workflow-level id-token: write. Once the
+      # JSR package is linked to this repo, no token secret is required.
+      - name: Publish
+        run: deno publish --allow-dirty
+        working-directory: ./build

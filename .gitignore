@@ -2,6 +2,7 @@ node_modules
 coverage
 scripts
 npm
+build
 dev
 cov_profile
 .vscode
