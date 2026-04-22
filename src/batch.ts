@@ -26,7 +26,7 @@ function indexOf(buf: Uint8Array, needle: Uint8Array, start = 0): number {
   return -1;
 }
 
-function concat(a: Uint8Array<ArrayBufferLike>, b: Uint8Array<ArrayBufferLike>): Uint8Array<ArrayBufferLike> {
+function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
   const out = new Uint8Array(a.length + b.length);
   out.set(a, 0);
   out.set(b, a.length);
@@ -79,7 +79,7 @@ export async function* iterBatchParts(response: Response): AsyncGenerator<BatchP
   const nextBoundarySep = new TextEncoder().encode('\r\n--' + boundaryStr);
   const reader = response.body.getReader();
 
-  let buf: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
+  let buf = new Uint8Array(0);
   let eof = false;
   let pastPrefix = false;
 
@@ -91,7 +91,11 @@ export async function* iterBatchParts(response: Response): AsyncGenerator<BatchP
       return false;
     }
     if (value && value.length > 0) {
-      buf = concat(buf, value);
+      // reader.read() returns Uint8Array<ArrayBufferLike> on newer Deno/TS
+      // lib types while dnt's Node target still sees Uint8Array as
+      // non-generic. Cast to the non-generic form so the same source
+      // type-checks on both targets.
+      buf = concat(buf, value as unknown as Uint8Array);
       return true;
     }
     return false;
