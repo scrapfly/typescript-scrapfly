@@ -82,12 +82,19 @@ export type CrawlerStopReason =
  * `duration` is always a number (0 when nothing has happened yet).
  */
 export interface CrawlerState {
+  /** Number of URLs the crawler has fetched. */
   urls_visited: number;
+  /** Number of URLs from which content or links were extracted. */
   urls_extracted: number;
+  /** Number of URLs that failed to fetch. */
   urls_failed: number;
+  /** Number of URLs skipped (filtered out, duplicate, limit hit, ...). */
   urls_skipped: number;
+  /** Number of URLs queued for future fetch. */
   urls_to_crawl: number;
+  /** API credits consumed so far. */
   api_credit_used: number;
+  /** Elapsed time in seconds since the crawl started (0 while PENDING). */
   duration: number;
   /** `null` until the crawler stops. */
   stop_reason: CrawlerStopReason | null;

@@ -18,16 +18,35 @@ import {
   type MonitoringTargetMetricsOptions,
 } from './monitoringconfig.ts';
 
+/**
+ * Main entry point for the Scrapfly SDK.
+ *
+ * A single `ScrapflyClient` can be used to call every Scrapfly API
+ * (scrape, screenshot, extraction, crawler, monitoring, cloud browser).
+ * It is safe to share one instance across concurrent calls.
+ */
 export class ScrapflyClient {
+  /** Base URL of the Scrapfly REST API. */
   public HOST = 'https://api.scrapfly.io';
+  /** Default Cloud Browser WebSocket host. */
   public CLOUD_BROWSER_HOST = 'wss://browser.scrapfly.io';
+  /** Default Cloud Browser REST host (derived from the WS host). */
   public CLOUD_BROWSER_API_HOST = 'https://browser.scrapfly.io';
   private key: string;
   private ua: string;
   private cloudBrowserHost: string;
   private cloudBrowserApiHost: string;
-  fetch = fetchRetry;
+  /** `fetch` implementation used by the client. Override for custom retries/tracing. */
+  fetch: typeof fetchRetry = fetchRetry;
 
+  /**
+   * Create a Scrapfly client.
+   *
+   * @param options.key Scrapfly API key.
+   * @param options.host Optional override for the REST API host.
+   * @param options.cloudBrowserHost Optional override for the Cloud Browser WS host.
+   * @throws {@link errors.BadApiKeyError} if `options.key` is not a non-empty string.
+   */
   constructor(options: { key: string; host?: string; cloudBrowserHost?: string }) {
     if (typeof options.key !== 'string' || options.key.trim() === '') {
       throw new errors.BadApiKeyError('Invalid key. Key must be a non-empty string');
@@ -284,6 +303,7 @@ export class ScrapflyClient {
   // Cloud Browser is session-based and exposes a distinct shape.
   // See https://scrapfly.io/docs/monitoring#api
 
+  /** Dispatch an HTTP GET against a Monitoring API path with the given query params, parsing errors. */
   private async monitoringRequest(path: string, params: Rec<string>): Promise<Rec<any>> {
     const url = new URL(this.HOST + path);
     url.search = new URLSearchParams(params).toString();
@@ -306,6 +326,7 @@ export class ScrapflyClient {
     return data;
   }
 
+  /** Build the query string for a request-based Monitoring API metrics endpoint. */
   private buildMetricsParams(options: MonitoringMetricsOptions): Rec<string> {
     const params: Rec<string> = {
       key: this.key,
@@ -319,6 +340,7 @@ export class ScrapflyClient {
     return params;
   }
 
+  /** Build the query string for a per-target Monitoring API endpoint. */
   private buildTargetParams(options: MonitoringTargetMetricsOptions): Rec<string> {
     if ((options.start && !options.end) || (!options.start && options.end)) {
       throw new Error('You must provide both start and end date');
@@ -340,55 +362,61 @@ export class ScrapflyClient {
     return params;
   }
 
-  // ── Web Scraping API (existing — kept for backward compat) ──────
+  /** Fetch Web Scraping API monitoring metrics (aggregate). */
   async getMonitoringMetrics(options: MonitoringMetricsOptions = {}): Promise<Rec<any>> {
     return this.monitoringRequest('/scrape/monitoring/metrics', this.buildMetricsParams(options));
   }
 
+  /** Fetch Web Scraping API monitoring metrics for a single target domain. */
   async getMonitoringTargetMetrics(options: MonitoringTargetMetricsOptions): Promise<Rec<any>> {
     return this.monitoringRequest('/scrape/monitoring/metrics/target', this.buildTargetParams(options));
   }
 
-  // ── Screenshot API ───────────────────────────────────────────────
+  /** Fetch Screenshot API monitoring metrics (aggregate). */
   async getScreenshotMonitoringMetrics(options: MonitoringMetricsOptions = {}): Promise<Rec<any>> {
     return this.monitoringRequest('/screenshot/monitoring/metrics', this.buildMetricsParams(options));
   }
 
+  /** Fetch Screenshot API monitoring metrics for a single target domain. */
   async getScreenshotMonitoringTargetMetrics(options: MonitoringTargetMetricsOptions): Promise<Rec<any>> {
     return this.monitoringRequest('/screenshot/monitoring/metrics/target', this.buildTargetParams(options));
   }
 
-  // ── Extraction API ───────────────────────────────────────────────
+  /** Fetch Extraction API monitoring metrics (aggregate). */
   async getExtractionMonitoringMetrics(options: MonitoringMetricsOptions = {}): Promise<Rec<any>> {
     return this.monitoringRequest('/extraction/monitoring/metrics', this.buildMetricsParams(options));
   }
 
+  /** Fetch Extraction API monitoring metrics for a single target domain. */
   async getExtractionMonitoringTargetMetrics(options: MonitoringTargetMetricsOptions): Promise<Rec<any>> {
     return this.monitoringRequest('/extraction/monitoring/metrics/target', this.buildTargetParams(options));
   }
 
-  // ── Crawler API ──────────────────────────────────────────────────
+  /** Fetch Crawler API monitoring metrics (aggregate). */
   async getCrawlerMonitoringMetrics(options: MonitoringMetricsOptions = {}): Promise<Rec<any>> {
     return this.monitoringRequest('/crawl/monitoring/metrics', this.buildMetricsParams(options));
   }
 
+  /** Fetch Crawler API monitoring metrics for a single target domain. */
   async getCrawlerMonitoringTargetMetrics(options: MonitoringTargetMetricsOptions): Promise<Rec<any>> {
     return this.monitoringRequest('/crawl/monitoring/metrics/target', this.buildTargetParams(options));
   }
 
-  // ── Cloud Browser API (session-based, distinct shape) ────────────
+  /** Fetch Cloud Browser monitoring metrics (session-based aggregate). */
   async getBrowserMonitoringMetrics(
     options: CloudBrowserMonitoringOptions = {},
   ): Promise<Rec<any>> {
     return this.monitoringRequest('/browser/monitoring/metrics', this.buildBrowserParams(options));
   }
 
+  /** Fetch Cloud Browser monitoring timeseries (per-minute session usage). */
   async getBrowserMonitoringTimeseries(
     options: CloudBrowserMonitoringOptions = {},
   ): Promise<Rec<any>> {
     return this.monitoringRequest('/browser/monitoring/metrics/timeseries', this.buildBrowserParams(options));
   }
 
+  /** Build the query string for the session-based Cloud Browser Monitoring endpoints. */
   private buildBrowserParams(options: CloudBrowserMonitoringOptions): Rec<string> {
     if ((options.start && !options.end) || (!options.start && options.end)) {
       throw new Error('You must provide both start and end date');

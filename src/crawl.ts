@@ -46,6 +46,10 @@ export class Crawl {
   private _status?: CrawlerStatus;
   private readonly _artifactCache: Map<CrawlerArtifactType, CrawlerArtifact> = new Map();
 
+  /**
+   * @param client Configured {@link ScrapflyClient} that performs the HTTP calls.
+   * @param config Crawler configuration to submit on {@link Crawl.start}.
+   */
   constructor(private readonly client: ScrapflyClient, private readonly config: CrawlerConfig) {}
 
   /** The crawler UUID returned by the API after `start()`, or undefined before. */

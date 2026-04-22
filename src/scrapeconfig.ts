@@ -19,25 +19,27 @@ export enum ScreenshotFlags {
   HIGH_QUALITY = 'high_quality',
 }
 
+/** Output format requested for the scraped content. */
 export enum Format {
-  /**
-    Format of the scraped content.
-    Attributes:
-        JSON: JSON format.
-        TEXT: Text format.
-        MARKDOWN: Markdown format.
-        CLEAN_HTML: Clean HTML format.
-    */
+  /** Structured JSON. */
   JSON = 'json',
+  /** Plain text with markup stripped. */
   TEXT = 'text',
+  /** Markdown rendering of the page. */
   MARKDOWN = 'markdown',
+  /** Readability-cleaned HTML. */
   CLEAN_HTML = 'clean_html',
+  /** Raw HTML as returned by the target. */
   RAW = 'raw',
 }
 
+/** Additional filters applied to the chosen {@link Format}. */
 export enum FormatOption {
+  /** Strip hyperlinks from the output. */
   NO_LINKS = 'no_links',
+  /** Strip images from the output. */
   NO_IMAGES = 'no_images',
+  /** Keep only the "content" section (drop navigation, sidebars, footers). */
   ONLY_CONTENT = 'only_content',
 }
 

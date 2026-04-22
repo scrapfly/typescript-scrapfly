@@ -7,6 +7,16 @@ export enum ResourceType {
   PING = 'ping',
 }
 
+/**
+ * Verify that a webhook request was sent by Scrapfly by comparing the
+ * HMAC-SHA256 signature on the request body against the configured
+ * signing secret.
+ *
+ * @param body Raw request body as received (do NOT decode).
+ * @param signature Value of the `Scrapfly-Signature` header (hex).
+ * @param signingSecret Webhook signing secret configured in the dashboard (hex).
+ * @returns `true` if the signature matches.
+ */
 export function verifySignature(body: Buffer, signature: string, signingSecret: string): boolean {
   const secret = Buffer.from(signingSecret, 'hex');
   const hmac = crypto.createHmac('sha256', secret);
@@ -16,6 +26,20 @@ export function verifySignature(body: Buffer, signature: string, signingSecret: 
 }
 
 
+/**
+ * Start a tiny Express server that receives Scrapfly webhook callbacks
+ * and dispatches them to the provided `callback`. Intended for quick
+ * integration and local development; production setups should wire
+ * Scrapfly webhooks directly into their own HTTP stack via
+ * {@link verifySignature}.
+ *
+ * Requires the `express` package to be installed.
+ *
+ * @param callback Invoked with the parsed webhook body, its resource
+ * type (`scrape` or `ping`), and the raw Express request.
+ * @param app Optional pre-configured Express app to mount on.
+ * @returns The underlying Express app (for further configuration or `.listen()`).
+ */
 export async function createServer(
   callback: (data: any, resourceType: string, request: any) => void,
   app?: any,

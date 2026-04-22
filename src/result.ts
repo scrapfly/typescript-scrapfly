@@ -39,6 +39,7 @@ export type ConfigData = {
   auto_scroll?: boolean;
 };
 
+/** Request-context metadata included on every scrape result (cost, proxy, fingerprint, ...). */
 export type ContextData = {
   asp: boolean;
   bandwidth_consumed: number;
@@ -95,6 +96,7 @@ export type ContextData = {
   webhook?: string;
 };
 
+/** Payload of a successful scrape (response body, status, headers, browser trace). */
 export type ResultData = {
   browser_data: {
     javascript_evaluation_result?: string;

@@ -1,61 +1,124 @@
+/** Proxy pool to use for the Cloud Browser session. */
 export enum ProxyPool {
+  /** Datacenter proxies — fast and cheap; best for non-protected targets. */
   DATACENTER = 'datacenter',
+  /** Residential proxies — real ISP IPs; required by most anti-bot protections. */
   RESIDENTIAL = 'residential',
 }
 
+/** Operating system to emulate for the Cloud Browser session fingerprint. */
 export enum OperatingSystem {
+  /** Emulate a Linux browser fingerprint. */
   LINUX = 'linux',
+  /** Emulate a Windows browser fingerprint. */
   WINDOWS = 'windows',
+  /** Emulate a macOS browser fingerprint. */
   MACOS = 'macos',
 }
 
+/**
+ * User-facing options accepted by {@link BrowserConfig}. All fields are
+ * optional; any field left undefined falls back to the Scrapfly Cloud
+ * Browser defaults.
+ */
 export type BrowserConfigOptions = {
+  /** Proxy pool to route the session through. */
   proxy_pool?: ProxyPool | string;
+  /** Operating system fingerprint to emulate. */
   os?: OperatingSystem | string;
+  /** Session ID for sticky sessions (IP + cookies reused across scrapes). */
   session?: string;
+  /** ISO country code for geo-targeting. */
   country?: string;
+  /** Close the browser automatically when the connection drops. */
   auto_close?: boolean;
+  /** Session timeout in seconds (max 1800 = 30 minutes). */
   timeout?: number;
+  /** Enable debug trace for the session. */
   debug?: boolean;
+  /** Browser extensions to load (by ID). */
   extensions?: string[];
+  /** Block image requests to speed up navigation. */
   block_images?: boolean;
+  /** Block stylesheet requests. */
   block_styles?: boolean;
+  /** Block font requests. */
   block_fonts?: boolean;
+  /** Block media (video/audio) requests. */
   block_media?: boolean;
+  /** Capture a screenshot at session end. */
   screenshot?: boolean;
+  /** Viewport resolution, formatted as "widthxheight" (e.g. "1920x1080"). */
   resolution?: string;
+  /** URL to navigate to after session start. */
   target_url?: string;
+  /** Reuse cached responses where possible. */
   cache?: boolean;
+  /** Apply Scrapfly's abuse blacklist. */
   blacklist?: boolean;
+  /** Enable anti-scraping-protection bypass. */
   unblock?: boolean;
+  /** Timeout in seconds for the unblock step. */
   unblock_timeout?: number;
+  /** Browser brand to emulate (e.g. "chrome", "firefox"). */
   browser_brand?: string;
+  /** Enable the MCP (Model Context Protocol) bridge. */
   enable_mcp?: boolean;
 };
 
+/**
+ * Configuration for a Scrapfly Cloud Browser session. Builds the
+ * WebSocket URL that clients such as Puppeteer or Playwright can
+ * connect to via CDP.
+ */
 export class BrowserConfig {
+  /** See {@link BrowserConfigOptions.proxy_pool}. */
   proxy_pool?: string;
+  /** See {@link BrowserConfigOptions.os}. */
   os?: string;
+  /** See {@link BrowserConfigOptions.session}. */
   session?: string;
+  /** See {@link BrowserConfigOptions.country}. */
   country?: string;
+  /** See {@link BrowserConfigOptions.auto_close}. */
   auto_close?: boolean;
+  /** See {@link BrowserConfigOptions.timeout}. */
   timeout?: number;
+  /** See {@link BrowserConfigOptions.debug}. */
   debug?: boolean;
+  /** See {@link BrowserConfigOptions.extensions}. */
   extensions?: string[];
+  /** See {@link BrowserConfigOptions.block_images}. */
   block_images?: boolean;
+  /** See {@link BrowserConfigOptions.block_styles}. */
   block_styles?: boolean;
+  /** See {@link BrowserConfigOptions.block_fonts}. */
   block_fonts?: boolean;
+  /** See {@link BrowserConfigOptions.block_media}. */
   block_media?: boolean;
+  /** See {@link BrowserConfigOptions.screenshot}. */
   screenshot?: boolean;
+  /** See {@link BrowserConfigOptions.resolution}. */
   resolution?: string;
+  /** See {@link BrowserConfigOptions.target_url}. */
   target_url?: string;
+  /** See {@link BrowserConfigOptions.cache}. */
   cache?: boolean;
+  /** See {@link BrowserConfigOptions.blacklist}. */
   blacklist?: boolean;
+  /** See {@link BrowserConfigOptions.unblock}. */
   unblock?: boolean;
+  /** See {@link BrowserConfigOptions.unblock_timeout}. */
   unblock_timeout?: number;
+  /** See {@link BrowserConfigOptions.browser_brand}. */
   browser_brand?: string;
+  /** See {@link BrowserConfigOptions.enable_mcp}. */
   enable_mcp?: boolean;
 
+  /**
+   * @param options Session options. See {@link BrowserConfigOptions}.
+   * @throws `Error` if `timeout` exceeds the upper bound of 1800 seconds.
+   */
   constructor(options: BrowserConfigOptions = {}) {
     if (options.timeout !== undefined && options.timeout > 1800) {
       throw new Error('timeout cannot exceed 1800 seconds (30 minutes)');
@@ -84,7 +147,13 @@ export class BrowserConfig {
   }
 
   /**
-   * Generate the WebSocket URL for a Cloud Browser session.
+   * Build the WebSocket URL clients use to connect to the Cloud Browser
+   * session (compatible with Puppeteer `browserWSEndpoint` and the
+   * Playwright `connectOverCDP` API).
+   *
+   * @param apiKey Scrapfly API key.
+   * @param host Optional override for the Cloud Browser host (defaults to `wss://browser.scrapfly.io`).
+   * @returns A fully-qualified `wss://…` URL with all options encoded as query parameters.
    */
   websocketUrl(apiKey: string, host?: string): string {
     const params = new URLSearchParams();

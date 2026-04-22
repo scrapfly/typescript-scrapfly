@@ -48,4 +48,6 @@ class Logger {
 }
 
 export default Logger;
+
+/** Shared logger instance used by the SDK. Callers can set its log level to silence or unmute output. */
 export const log: Logger = new Logger('scrapfly');

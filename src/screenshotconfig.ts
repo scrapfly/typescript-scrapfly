@@ -2,79 +2,105 @@ import { ScreenshotConfigError } from './errors.ts';
 import { urlsafe_b64encode } from './utils.ts';
 import { log } from './logger.ts';
 
+/** Toggles that customize how the screenshot is captured. */
 export enum Options {
-  /**
-    Options to customize the screenshot behavior
-    Attributes:
-        LOAD_IMAGES: Enable image rendering with the request, add extra usage for the bandwidth consumed.
-        DARK_MODE: Enable dark mode display.
-        BLOCK_BANNERS: Block cookies banners and overlay that cover the screen.
-        PRINT_MEDIA_FORMAT: Render the page in the print mode.
-    */
+  /** Render images before capturing. Consumes additional bandwidth. */
   LOAD_IMAGES = 'load_images',
+  /** Render the page in dark mode. */
   DARK_MODE = 'dark_mode',
+  /** Block cookie banners and overlays that would otherwise occlude the page. */
   BLOCK_BANNERS = 'block_banners',
+  /** Render the page using the `print` media query. */
   PRINT_MEDIA_FORMAT = 'print_media_format',
 }
 
+/** Output format of the screenshot image. */
 export enum Format {
-  /**
-    Format of the screenshot image.
-    Attributes:
-        JPG: JPG format.
-        PNG: PNG format.
-        WEBP: WEBP format.
-        GIF: GIF format.
-    */
+  /** JPEG encoding. */
   JPG = 'jpg',
+  /** PNG encoding. */
   PNG = 'png',
+  /** WebP encoding. */
   WEBP = 'webp',
+  /** Animated GIF encoding. */
   GIF = 'gif',
 }
 
+/**
+ * Visual impairments to simulate when capturing the screenshot.
+ * Useful for WCAG accessibility testing.
+ */
 export enum VisionDeficiency {
-  /**
-    Simulate vision deficiency for accessibility testing (WCAG compliance)
-    Attributes:
-      DEUTERANOPIA: Difficulty distinguishing green from red; green appears beige/gray
-      PROTANOPIA: Reduced sensitivity to red light; red appears dark/black
-      TRITANOPIA: Difficulty distinguishing blue from yellow and violet from red
-      ACHROMATOPSIA: Complete inability to perceive color; sees only in grayscale
-      REDUCED_CONTRAST: Simulates reduced contrast due to aging, low light, or other factors
-      BLURRED_VISION: Simulates uncorrected refractive errors or age-related vision loss
-   */
+  /** Difficulty distinguishing green from red; green appears beige/gray. */
   DEUTERANOPIA = 'deuteranopia',
+  /** Reduced sensitivity to red light; red appears dark/black. */
   PROTANOPIA = 'protanopia',
+  /** Difficulty distinguishing blue from yellow and violet from red. */
   TRITANOPIA = 'tritanopia',
+  /** Complete color blindness; the image is grayscale. */
   ACHROMATOPSIA = 'achromatopsia',
+  /** Reduced contrast (aging, low light). */
   REDUCED_CONTRAST = 'reducedContrast',
+  /** Blurred vision (uncorrected refractive errors). */
   BLURRED_VISION = 'blurredVision',
 }
 
+/**
+ * User-facing options accepted by {@link ScreenshotConfig}. See the
+ * [Screenshot API reference](https://scrapfly.io/docs/screenshot-api)
+ * for the authoritative list of valid values.
+ */
 type ScreenshotConfigOptions = {
+  /** URL of the page to screenshot. Required. */
   url: string;
+  /** Output image format. Defaults to JPG. */
   format?: 'jpg' | 'png' | 'webp' | 'gif' | Format;
+  /** Capture area: `fullpage`, `viewport`, or a CSS selector. */
   capture?: string;
+  /** Viewport resolution, formatted as "widthxheight". */
   resolution?: string;
+  /** ISO country code for geo-targeting the rendering browser. */
   country?: string;
+  /** Request timeout in milliseconds. */
   timeout?: number;
+  /** Additional delay (ms) after load before capturing. */
   rendering_wait?: number;
+  /** CSS selector to wait for before capturing. */
   wait_for_selector?: string;
+  /** Behavior toggles. See {@link Options}. */
   options?: ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | Options)[];
+  /** Scroll to the bottom of the page before capture. */
   auto_scroll?: boolean;
+  /** Custom JavaScript to run on the page before capture. */
   js?: string;
+  /** Serve from Scrapfly's cache when possible. */
   cache?: boolean;
+  /** TTL in seconds for the cached entry. Ignored if cache is disabled. */
   cache_ttl?: number;
+  /** Invalidate the existing cache entry before capturing. */
   cache_clear?: boolean;
+  /** Vision deficiency to simulate. See {@link VisionDeficiency}. */
   vision_deficiency?: 'deuteranopia' | 'protanopia' | 'tritanopia' | 'achromatopsia' | 'blurredVision' | 'reducedContrast' | VisionDeficiency;
+  /** Webhook name to notify when the screenshot completes. */
   webhook?: string;
 };
 
+/**
+ * Configuration for a single screenshot request. Instances are passed
+ * to {@link ScrapflyClient.screenshot}; this class is responsible for
+ * validating options and encoding them into Scrapfly's query string
+ * format.
+ */
 export class ScreenshotConfig {
+  /** URL of the page to screenshot. */
   url: string;
+  /** Output image format. */
   format?: 'jpg' | 'png' | 'webp' | 'gif' | Format;
+  /** Capture area (`fullpage`, `viewport`, or a CSS selector). */
   capture?: string;
+  /** Viewport resolution (`widthxheight`). */
   resolution?: string;
+  /** Geo-targeting country (ISO code). */
   country?: string = undefined;
   timeout?: number;
   rendering_wait?: number;
@@ -128,6 +154,13 @@ export class ScreenshotConfig {
     }
   }
 
+  /**
+   * Encode this config as the query-string parameters sent to the
+   * Screenshot API.
+   *
+   * @param options.key Scrapfly API key.
+   * @returns A record suitable for `URLSearchParams` construction.
+   */
   toApiParams(options: { key: string }): Record<string, any> {
     const params: Record<string, any> = {
       key: options.key,

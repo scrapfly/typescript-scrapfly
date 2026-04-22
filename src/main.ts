@@ -1,3 +1,29 @@
+/**
+ * # Scrapfly SDK for TypeScript / JavaScript
+ *
+ * Official client library for the [Scrapfly](https://scrapfly.io) web
+ * scraping API. Provides typed wrappers around the Scrape, Screenshot,
+ * Extraction, Crawler, Monitoring, and Cloud Browser APIs.
+ *
+ * ## Quick start
+ *
+ * ```ts
+ * import { ScrapflyClient, ScrapeConfig } from '@scrapfly/scrapfly-sdk';
+ *
+ * const client = new ScrapflyClient({ key: 'your-api-key' });
+ * const result = await client.scrape(new ScrapeConfig({
+ *   url: 'https://web-scraping.dev/products',
+ *   render_js: true,
+ *   asp: true,
+ * }));
+ * console.log(result.content);
+ * ```
+ *
+ * See the [Scrapfly docs](https://scrapfly.io/docs) for the full API
+ * reference.
+ *
+ * @module
+ */
 export { ScrapflyClient } from './client.ts';
 export {
   Format as ScrapeFormat,
@@ -14,6 +40,7 @@ export {
 export { ExtractionConfig } from './extractionconfig.ts';
 export { BrowserConfig, ProxyPool, OperatingSystem } from './browserconfig.ts';
 export type { BrowserConfigOptions } from './browserconfig.ts';
+/** Namespace of every error class the SDK can throw. See {@link ScrapflyError}. */
 export * as errors from './errors.ts';
 
 export { ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';

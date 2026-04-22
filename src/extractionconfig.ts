@@ -2,58 +2,93 @@ import * as errors from './errors.ts';
 import { urlsafe_b64encode } from './utils.ts';
 import { ExtractionConfigError } from './errors.ts';
 
+/** Compression format declared for documents submitted to the Extraction API. */
 export enum CompressionFormat {
-  /**
-    Document compression format.
-
-    Attributes:
-        GZIP: gzip format.
-        ZSTD: zstd format.
-        DEFLATE: deflate.
-    """
-     */
+  /** gzip compression. */
   GZIP = 'gzip',
+  /** zstd compression. */
   ZSTD = 'zstd',
+  /** DEFLATE compression. */
   DEFLATE = 'deflate',
 }
 
+/**
+ * User-facing options accepted by {@link ExtractionConfig}. See the
+ * [Extraction API reference](https://scrapfly.io/docs/extraction-api)
+ * for the authoritative list of valid values.
+ */
 type ExtractionConfigOptions = {
+  /** Document body to extract from. */
   body: string;
+  /** Content-Type of the body (e.g. "text/html"). */
   content_type: string;
+  /** URL associated with the document (used for link resolution). */
   url?: string;
+  /** Character set of the document. */
   charset?: string;
-  extraction_template?: string; // saved template name
-  extraction_ephemeral_template?: object; // ephemeraly declared json template
+  /** Name of a saved extraction template. */
+  extraction_template?: string;
+  /** Inline extraction template, used instead of a saved one. */
+  extraction_ephemeral_template?: object;
+  /** Natural-language prompt for LLM-based extraction. */
   extraction_prompt?: string;
+  /** Override the LLM model used for prompt-based extraction. */
   extraction_model?: string;
+  /** Whether the provided body is already compressed. */
   is_document_compressed?: boolean;
+  /** Compression format of the body. See {@link CompressionFormat}. */
   document_compression_format?: 'gzip' | 'zstd' | 'deflate' | CompressionFormat;
+  /** Webhook name to notify when extraction completes. */
   webhook?: string;
+  /** Request timeout in milliseconds. */
   timeout?: number;
 
-  // deprecated options
+  /** @deprecated Use {@link extraction_template} instead. */
   template?: string;
+  /** @deprecated Use {@link extraction_ephemeral_template} instead. */
   ephemeral_template?: object;
 };
 
+/**
+ * Configuration for an Extraction API call. Holds the document to
+ * extract from and the template/prompt/model that should drive the
+ * extraction.
+ */
 export class ExtractionConfig {
+  /** Document body. */
   body: string | Uint8Array;
+  /** Content-Type of the body. */
   content_type: string;
+  /** URL associated with the document. */
   url?: string;
+  /** Character set of the document. */
   charset?: string;
-  extraction_template?: string; // saved template name
-  extraction_ephemeral_template?: object; // ephemeraly declared json template
+  /** Saved extraction template name. */
+  extraction_template?: string;
+  /** Inline extraction template. */
+  extraction_ephemeral_template?: object;
+  /** Natural-language extraction prompt. */
   extraction_prompt?: string;
+  /** LLM model override for prompt-based extraction. */
   extraction_model?: string;
+  /** Whether the body is pre-compressed. */
   is_document_compressed?: boolean;
+  /** Compression format of the body. */
   document_compression_format?: 'gzip' | 'zstd' | 'deflate' | CompressionFormat;
+  /** Webhook name to notify on completion. */
   webhook?: string;
+  /** Request timeout in milliseconds. */
   timeout?: number;
 
-  // // deprecated options
+  /** @deprecated Use {@link extraction_template} instead. */
   template?: string;
+  /** @deprecated Use {@link extraction_ephemeral_template} instead. */
   ephemeral_template?: object;
 
+  /**
+   * @param options See {@link ExtractionConfigOptions}.
+   * @throws {@link errors.ExtractionConfigError} if an unknown option is supplied.
+   */
   constructor(options: ExtractionConfigOptions) {
     this.validateOptions(options);
     if (options.template) {
@@ -104,11 +139,18 @@ export class ExtractionConfig {
     }
   }
 
+  /**
+   * Encode this config as the query-string parameters sent to the
+   * Extraction API.
+   *
+   * @param options.key Scrapfly API key.
+   * @returns A record suitable for `URLSearchParams` construction.
+   * @throws {@link ExtractionConfigError} on conflicting or incompatible options.
+   */
   toApiParams(options: { key: string }): Record<string, any> {
     const params: Record<string, any> = {
       key: options.key,
     };
-    // params.body = this.body;
     params.content_type = this.content_type;
 
     if (this.url) {
