@@ -751,17 +751,25 @@ export class ScrapflyClient {
    * Turn scrapfly screenshot API response to ScreenshotResult or raise one of ScrapflyError
    */
   async handleScreenshotResponse(response: Response): Promise<ScreenshotResult> {
-    if (response.headers.get('content-type') === 'application/json') {
-      const data: Rec<any> = (await response.json()) as Rec<any>;
-      if (data.http_code == 401 || response.status == 401) {
-        throw new errors.BadApiKeyError(JSON.stringify(data));
+    // A Response body can only be consumed once. If the server returned
+    // JSON, parse it up front and reuse it on the error path — re-reading
+    // would yield "body stream already read" and mask the real error.
+    const isJson = response.headers.get('content-type') === 'application/json';
+    let jsonData: Rec<any> | null = null;
+    if (isJson) {
+      jsonData = (await response.json()) as Rec<any>;
+      if (jsonData.http_code == 401 || response.status == 401) {
+        throw new errors.BadApiKeyError(JSON.stringify(jsonData));
       }
-      if ('error_id' in data) {
-        throw new errors.ScreenshotApiError(JSON.stringify(data));
+      if ('error_id' in jsonData) {
+        throw new errors.ScreenshotApiError(JSON.stringify(jsonData));
       }
     }
     if (!response.ok) {
-      throw new errors.ScreenshotApiError(JSON.stringify(await response.json()));
+      const body = jsonData ?? (await response.text());
+      throw new errors.ScreenshotApiError(
+        typeof body === 'string' ? body : JSON.stringify(body),
+      );
     }
     const data = await response.arrayBuffer();
     const result = new ScreenshotResult(response, data);
@@ -798,6 +806,9 @@ export class ScrapflyClient {
    * Turn scrapfly Extraction API response to ExtractionResult or raise one of ScrapflyError
    */
   async handleExtractionResponse(response: Response): Promise<ExtractionResult> {
+    // Body can only be consumed once — reuse the parsed JSON on the
+    // error path instead of re-reading, which would fail with
+    // "body stream already read".
     const data: Rec<any> = (await response.json()) as Rec<any>;
     if ('error_id' in data) {
       if (data.http_code == 401 || response.status == 401) {
@@ -806,7 +817,7 @@ export class ScrapflyClient {
       throw new errors.ExtractionApiError(JSON.stringify(data));
     }
     if (!response.ok) {
-      throw new errors.ApiHttpClientError(JSON.stringify(await response.json()));
+      throw new errors.ApiHttpClientError(JSON.stringify(data));
     }
     const result = new ExtractionResult({
       data: data.data,
