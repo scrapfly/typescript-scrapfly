@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Clean up any existing build directory
 rm -rf build
@@ -16,7 +17,7 @@ cp LICENSE build/
 # Change to the build directory
 cd build
 
-# Publish the package
-# deno task test
-rm -r __tests__
+# Publish the package.
+# __tests__ was copied in above; strip it so JSR doesn't index tests.
+rm -rf __tests__
 deno publish --allow-dirty
