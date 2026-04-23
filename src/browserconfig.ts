@@ -64,6 +64,14 @@ export type BrowserConfigOptions = {
   browser_brand?: string;
   /** Enable the MCP (Model Context Protocol) bridge. */
   enable_mcp?: boolean;
+  /**
+   * Arm Scrapium's built-in captcha detector + solver on the first page attach.
+   * Turnstile, DataDome slider, reCAPTCHA, GeeTest, PerimeterX hold, and
+   * puzzle captchas are handled automatically — no extra CDP calls from the
+   * client. Billed per solve; failures cost nothing.
+   * See https://scrapfly.io/docs/cloud-browser-api/captcha-solver
+   */
+  solve_captcha?: boolean;
 };
 
 /**
@@ -114,6 +122,8 @@ export class BrowserConfig {
   browser_brand?: string;
   /** See {@link BrowserConfigOptions.enable_mcp}. */
   enable_mcp?: boolean;
+  /** See {@link BrowserConfigOptions.solve_captcha}. */
+  solve_captcha?: boolean;
 
   /**
    * @param options Session options. See {@link BrowserConfigOptions}.
@@ -144,6 +154,7 @@ export class BrowserConfig {
     this.unblock_timeout = options.unblock_timeout;
     this.browser_brand = options.browser_brand;
     this.enable_mcp = options.enable_mcp;
+    this.solve_captcha = options.solve_captcha;
   }
 
   /**
@@ -180,6 +191,7 @@ export class BrowserConfig {
     if (this.unblock_timeout !== undefined) params.set('unblock_timeout', String(this.unblock_timeout));
     if (this.browser_brand !== undefined) params.set('browser_brand', this.browser_brand);
     if (this.enable_mcp !== undefined) params.set('enable_mcp', String(this.enable_mcp));
+    if (this.solve_captcha !== undefined) params.set('solve_captcha', String(this.solve_captcha));
 
     const baseHost = host || 'wss://browser.scrapfly.io';
     return `${baseHost}?${params.toString()}`;

@@ -1322,6 +1322,7 @@ export class ScrapflyClient {
     body?: string;
     method?: string;
     enable_mcp?: boolean;
+    solve_captcha?: boolean;
   }): Promise<{ ws_url: string; session_id: string; run_id: string; mcp_endpoint?: string }> {
     const proxyPoolMap: Record<string, string> = {
       datacenter: 'public_datacenter_pool',
@@ -1338,6 +1339,7 @@ export class ScrapflyClient {
     if (options.body) jsonBody.body = options.body;
     if (options.method) jsonBody.method = options.method;
     if (options.enable_mcp !== undefined) jsonBody.enable_mcp = options.enable_mcp;
+    if (options.solve_captcha !== undefined) jsonBody.solve_captcha = options.solve_captcha;
 
     const url = new URL(this.cloudBrowserApiHost + '/unblock');
     url.searchParams.set('key', this.key);
