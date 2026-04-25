@@ -4,10 +4,10 @@
 //   SCRAPFLY_API_KEY=scp-live-... \
 //     deno run --allow-net --allow-read --allow-env examples/deno/crawler_quickstart.ts
 //
-// To target a local k3d cluster instead of api.scrapfly.io:
+// To target a local self-hosted dev cluster instead of api.scrapfly.io:
 //   SCRAPFLY_API_KEY=scp-live-... \
-//   SCRAPFLY_API_HOST=https://api.scrapfly.home \
-//     deno run --allow-net --allow-read --allow-env --unsafely-ignore-certificate-errors=api.scrapfly.home examples/deno/crawler_quickstart.ts
+//   SCRAPFLY_API_HOST=https://api.scrapfly.local \
+//     deno run --allow-net --allow-read --allow-env --unsafely-ignore-certificate-errors=api.scrapfly.local examples/deno/crawler_quickstart.ts
 //
 // What this example does:
 //   1. Schedules a small crawl of https://web-scraping.dev/products

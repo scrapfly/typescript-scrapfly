@@ -4,10 +4,10 @@
 // set in the environment. They are skipped (with a console message) otherwise,
 // so the unit-test suite stays fast and offline.
 //
-// Local development: point at the k3d cluster:
+// Local development: point at the dev cluster:
 //   export SCRAPFLY_API_KEY=scp-live-...
-//   export SCRAPFLY_API_HOST=https://api.scrapfly.home
-//   deno test --allow-net --allow-read --allow-env --unsafely-ignore-certificate-errors=api.scrapfly.home __tests__/integration/crawler.test.ts
+//   export SCRAPFLY_API_HOST=https://api.scrapfly.local
+//   deno test --allow-net --allow-read --allow-env --unsafely-ignore-certificate-errors=api.scrapfly.local __tests__/integration/crawler.test.ts
 //
 // Note on the `/urls` endpoint: the server returns a streaming `text/plain`
 // response (one URL per line for visited; `url,reason` for failed/skipped).
@@ -22,11 +22,11 @@ import { CrawlerArtifact, CrawlerStatus, CrawlerUrls } from '../../src/crawlerre
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
 const SCRAPFLY_KEY = Deno.env.get('SCRAPFLY_API_KEY');
-const SCRAPFLY_HOST = Deno.env.get('SCRAPFLY_API_HOST') ?? 'https://api.scrapfly.home';
+const SCRAPFLY_HOST = Deno.env.get('SCRAPFLY_API_HOST') ?? 'https://api.scrapfly.local';
 
 if (!SCRAPFLY_KEY) {
   console.log(
-    'skipping crawler integration tests (set SCRAPFLY_API_KEY to enable; pointing at https://api.scrapfly.home by default)',
+    'skipping crawler integration tests (set SCRAPFLY_API_KEY to enable; pointing at https://api.scrapfly.local by default)',
   );
 } else {
   function makeClient(): ScrapflyClient {
@@ -53,7 +53,7 @@ if (!SCRAPFLY_KEY) {
     return { client, crawl };
   }
 
-  Deno.test('integration: client can talk to api.scrapfly.home', async () => {
+  Deno.test('integration: client can talk to api.scrapfly.local', async () => {
     // Sanity check — the URL host override works and the cluster is reachable.
     const client = makeClient();
     assertEquals(client.HOST, SCRAPFLY_HOST.replace(/\/+$/, ''));

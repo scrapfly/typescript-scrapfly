@@ -19,18 +19,18 @@
 //
 // Required env vars:
 //   SCRAPFLY_API_KEY        Dev API key (e.g. scp-live-...)
-//   SCRAPFLY_API_HOST       Local Scrapfly API (default: https://api.scrapfly.home)
+//   SCRAPFLY_API_HOST       Local Scrapfly API (default: https://api.scrapfly.local)
 //
 // Optional:
 //   WEB_SCRAPING_DEV_BASE   Trap app base URL.
 //                           Default: https://web-scraping.dev (public prod).
-//                           Override to https://web-scraping-dev.home for the
-//                           local k3d cluster.
+//                           Override to https://web-scraping-dev.local for the
+//                           local self-hosted dev cluster.
 //
 // Run locally:
 //   export SCRAPFLY_API_KEY=scp-live-...
 //   deno test --allow-net --allow-read --allow-env \
-//     --unsafely-ignore-certificate-errors=api.scrapfly.home,web-scraping-dev.home \
+//     --unsafely-ignore-certificate-errors=api.scrapfly.local,web-scraping-dev.local \
 //     __tests__/integration/crawler-compliance.test.ts
 
 import { ScrapflyClient } from '../../src/client.ts';
@@ -39,7 +39,7 @@ import { Crawl } from '../../src/crawl.ts';
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
 const SCRAPFLY_KEY = Deno.env.get('SCRAPFLY_API_KEY');
-const SCRAPFLY_HOST = Deno.env.get('SCRAPFLY_API_HOST') ?? 'https://api.scrapfly.home';
+const SCRAPFLY_HOST = Deno.env.get('SCRAPFLY_API_HOST') ?? 'https://api.scrapfly.local';
 const TARGET_BASE = Deno.env.get('WEB_SCRAPING_DEV_BASE') ?? 'https://web-scraping.dev';
 const REPORT_URL = `${TARGET_BASE}/crawler-test-report`;
 const RESET_URL = `${REPORT_URL}/reset`;

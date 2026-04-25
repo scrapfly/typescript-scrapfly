@@ -12,17 +12,24 @@ export enum ResourceType {
  * HMAC-SHA256 signature on the request body against the configured
  * signing secret.
  *
- * @param body Raw request body as received (do NOT decode).
- * @param signature Value of the `Scrapfly-Signature` header (hex).
- * @param signingSecret Webhook signing secret configured in the dashboard (hex).
+ * @param body Raw request body as received (verify BEFORE any decompression
+ *             or JSON parsing — the signature is computed on the bytes
+ *             Scrapfly sent on the wire).
+ * @param signature Value of the `X-Scrapfly-Webhook-Signature` header
+ *                  (uppercase hex digest).
+ * @param signingSecret Webhook signing secret from the dashboard, passed as-is
+ *                      (UTF-8 string; not hex-encoded).
  * @returns `true` if the signature matches.
  */
 export function verifySignature(body: Buffer, signature: string, signingSecret: string): boolean {
-  const secret = Buffer.from(signingSecret, 'hex');
-  const hmac = crypto.createHmac('sha256', secret);
+  const hmac = crypto.createHmac('sha256', Buffer.from(signingSecret, 'utf8'));
   hmac.update(body);
   const computed = hmac.digest('hex').toUpperCase();
-  return computed === signature;
+  const received = signature.toUpperCase();
+  if (computed.length !== received.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(received));
 }
 
 

@@ -472,8 +472,8 @@ Deno.test('crawlCancel: error envelope throws ScrapflyCrawlerError', async () =>
 // ----- host override ------------------------------------------------------
 
 Deno.test('client: host override is honored, trailing slashes stripped', () => {
-  const client = new ScrapflyClient({ key: '__API_KEY__', host: 'https://api.scrapfly.home/' });
-  assertEquals(client.HOST, 'https://api.scrapfly.home');
+  const client = new ScrapflyClient({ key: '__API_KEY__', host: 'https://api.scrapfly.local/' });
+  assertEquals(client.HOST, 'https://api.scrapfly.local');
 });
 
 Deno.test('client: host omitted defaults to api.scrapfly.io', () => {
