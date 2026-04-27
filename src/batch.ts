@@ -26,10 +26,13 @@ function indexOf(buf: Uint8Array, needle: Uint8Array, start = 0): number {
   return -1;
 }
 
-function concat(
-  a: Uint8Array<ArrayBufferLike>,
-  b: Uint8Array<ArrayBufferLike>,
-): Uint8Array<ArrayBuffer> {
+// concat sidesteps the TS 5.7+ generic-Uint8Array vs dnt-Node legacy
+// Uint8Array mismatch by accepting `any` and returning a freshly
+// allocated buffer. The fresh allocation guarantees the result is a
+// `Uint8Array<ArrayBuffer>` at runtime under TS 5.7+ and a plain
+// non-generic `Uint8Array` under dnt's Node target.
+// deno-lint-ignore no-explicit-any
+function concat(a: any, b: any): any {
   const out = new Uint8Array(a.length + b.length);
   out.set(a, 0);
   out.set(b, a.length);
