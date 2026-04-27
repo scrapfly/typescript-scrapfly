@@ -83,6 +83,16 @@ export type {
   MonitoringTargetMetricsOptions,
 } from './monitoringconfig.ts';
 
+export { ScheduleAPIError } from './schedule.ts';
+export type {
+  CreateScheduleRequest,
+  ListSchedulesOptions,
+  Schedule,
+  ScheduleEnd,
+  ScheduleRecurrence,
+  UpdateScheduleRequest,
+} from './schedule.ts';
+
 export { log } from './logger.ts';
 
 export { createServer, verifySignature } from './webhookserver.ts';

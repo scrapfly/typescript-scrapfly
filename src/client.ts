@@ -17,6 +17,13 @@ import {
   type MonitoringMetricsOptions,
   type MonitoringTargetMetricsOptions,
 } from './monitoringconfig.ts';
+import {
+  ScheduleAPIError,
+  type CreateScheduleRequest,
+  type ListSchedulesOptions,
+  type Schedule,
+  type UpdateScheduleRequest,
+} from './schedule.ts';
 
 /**
  * Main entry point for the Scrapfly SDK.
@@ -1556,6 +1563,189 @@ export class ScrapflyClient {
       throw new Error(`Sessions list failed: ${response.status} ${await response.text()}`);
     }
     return await response.json() as { sessions: any[]; total: number };
+  }
+
+  // -------------------------------------------------------------------------
+  // Public schedule endpoints — /scrape/schedules, /screenshot/schedules,
+  // /crawl/schedules, /schedules. The kind-specific config is supplied to the
+  // matching `create*Schedule` method; the cross-kind list/get/update/delete/
+  // pause/resume/execute methods work regardless of kind.
+  // -------------------------------------------------------------------------
+
+  /** Create a Web Scraping API schedule. `scrape_config` is the same shape
+   *  accepted by `/scrape` (e.g. `{ url, render_js, asp, ... }`). */
+  async createScrapeSchedule(
+    scrapeConfig: Record<string, unknown>,
+    request: CreateScheduleRequest,
+  ): Promise<Schedule> {
+    return await this.scheduleRequest(
+      'POST',
+      '/scrape/schedules',
+      undefined,
+      this.buildCreateBody('scrape_config', scrapeConfig, request),
+    ) as Schedule;
+  }
+
+  /** Create a Screenshot API schedule. */
+  async createScreenshotSchedule(
+    screenshotConfig: Record<string, unknown>,
+    request: CreateScheduleRequest,
+  ): Promise<Schedule> {
+    return await this.scheduleRequest(
+      'POST',
+      '/screenshot/schedules',
+      undefined,
+      this.buildCreateBody('screenshot_config', screenshotConfig, request),
+    ) as Schedule;
+  }
+
+  /** Create a Crawler API schedule. */
+  async createCrawlerSchedule(
+    crawlerConfig: Record<string, unknown>,
+    request: CreateScheduleRequest,
+  ): Promise<Schedule> {
+    return await this.scheduleRequest(
+      'POST',
+      '/crawl/schedules',
+      undefined,
+      this.buildCreateBody('crawler_config', crawlerConfig, request),
+    ) as Schedule;
+  }
+
+  /** Return a schedule by id. Works across all kinds. */
+  async getSchedule(id: string): Promise<Schedule> {
+    return await this.scheduleRequest('GET', `/schedules/${encodeURIComponent(id)}`) as Schedule;
+  }
+
+  /** List every schedule on the account, optionally filtered by kind/status. */
+  async listSchedules(opts?: ListSchedulesOptions): Promise<Schedule[]> {
+    return await this.scheduleRequest(
+      'GET',
+      '/schedules',
+      opts as Record<string, string | undefined> | undefined,
+    ) as Schedule[];
+  }
+
+  async listScrapeSchedules(opts?: { status?: string }): Promise<Schedule[]> {
+    return await this.scheduleRequest('GET', '/scrape/schedules', opts) as Schedule[];
+  }
+
+  async listScreenshotSchedules(opts?: { status?: string }): Promise<Schedule[]> {
+    return await this.scheduleRequest('GET', '/screenshot/schedules', opts) as Schedule[];
+  }
+
+  async listCrawlerSchedules(opts?: { status?: string }): Promise<Schedule[]> {
+    return await this.scheduleRequest('GET', '/crawl/schedules', opts) as Schedule[];
+  }
+
+  /** Patch an active schedule. Only fields set in `request` change. */
+  async updateSchedule(id: string, request: UpdateScheduleRequest): Promise<Schedule> {
+    return await this.scheduleRequest(
+      'PATCH',
+      `/schedules/${encodeURIComponent(id)}`,
+      undefined,
+      request as Record<string, unknown>,
+    ) as Schedule;
+  }
+
+  /** Cancel a schedule. Cancellation is terminal (returns no body). */
+  async cancelSchedule(id: string): Promise<void> {
+    await this.scheduleRequest('DELETE', `/schedules/${encodeURIComponent(id)}`);
+  }
+
+  async pauseSchedule(id: string): Promise<Schedule> {
+    return await this.scheduleRequest(
+      'POST',
+      `/schedules/${encodeURIComponent(id)}/pause`,
+    ) as Schedule;
+  }
+
+  async resumeSchedule(id: string): Promise<Schedule> {
+    return await this.scheduleRequest(
+      'POST',
+      `/schedules/${encodeURIComponent(id)}/resume`,
+    ) as Schedule;
+  }
+
+  /** Fire a schedule immediately, regardless of next_scheduled_date. */
+  async executeSchedule(id: string): Promise<Schedule> {
+    return await this.scheduleRequest(
+      'POST',
+      `/schedules/${encodeURIComponent(id)}/execute`,
+    ) as Schedule;
+  }
+
+  private buildCreateBody(
+    configKey: string,
+    config: Record<string, unknown>,
+    request: CreateScheduleRequest,
+  ): Record<string, unknown> {
+    const body: Record<string, unknown> = {
+      [configKey]: config,
+      webhook_name: request.webhook_name,
+      allow_concurrency: request.allow_concurrency ?? false,
+      retry_on_failure: request.retry_on_failure ?? false,
+    };
+    if (request.recurrence) body.recurrence = request.recurrence;
+    if (request.scheduled_date) body.scheduled_date = request.scheduled_date;
+    if (typeof request.max_retries === 'number') body.max_retries = request.max_retries;
+    if (request.notes) body.notes = request.notes;
+    return body;
+  }
+
+  private async scheduleRequest(
+    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    path: string,
+    query?: Record<string, string | undefined>,
+    body?: Record<string, unknown>,
+  ): Promise<unknown> {
+    const url = new URL(this.HOST + path);
+    const params = new URLSearchParams();
+    params.set('key', this.key);
+    if (query) {
+      for (const [k, v] of Object.entries(query)) {
+        if (v !== undefined && v !== '') params.set(k, v);
+      }
+    }
+    url.search = params.toString();
+
+    const init: { url: string; method: string; headers: Record<string, string>; body?: string } = {
+      url: url.toString(),
+      method,
+      headers: {
+        'user-agent': this.ua,
+        accept: 'application/json',
+      },
+    };
+    if (body !== undefined) {
+      init.body = JSON.stringify(body);
+      init.headers['content-type'] = 'application/json';
+    }
+
+    const response = await this.fetch(init as any);
+
+    if (response.status === 204) return undefined;
+    if (!response.ok) {
+      let envelope: { error?: string; message?: string; reason?: string; details?: unknown } = {};
+      try {
+        envelope = await response.json() as typeof envelope;
+      } catch {
+        // body wasn't JSON; fall through with the empty envelope
+      }
+      const code = envelope.error ?? 'ERR::SCHEDULER::BACKEND_ERROR';
+      let message = envelope.message ?? '';
+      if (envelope.reason) {
+        message = message ? `${message} (${envelope.reason})` : envelope.reason;
+      }
+      if (!message) message = `HTTP ${response.status}`;
+      throw new ScheduleAPIError({
+        code,
+        message,
+        httpStatusCode: response.status,
+        details: envelope.details,
+      });
+    }
+    return await response.json();
   }
 }
 
