@@ -26,7 +26,10 @@ function indexOf(buf: Uint8Array, needle: Uint8Array, start = 0): number {
   return -1;
 }
 
-function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
+function concat(
+  a: Uint8Array<ArrayBufferLike>,
+  b: Uint8Array<ArrayBufferLike>,
+): Uint8Array<ArrayBuffer> {
   const out = new Uint8Array(a.length + b.length);
   out.set(a, 0);
   out.set(b, a.length);
