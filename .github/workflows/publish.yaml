@@ -50,13 +50,20 @@ jobs:
     name: Publish to NPM
     runs-on: ubuntu-latest
     needs: build
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+
+      # npm OIDC trusted publishing needs npm >= 11.5.1.
+      - name: Upgrade npm
+        run: npm install -g npm@latest
 
       - name: Download npm artifact
         uses: actions/download-artifact@v4
@@ -64,11 +71,11 @@ jobs:
           name: npm-package
           path: npm
 
+      # No NODE_AUTH_TOKEN: authentication is OIDC trusted publishing,
+      # configured on npmjs.com for this repo + workflow (same model as JSR).
       - name: Publish
         run: npm publish
         working-directory: ./npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTOMATION_TOKEN }}
 
   jsr:
     name: Publish to JSR
