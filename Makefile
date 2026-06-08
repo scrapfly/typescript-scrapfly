@@ -57,7 +57,7 @@ release:
 	sed -i "s/^\(  \"version\": \"\)[^\"]*\(\"\)/\1$(VERSION)\2/" deno.json
 	@if [ -z "$(SKIP_TESTS)" ]; then $(MAKE) test; else echo "SKIP_TESTS set, skipping test gate"; fi
 	$(MAKE) build
-	git add deno.json npm/package.json
+	git add deno.json
 	-git commit -m "Release $(VERSION)"
 	-git push origin main
 	git tag -a v$(VERSION) -m "Version $(VERSION)"
