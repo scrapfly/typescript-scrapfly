@@ -51,17 +51,16 @@ publish-jsr:
 
 release:
 	@if [ -z "$(VERSION)" ]; then echo "Usage: make release VERSION=x.y.z [NEXT_VERSION=x.y.(z+1)]"; exit 2; fi
-	git branch | grep \* | cut -d ' ' -f2 | grep main || exit 1
+	@[ "$$(git rev-parse --abbrev-ref HEAD)" = main ] || { echo "release must run on main"; exit 1; }
 	git pull origin main
 	@# Stamp deno.json to the release version BEFORE build so npm/package.json gets it.
 	sed -i "s/^\(  \"version\": \"\)[^\"]*\(\"\)/\1$(VERSION)\2/" deno.json
-	$(MAKE) test
+	@if [ -z "$(SKIP_TESTS)" ]; then $(MAKE) test; else echo "SKIP_TESTS set, skipping test gate"; fi
 	$(MAKE) build
 	git add deno.json npm/package.json
 	-git commit -m "Release $(VERSION)"
 	-git push origin main
 	git tag -a v$(VERSION) -m "Version $(VERSION)"
-	git push --tags
-	$(MAKE) publish-npm
-	$(MAKE) publish-jsr
+	git push origin v$(VERSION)
+	@if [ -z "$(SKIP_PUBLISH)" ]; then $(MAKE) publish-npm; $(MAKE) publish-jsr; else echo "SKIP_PUBLISH set, leaving npm+JSR to CI (publish.yaml on v-tag)"; fi
 	@if [ -n "$(NEXT_VERSION)" ]; then $(MAKE) bump VERSION=$(NEXT_VERSION); fi
