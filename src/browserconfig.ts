@@ -72,6 +72,35 @@ export type BrowserConfigOptions = {
    * See https://scrapfly.io/docs/cloud-browser-api/captcha-solver
    */
   solve_captcha?: boolean;
+  /**
+   * Attach a Cloud Browser Credential Vault to the session by NAME — the
+   * alphanumeric name you gave it at `cloudBrowserVaultCreate`. The server
+   * resolves the name to the vault scoped to your api-key's project and
+   * environment. Pair with `vault_key`.
+   */
+  vault?: string;
+  /**
+   * Customer-held vault key (base64). Forwarded as a query parameter so the
+   * server can decrypt vault items at injection time. Treat as a secret —
+   * never log or expose in error messages.
+   */
+  vault_key?: string;
+  /** Enable the human-in-the-loop VNC channel (operator attach via Scrapfly's VNC mux). */
+  enable_vnc?: boolean;
+  /** Customer-chosen VNC password. Required when `enable_vnc` is true and `hitl_allowed_networks` is empty. */
+  vnc_password?: string;
+  /** Enable the human-in-the-loop WebRTC channel. */
+  enable_rtc?: boolean;
+  /** Optional WebRTC username. Defaults to "scrapfly" server-side. */
+  rtc_username?: string;
+  /** Customer-chosen WebRTC password. Required when `enable_rtc` is true and `hitl_allowed_networks` is empty. */
+  rtc_password?: string;
+  /**
+   * IP allow-list for credential-free HITL attach. Source IPs in this list
+   * skip password verification for VNC/WebRTC/downloads. Pass either a
+   * comma-separated string or an array of bare IPs / CIDRs.
+   */
+  hitl_allowed_networks?: string | string[];
 };
 
 /**
@@ -124,6 +153,22 @@ export class BrowserConfig {
   enable_mcp?: boolean;
   /** See {@link BrowserConfigOptions.solve_captcha}. */
   solve_captcha?: boolean;
+  /** See {@link BrowserConfigOptions.vault}. */
+  vault?: string;
+  /** See {@link BrowserConfigOptions.vault_key}. */
+  vault_key?: string;
+  /** See {@link BrowserConfigOptions.enable_vnc}. */
+  enable_vnc?: boolean;
+  /** See {@link BrowserConfigOptions.vnc_password}. */
+  vnc_password?: string;
+  /** See {@link BrowserConfigOptions.enable_rtc}. */
+  enable_rtc?: boolean;
+  /** See {@link BrowserConfigOptions.rtc_username}. */
+  rtc_username?: string;
+  /** See {@link BrowserConfigOptions.rtc_password}. */
+  rtc_password?: string;
+  /** See {@link BrowserConfigOptions.hitl_allowed_networks}. */
+  hitl_allowed_networks?: string;
 
   /**
    * @param options Session options. See {@link BrowserConfigOptions}.
@@ -155,6 +200,40 @@ export class BrowserConfig {
     this.browser_brand = options.browser_brand;
     this.enable_mcp = options.enable_mcp;
     this.solve_captcha = options.solve_captcha;
+    this.vault = options.vault;
+    this.vault_key = options.vault_key;
+    this.enable_vnc = options.enable_vnc;
+    this.vnc_password = options.vnc_password;
+    this.enable_rtc = options.enable_rtc;
+    this.rtc_username = options.rtc_username;
+    this.rtc_password = options.rtc_password;
+    if (Array.isArray(options.hitl_allowed_networks)) {
+      const cleaned = options.hitl_allowed_networks
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      this.hitl_allowed_networks = cleaned.length > 0 ? cleaned.join(',') : undefined;
+    } else {
+      this.hitl_allowed_networks = options.hitl_allowed_networks || undefined;
+    }
+  }
+
+  /**
+   * Return the deterministic project salt for an api_key (`sha256(api_key)[:8]`).
+   * Matches the `X-Browser-Project-Salt` response header returned on a
+   * successful Cloud Browser WebSocket upgrade. Useful for verifying that
+   * an attach link belongs to your project before sharing it.
+   *
+   * Uses the Web Crypto API where available (modern Node and browsers).
+   */
+  static async projectSalt(apiKey: string): Promise<string> {
+    const data = new TextEncoder().encode(apiKey);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    const bytes = new Uint8Array(digest);
+    let hex = '';
+    for (let i = 0; i < 4; i++) {
+      hex += bytes[i].toString(16).padStart(2, '0');
+    }
+    return hex;
   }
 
   /**
@@ -192,6 +271,14 @@ export class BrowserConfig {
     if (this.browser_brand !== undefined) params.set('browser_brand', this.browser_brand);
     if (this.enable_mcp !== undefined) params.set('enable_mcp', String(this.enable_mcp));
     if (this.solve_captcha !== undefined) params.set('solve_captcha', String(this.solve_captcha));
+    if (this.vault !== undefined) params.set('vault', this.vault);
+    if (this.vault_key !== undefined) params.set('vault_key', this.vault_key);
+    if (this.enable_vnc !== undefined) params.set('enable_vnc', String(this.enable_vnc));
+    if (this.vnc_password !== undefined) params.set('vnc_password', this.vnc_password);
+    if (this.enable_rtc !== undefined) params.set('enable_rtc', String(this.enable_rtc));
+    if (this.rtc_username !== undefined) params.set('rtc_username', this.rtc_username);
+    if (this.rtc_password !== undefined) params.set('rtc_password', this.rtc_password);
+    if (this.hitl_allowed_networks !== undefined) params.set('hitl_allowed_networks', this.hitl_allowed_networks);
 
     const baseHost = host || 'wss://browser.scrapfly.io';
     return `${baseHost}?${params.toString()}`;

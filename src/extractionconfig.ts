@@ -168,7 +168,7 @@ export class ExtractionConfig {
     }
 
     if (this.extraction_template) {
-      params.extraction_template = this.extraction_template;
+      params.extraction_template = 'persistent:' + this.extraction_template;
     }
 
     if (this.extraction_ephemeral_template) {

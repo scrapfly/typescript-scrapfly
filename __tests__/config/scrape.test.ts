@@ -448,6 +448,35 @@ Deno.test('url param generation: session_sticky_proxy ignored with no session', 
     });
 });
 
+Deno.test('url param generation: session_sticky_proxy defaults to true', () => {
+    const config = new ScrapeConfig({
+        url: 'http://httpbin.dev/get',
+        session: 'foo123',
+    });
+    assertEquals(config.toApiParams({ key: '1234' }), {
+        key: '1234',
+        url: 'http://httpbin.dev/get',
+        session: 'foo123',
+        session_sticky_proxy: true,
+    });
+});
+
+Deno.test('url param generation: session_sticky_proxy=false is sent explicitly', () => {
+    // false must reach the wire — omitting it lets the API default to
+    // sticky=true with a session, so the user could never disable it.
+    const config = new ScrapeConfig({
+        url: 'http://httpbin.dev/get',
+        session: 'foo123',
+        session_sticky_proxy: false,
+    });
+    assertEquals(config.toApiParams({ key: '1234' }), {
+        key: '1234',
+        url: 'http://httpbin.dev/get',
+        session: 'foo123',
+        session_sticky_proxy: false,
+    });
+});
+
 Deno.test('url param generation: correlation id sets', () => {
     const config = new ScrapeConfig({
         url: 'http://httpbin.dev/get',

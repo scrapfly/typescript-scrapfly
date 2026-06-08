@@ -8,7 +8,7 @@ import type { ExtractionConfig } from './extractionconfig.ts';
 import { BrowserConfig } from './browserconfig.ts';
 import { type AccountData, type ClassifyOptions, type ClassifyResult, ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
 import { log } from './logger.ts';
-import type { Rec } from './types.ts';
+import type { Rec, Vault, VaultItem, VaultItemCreate, VaultSecret } from './types.ts';
 import type { CrawlerConfig, CrawlerContentFormat } from './crawlerconfig.ts';
 import { CrawlerArtifact, type CrawlerArtifactType, CrawlerContents, CrawlerStatus, CrawlerUrls } from './crawlerresult.ts';
 import {
@@ -935,17 +935,52 @@ export class ScrapflyClient {
     try {
       const url = new URL(this.HOST + '/crawl');
       url.search = new URLSearchParams({ key: this.key }).toString();
-      response = await this.fetch({
-        url: url.toString(),
-        method: 'POST',
-        headers: {
-          'user-agent': this.ua,
-          'content-type': 'application/json',
-          'accept-encoding': 'gzip, deflate, br',
-          accept: 'application/json',
-        },
-        body: JSON.stringify(config.toApiParams()),
-      });
+      // POST /crawl accepts two body formats:
+      //   - application/json: the entire crawler configuration as JSON.
+      //     Used for seed-URL crawls and remote_url_list crawls.
+      //   - multipart/form-data: a 'config' JSON part and a 'urls' text
+      //     part (one URL per line). Used only when the caller provides
+      //     an in-memory url_list, so the URLs can be uploaded as a
+      //     streamed file payload instead of inlined into the JSON body.
+      const params = config.toApiParams() as Rec<any>;
+      const urlList: string[] | undefined = Array.isArray(params.url_list) && params.url_list.length > 0
+        ? (params.url_list as string[])
+        : undefined;
+      if (urlList !== undefined) {
+        // Strip url_list from the JSON config — the URLs go through the
+        // 'urls' multipart part instead, which the API gateway streams
+        // straight through to the scrape engine.
+        delete params.url_list;
+        const form = new FormData();
+        const configBlob = new Blob([JSON.stringify(params)], { type: 'application/json' });
+        form.append('config', configBlob, 'config.json');
+        const urlsBlob = new Blob([urlList.join('\n')], { type: 'text/plain' });
+        form.append('urls', urlsBlob, 'urls.txt');
+        response = await this.fetch({
+          url: url.toString(),
+          method: 'POST',
+          headers: {
+            'user-agent': this.ua,
+            // Intentionally omit content-type — fetch fills in the
+            // multipart boundary itself when given a FormData body.
+            'accept-encoding': 'gzip, deflate, br',
+            accept: 'application/json',
+          },
+          body: form,
+        });
+      } else {
+        response = await this.fetch({
+          url: url.toString(),
+          method: 'POST',
+          headers: {
+            'user-agent': this.ua,
+            'content-type': 'application/json',
+            'accept-encoding': 'gzip, deflate, br',
+            accept: 'application/json',
+          },
+          body: JSON.stringify(params),
+        });
+      }
     } catch (e) {
       log.error('error', e);
       throw e;
@@ -1309,10 +1344,23 @@ export class ScrapflyClient {
 
   /**
    * Get the WebSocket URL for a Cloud Browser session.
+   *
+   * On rejection the server sends a JSON error frame then a close frame
+   * with code 1008/1011/1013 and a "ERR::BROWSER::CODE: reason" string.
+   * See https://scrapfly.io/docs/cloud-browser-api/errors#websocket-close-frame
    */
   cloudBrowser(config?: BrowserConfig): string {
     const browserConfig = config || new BrowserConfig();
     return browserConfig.websocketUrl(this.key, this.cloudBrowserHost);
+  }
+
+  /**
+   * Return the deterministic project salt for this client's api_key. Matches
+   * the `X-Browser-Project-Salt` response header returned on a successful
+   * Cloud Browser WebSocket upgrade.
+   */
+  async cloudBrowserProjectSalt(): Promise<string> {
+    return BrowserConfig.projectSalt(this.key);
   }
 
   /**
@@ -1323,13 +1371,14 @@ export class ScrapflyClient {
     proxy_pool?: string;
     country?: string;
     os?: string;
+    browser_brand?: string;
     timeout?: number;
     browser_timeout?: number;
     headers?: Record<string, string>;
     body?: string;
     method?: string;
     enable_mcp?: boolean;
-    solve_captcha?: boolean;
+    debug?: boolean;
   }): Promise<{ ws_url: string; session_id: string; run_id: string; mcp_endpoint?: string }> {
     const proxyPoolMap: Record<string, string> = {
       datacenter: 'public_datacenter_pool',
@@ -1340,13 +1389,14 @@ export class ScrapflyClient {
     if (options.proxy_pool) jsonBody.proxy_pool = proxyPoolMap[options.proxy_pool] || options.proxy_pool;
     if (options.country) jsonBody.country = options.country;
     if (options.os) jsonBody.os = options.os;
+    if (options.browser_brand) jsonBody.browser_brand = options.browser_brand;
     if (options.timeout) jsonBody.timeout = options.timeout;
     if (options.browser_timeout) jsonBody.browser_timeout = options.browser_timeout;
     if (options.headers) jsonBody.headers = options.headers;
     if (options.body) jsonBody.body = options.body;
     if (options.method) jsonBody.method = options.method;
     if (options.enable_mcp !== undefined) jsonBody.enable_mcp = options.enable_mcp;
-    if (options.solve_captcha !== undefined) jsonBody.solve_captcha = options.solve_captcha;
+    if (options.debug !== undefined) jsonBody.debug = options.debug;
 
     const url = new URL(this.cloudBrowserApiHost + '/unblock');
     url.searchParams.set('key', this.key);
@@ -1505,6 +1555,318 @@ export class ScrapflyClient {
     return await response.json() as { extension: Record<string, any>; is_update: boolean };
   }
 
+  // ----- Cloud Browser Credential Vault -------------------------------------
+  // Server contract documented at apps/scrapfly/api/scrapfly-api/pkg/vault/.
+  //
+  // SECURITY: the vault key is the customer-held secret that decrypts every
+  // item in the vault. The server emits it ONCE on POST /vault and POST
+  // /vault/{id}/rotate; never log it, never include it in error messages,
+  // never put it in a breadcrumb. See agent_secret_tokenization_boundary.md.
+
+  /**
+   * Create a new Cloud Browser Credential Vault. The response contains a
+   * one-time `key` that the caller MUST save locally — the server cannot
+   * recover it. Pair the key with the returned vault id when opening
+   * sessions or creating items.
+   */
+  async cloudBrowserVaultCreate(opts: {
+    name: string;
+    description?: string;
+  }): Promise<{ vault: Vault; key: string; message: string }> {
+    const url = new URL(this.cloudBrowserApiHost + '/vault');
+    url.searchParams.set('key', this.key);
+
+    const body: Record<string, unknown> = { name: opts.name };
+    if (opts.description !== undefined) body.description = opts.description;
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'user-agent': this.ua,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault create failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { vault: Vault; key: string; message: string };
+  }
+
+  /** List every vault on the account. */
+  async cloudBrowserVaultList(): Promise<{ vaults: Vault[] }> {
+    const url = new URL(this.cloudBrowserApiHost + '/vault');
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'GET',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault list failed: ${response.status} ${await response.text()}`);
+    }
+    const json = await response.json() as { vaults: Vault[] | null };
+    return { vaults: json.vaults ?? [] };
+  }
+
+  /** Get a single vault by id. Does not return any secret material. */
+  async cloudBrowserVaultGet(vaultId: string): Promise<{ vault: Vault }> {
+    const url = new URL(this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId));
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'GET',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault get failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { vault: Vault };
+  }
+
+  /** Update vault metadata (name / description). Does not require the vault key. */
+  async cloudBrowserVaultUpdate(
+    vaultId: string,
+    opts: { name?: string; description?: string },
+  ): Promise<{ vault: Vault; message?: string }> {
+    const url = new URL(this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId));
+    url.searchParams.set('key', this.key);
+
+    const body: Record<string, unknown> = {};
+    if (opts.name !== undefined) body.name = opts.name;
+    if (opts.description !== undefined) body.description = opts.description;
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        'user-agent': this.ua,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault update failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { vault: Vault; message?: string };
+  }
+
+  /** Delete a vault and every item in it. Does not require the vault key. */
+  async cloudBrowserVaultDelete(vaultId: string): Promise<{ success: boolean; message: string }> {
+    const url = new URL(this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId));
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'DELETE',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault delete failed: ${response.status} ${await response.text()}`);
+    }
+    const body = await response.json() as Record<string, any>;
+    return {
+      success: body.success !== undefined ? Boolean(body.success) : true,
+      message: typeof body.message === 'string' ? body.message : '',
+    };
+  }
+
+  /**
+   * Rotate the vault key. The caller MUST pass the CURRENT key in
+   * `currentVaultKey`; the server returns a fresh `key` exactly once. After
+   * this call the old key cannot decrypt any row in the vault.
+   */
+  async cloudBrowserVaultRotate(
+    vaultId: string,
+    currentVaultKey: string,
+  ): Promise<{ key: string; message: string }> {
+    const url = new URL(
+      this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId) + '/rotate',
+    );
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers: {
+        'user-agent': this.ua,
+        'X-Vault-Key': currentVaultKey,
+      },
+    });
+
+    if (!response.ok) {
+      // Body may include the X-Vault-Key error message — safe to surface
+      // because the server message names the header but not its value.
+      throw new Error(`Vault rotate failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { key: string; message: string };
+  }
+
+  /** List items in a vault. Items carry only opaque ciphertext, no plaintext. */
+  async cloudBrowserVaultItemList(vaultId: string): Promise<{ items: VaultItem[] }> {
+    const url = new URL(
+      this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId) + '/item',
+    );
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'GET',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault item list failed: ${response.status} ${await response.text()}`);
+    }
+    const json = await response.json() as { items: VaultItem[] | null };
+    return { items: json.items ?? [] };
+  }
+
+  /**
+   * Add a credential to a vault. Requires the vault key in the X-Vault-Key
+   * header so the server can encrypt the secret payload at rest.
+   */
+  async cloudBrowserVaultItemCreate(
+    vaultId: string,
+    vaultKey: string,
+    item: VaultItemCreate,
+  ): Promise<{ item: VaultItem; message: string }> {
+    const url = new URL(
+      this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId) + '/item',
+    );
+    url.searchParams.set('key', this.key);
+
+    const body: Record<string, unknown> = {
+      type: item.type,
+      label: item.label,
+      origin: item.origin,
+      secret: item.secret,
+    };
+    if (item.username !== undefined) body.username = item.username;
+    if (item.metadata !== undefined) body.metadata = item.metadata;
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'user-agent': this.ua,
+        'X-Vault-Key': vaultKey,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault item create failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { item: VaultItem; message: string };
+  }
+
+  /**
+   * Patch an item's metadata or rotate its secret. The server only requires
+   * X-Vault-Key when `secret` is supplied (ciphertext rotation). Passing
+   * `vaultKey` without `secret` is a no-op on the server side and is allowed
+   * for caller convenience.
+   */
+  async cloudBrowserVaultItemUpdate(
+    vaultId: string,
+    itemId: string,
+    opts: {
+      vaultKey?: string;
+      type?: VaultItem['type'];
+      label?: string;
+      origin?: string;
+      username?: string;
+      secret?: VaultSecret;
+      metadata?: Record<string, unknown>;
+    },
+  ): Promise<{ item?: VaultItem; message: string }> {
+    if (opts.secret !== undefined && (opts.vaultKey === undefined || opts.vaultKey === '')) {
+      throw new Error(
+        'cloudBrowserVaultItemUpdate: vaultKey is required when rotating the item secret',
+      );
+    }
+    if (opts.secret !== undefined && opts.type === undefined) {
+      throw new Error(
+        'cloudBrowserVaultItemUpdate: type is required when rotating the item secret',
+      );
+    }
+    const url = new URL(
+      this.cloudBrowserApiHost +
+        '/vault/' +
+        encodeURIComponent(vaultId) +
+        '/item/' +
+        encodeURIComponent(itemId),
+    );
+    url.searchParams.set('key', this.key);
+
+    const body: Record<string, unknown> = {};
+    if (opts.type !== undefined) body.type = opts.type;
+    if (opts.label !== undefined) body.label = opts.label;
+    if (opts.origin !== undefined) body.origin = opts.origin;
+    if (opts.username !== undefined) body.username = opts.username;
+    if (opts.metadata !== undefined) body.metadata = opts.metadata;
+    if (opts.secret !== undefined) body.secret = opts.secret;
+
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      'user-agent': this.ua,
+    };
+    if (opts.vaultKey !== undefined && opts.vaultKey !== '') {
+      headers['X-Vault-Key'] = opts.vaultKey;
+    }
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault item update failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { item?: VaultItem; message: string };
+  }
+
+  /** Delete a single vault item. Does not require the vault key. */
+  async cloudBrowserVaultItemDelete(
+    vaultId: string,
+    itemId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const url = new URL(
+      this.cloudBrowserApiHost +
+        '/vault/' +
+        encodeURIComponent(vaultId) +
+        '/item/' +
+        encodeURIComponent(itemId),
+    );
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'DELETE',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault item delete failed: ${response.status} ${await response.text()}`);
+    }
+    const body = await response.json() as Record<string, any>;
+    return {
+      success: body.success !== undefined ? Boolean(body.success) : true,
+      message: typeof body.message === 'string' ? body.message : '',
+    };
+  }
+
   /**
    * Download a debug session recording video.
    * Returns the video as an ArrayBuffer (stream from server).
@@ -1528,7 +1890,9 @@ export class ScrapflyClient {
   }
 
   /**
-   * Get playback info for a debug session recording.
+   * Get playback info for a debug session recording. The returned object
+   * carries `available`, `status` ('ready' | 'uploading' | 'unavailable' |
+   * 'disabled'), `metadata`, `video_url`, and `retry_after_ms`.
    */
   async cloudBrowserPlayback(runId: string): Promise<Record<string, any>> {
     const url = new URL(this.cloudBrowserApiHost + '/run/' + runId + '/playback');
@@ -1544,6 +1908,29 @@ export class ScrapflyClient {
       throw new Error(`Playback get failed: ${response.status} ${await response.text()}`);
     }
     return await response.json() as Record<string, any>;
+  }
+
+  /**
+   * Poll the playback endpoint until the recording resolves to a terminal
+   * state ('ready' or 'unavailable') or the timeout elapses. Honours the
+   * server-side retry_after_ms hint when present.
+   */
+  async cloudBrowserWaitForPlayback(
+    runId: string,
+    opts: { timeoutMs?: number; pollIntervalFallbackMs?: number } = {},
+  ): Promise<Record<string, any>> {
+    const timeoutMs = opts.timeoutMs ?? 180_000;
+    const fallbackMs = opts.pollIntervalFallbackMs ?? 3_000;
+    const deadline = Date.now() + timeoutMs;
+    while (true) {
+      const playback = await this.cloudBrowserPlayback(runId);
+      if (playback.status !== 'uploading') return playback;
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) return playback;
+      const retryAfter = Number(playback.retry_after_ms) || fallbackMs;
+      const sleepFor = Math.min(retryAfter, remaining);
+      await new Promise((resolve) => setTimeout(resolve, sleepFor));
+    }
   }
 
   /**

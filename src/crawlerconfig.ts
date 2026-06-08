@@ -65,7 +65,12 @@ const VALID_WEBHOOK_EVENTS: ReadonlySet<string> = new Set([
  * which lets the server apply its documented defaults (e.g. `respect_robots_txt=true`).
  */
 export type CrawlerConfigOptions = {
-  url: string;
+  // URL source — exactly one of url, url_list, remote_url_list must be set.
+  // url enables discovery; url_list and remote_url_list crawl an explicit set
+  // with discovery off.
+  url?: string;
+  url_list?: string[];
+  remote_url_list?: string;
 
   // Crawl limits
   page_limit?: number;
@@ -131,7 +136,9 @@ export type CrawlerConfigOptions = {
  * ```
  */
 export class CrawlerConfig {
-  url: string;
+  url?: string;
+  url_list?: string[];
+  remote_url_list?: string;
 
   page_limit?: number;
   max_depth?: number;
@@ -174,10 +181,19 @@ export class CrawlerConfig {
   constructor(options: CrawlerConfigOptions) {
     this.validateOptions(options);
 
-    if (typeof options.url !== 'string' || options.url.trim() === '') {
-      throw new CrawlerConfigError('url is required and must be a non-empty string');
+    const hasSeed = typeof options.url === 'string' && options.url.trim() !== '';
+    const hasList = Array.isArray(options.url_list) && options.url_list.length > 0;
+    const hasRemote = typeof options.remote_url_list === 'string' && options.remote_url_list.trim() !== '';
+    const sourceCount = (hasSeed ? 1 : 0) + (hasList ? 1 : 0) + (hasRemote ? 1 : 0);
+    if (sourceCount === 0) {
+      throw new CrawlerConfigError('Provide one of: url, url_list, remote_url_list');
     }
-    this.url = options.url;
+    if (sourceCount > 1) {
+      throw new CrawlerConfigError('Only one of url, url_list, remote_url_list can be set');
+    }
+    if (hasSeed) this.url = options.url;
+    if (hasList) this.url_list = options.url_list;
+    if (hasRemote) this.remote_url_list = options.remote_url_list;
 
     // Mutually exclusive path filters
     if (options.exclude_paths && options.include_only_paths) {
@@ -272,6 +288,8 @@ export class CrawlerConfig {
   private validateOptions(options: Partial<CrawlerConfigOptions>) {
     const validKeys = new Set<string>([
       'url',
+      'url_list',
+      'remote_url_list',
       'page_limit',
       'max_depth',
       'max_duration',
@@ -320,8 +338,11 @@ export class CrawlerConfig {
    * defaults (e.g. `respect_robots_txt=true`).
    */
   toApiParams(): Rec<any> {
-    const params: Rec<any> = { url: this.url };
+    const params: Rec<any> = {};
     const fields: Array<keyof CrawlerConfig> = [
+      'url',
+      'url_list',
+      'remote_url_list',
       'page_limit',
       'max_depth',
       'max_duration',

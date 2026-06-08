@@ -15,7 +15,12 @@ export type RequestOptions = {
   url: string;
   method?: string;
   headers?: any;
-  body?: string | Uint8Array;
+  // Body accepts strings, raw bytes, or any FormData-like value. The latter
+  // is used by the Crawler client to upload an in-memory URL list as a
+  // multipart 'urls' part; fetch() fills in the multipart boundary header
+  // automatically when given a FormData instance.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  body?: string | Uint8Array | any;
 };
 
 export async function fetchRetry(

@@ -113,6 +113,7 @@ type ScrapeConfigOptions = {
 export class ScrapeConfig {
   static PUBLIC_DATACENTER_POOL = 'public_datacenter_pool';
   static PUBLIC_RESIDENTIAL_POOL = 'public_residential_pool';
+  static PUBLIC_TOR_POOL = 'public_tor_pool';
 
   url: string;
   retry = true;
@@ -145,7 +146,7 @@ export class ScrapeConfig {
   js?: string;
   rendering_wait?: number;
   wait_for_selector?: string;
-  session_sticky_proxy = false;
+  session_sticky_proxy = true;
   screenshots?: Rec<any>;
   screenshot_flags?:
     ('load_images' | 'dark_mode' | 'block_banners' | 'print_media_format' | 'high_quality' | ScreenshotFlags)[];
@@ -402,7 +403,7 @@ export class ScrapeConfig {
     }
 
     if (this.extraction_template) {
-      params.extraction_template = this.extraction_template;
+      params.extraction_template = 'persistent:' + this.extraction_template;
     }
 
     if (this.extraction_ephemeral_template) {
@@ -421,9 +422,7 @@ export class ScrapeConfig {
     }
     if (this.session) {
       params.session = this.session;
-      if (this.session_sticky_proxy) {
-        params.session_sticky_proxy = true;
-      }
+      params.session_sticky_proxy = this.session_sticky_proxy;
     } else {
       if (this.session_sticky_proxy) {
         log.warn('Params "session_sticky_proxy" is ignored. Works only if session is enabled');
