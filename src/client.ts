@@ -1365,36 +1365,30 @@ export class ScrapflyClient {
 
   /**
    * Call the Cloud Browser Unblock API.
+   *
+   * Unblock always uses a residential proxy (no proxy pool selection) and
+   * always performs a GET — the endpoint's purpose is to harvest cookies /
+   * clearance tokens via an ASP-bypass navigation, not to proxy arbitrary
+   * HTTP requests.
    */
   async cloudBrowserUnblock(options: {
     url: string;
-    proxy_pool?: string;
     country?: string;
     os?: string;
     browser_brand?: string;
+    session?: string;
     timeout?: number;
     browser_timeout?: number;
-    headers?: Record<string, string>;
-    body?: string;
-    method?: string;
     enable_mcp?: boolean;
     debug?: boolean;
   }): Promise<{ ws_url: string; session_id: string; run_id: string; mcp_endpoint?: string }> {
-    const proxyPoolMap: Record<string, string> = {
-      datacenter: 'public_datacenter_pool',
-      residential: 'public_residential_pool',
-    };
-
     const jsonBody: Record<string, unknown> = { url: options.url };
-    if (options.proxy_pool) jsonBody.proxy_pool = proxyPoolMap[options.proxy_pool] || options.proxy_pool;
     if (options.country) jsonBody.country = options.country;
     if (options.os) jsonBody.os = options.os;
     if (options.browser_brand) jsonBody.browser_brand = options.browser_brand;
+    if (options.session) jsonBody.session = options.session;
     if (options.timeout) jsonBody.timeout = options.timeout;
     if (options.browser_timeout) jsonBody.browser_timeout = options.browser_timeout;
-    if (options.headers) jsonBody.headers = options.headers;
-    if (options.body) jsonBody.body = options.body;
-    if (options.method) jsonBody.method = options.method;
     if (options.enable_mcp !== undefined) jsonBody.enable_mcp = options.enable_mcp;
     if (options.debug !== undefined) jsonBody.debug = options.debug;
 
