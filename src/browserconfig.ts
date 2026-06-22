@@ -30,6 +30,18 @@ export type BrowserConfigOptions = {
   session?: string;
   /** ISO country code for geo-targeting. */
   country?: string;
+  /**
+   * Browser UI language — the singular `navigator.language` base tag
+   * (e.g. "en"). When omitted, the server derives it from `country`.
+   */
+  lang?: string;
+  /**
+   * Ordered language preference list driving `navigator.languages` and the
+   * q-weighted `Accept-Language` header (e.g. ["fr-FR", "fr", "en-US"]).
+   * Pass a comma-separated string or an array; capped server-side at 3
+   * entries.
+   */
+  languages?: string | string[];
   /** Close the browser automatically when the connection drops. */
   auto_close?: boolean;
   /** Session timeout in seconds (max 1800 = 30 minutes). */
@@ -117,6 +129,10 @@ export class BrowserConfig {
   session?: string;
   /** See {@link BrowserConfigOptions.country}. */
   country?: string;
+  /** See {@link BrowserConfigOptions.lang}. */
+  lang?: string;
+  /** See {@link BrowserConfigOptions.languages}. Normalized to a comma-separated string. */
+  languages?: string;
   /** See {@link BrowserConfigOptions.auto_close}. */
   auto_close?: boolean;
   /** See {@link BrowserConfigOptions.timeout}. */
@@ -182,6 +198,13 @@ export class BrowserConfig {
     this.os = options.os;
     this.session = options.session;
     this.country = options.country;
+    this.lang = options.lang;
+    if (Array.isArray(options.languages)) {
+      const cleaned = options.languages.map((s) => s.trim()).filter((s) => s.length > 0);
+      this.languages = cleaned.length > 0 ? cleaned.join(',') : undefined;
+    } else {
+      this.languages = options.languages || undefined;
+    }
     this.auto_close = options.auto_close;
     this.timeout = options.timeout;
     this.debug = options.debug;
@@ -253,6 +276,8 @@ export class BrowserConfig {
     if (this.os !== undefined) params.set('os', this.os);
     if (this.session !== undefined) params.set('session', this.session);
     if (this.country !== undefined) params.set('country', this.country);
+    if (this.lang !== undefined) params.set('lang', this.lang);
+    if (this.languages !== undefined) params.set('languages', this.languages);
     if (this.auto_close !== undefined) params.set('auto_close', String(this.auto_close));
     if (this.timeout !== undefined) params.set('timeout', String(this.timeout));
     if (this.debug !== undefined) params.set('debug', String(this.debug));
