@@ -1411,6 +1411,18 @@ export class ScrapflyClient {
   }
 
   /**
+   * Return the password a native VNC client must type to attach to a session
+   * created with `config`: `<projectSalt>-<vnc_password>`.
+   *
+   * Copy this value into your VNC client when connecting to the TCP endpoint
+   * (port 5901). The WebSocket endpoint `/run/<run_id>/vnc` takes the raw
+   * `vnc_password` instead.
+   */
+  async cloudBrowserVncPassword(config: BrowserConfig): Promise<string> {
+    return config.vncClientPassword(this.key);
+  }
+
+  /**
    * Call the Cloud Browser Unblock API.
    *
    * Unblock always uses a residential proxy (no proxy pool selection) and

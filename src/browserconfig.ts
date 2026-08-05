@@ -260,6 +260,22 @@ export class BrowserConfig {
   }
 
   /**
+   * Return the password a native VNC client must type to attach to a session
+   * created with this config: `<projectSalt>-<vnc_password>`.
+   *
+   * Required by the VNC TCP endpoint (port 5901), which the server salts at
+   * allocation. The WebSocket endpoint `/run/<run_id>/vnc` takes the raw
+   * `vnc_password` instead.
+   */
+  async vncClientPassword(apiKey: string): Promise<string> {
+    if (!this.enable_vnc || !this.vnc_password) {
+      throw new Error('enable_vnc and vnc_password must both be set on this BrowserConfig');
+    }
+    const salt = await BrowserConfig.projectSalt(apiKey);
+    return `${salt}-${this.vnc_password}`;
+  }
+
+  /**
    * Build the WebSocket URL clients use to connect to the Cloud Browser
    * session (compatible with Puppeteer `browserWSEndpoint` and the
    * Playwright `connectOverCDP` API).
