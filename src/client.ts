@@ -25,6 +25,18 @@ import {
   type UpdateScheduleRequest,
 } from './schedule.ts';
 
+/** ERR::<RESOURCE>::* → error-class taxonomy. */
+const RESOURCE_TO_ERROR: Record<string, new (message: string, args: Record<string, any>) => errors.ScrapflyError> = {
+  SCRAPE: errors.ScrapflyScrapeError,
+  WEBHOOK: errors.ScrapflyWebhookError,
+  PROXY: errors.ScrapflyProxyError,
+  SCHEDULE: errors.ScrapflyScheduleError,
+  ASP: errors.ScrapflyAspError,
+  SESSION: errors.ScrapflySessionError,
+  THROTTLE: errors.ScrapflyThrottleError,
+  CRAWLER: errors.ScrapflyCrawlerError,
+};
+
 /**
  * Main entry point for the Scrapfly SDK.
  *
@@ -101,21 +113,9 @@ export class ScrapflyClient {
         case 429:
           return new errors.TooManyRequests(message, args);
       }
-      switch (args.resource) {
-        case 'SCRAPE':
-          return new errors.ScrapflyScrapeError(message, args);
-        case 'WEBHOOK':
-          return new errors.ScrapflyWebhookError(message, args);
-        case 'PROXY':
-          return new errors.ScrapflyProxyError(message, args);
-        case 'SCHEDULE':
-          return new errors.ScrapflyScheduleError(message, args);
-        case 'ASP':
-          return new errors.ScrapflyAspError(message, args);
-        case 'SESSION':
-          return new errors.ScrapflySessionError(message, args);
-        case 'CRAWLER':
-          return new errors.ScrapflyCrawlerError(message, args);
+      const ResourceError = args.resource ? RESOURCE_TO_ERROR[args.resource] : undefined;
+      if (ResourceError) {
+        return new ResourceError(message, args);
       }
       if (args.resource) {
         return new errors.ApiHttpClientError(message, args);
@@ -129,24 +129,56 @@ export class ScrapflyClient {
           return new errors.UpstreamHttpServerError(message, args);
         }
       }
-      switch (args.resource) {
-        case 'SCRAPE':
-          return new errors.ScrapflyScrapeError(message, args);
-        case 'WEBHOOK':
-          return new errors.ScrapflyWebhookError(message, args);
-        case 'PROXY':
-          return new errors.ScrapflyProxyError(message, args);
-        case 'SCHEDULE':
-          return new errors.ScrapflyScheduleError(message, args);
-        case 'ASP':
-          return new errors.ScrapflyAspError(message, args);
-        case 'SESSION':
-          return new errors.ScrapflySessionError(message, args);
-        case 'CRAWLER':
-          return new errors.ScrapflyCrawlerError(message, args);
+      const ResourceError = args.resource ? RESOURCE_TO_ERROR[args.resource] : undefined;
+      if (ResourceError) {
+        return new ResourceError(message, args);
       }
     }
     return new errors.ScrapflyError(message, args);
+  }
+
+  /** Build the typed per-part error for an API-generated batch error body. */
+  private batchApiErrorPartToError(
+    parsed: Record<string, unknown>,
+    partHeaders: Record<string, string>,
+  ): errors.ScrapflyError {
+    const code = typeof parsed.code === 'string' ? parsed.code : '';
+    const message = String(parsed.message ?? parsed.reason ?? 'API error');
+    const httpStatusCode =
+      typeof parsed.http_code === 'number'
+        ? parsed.http_code
+        : parseInt(partHeaders['x-scrapfly-scrape-status'] ?? '500', 10) || 500;
+    const isRetryable = parsed.retryable === true;
+
+    let documentationUrl: string | undefined;
+    if (parsed.links && typeof parsed.links === 'object' && !Array.isArray(parsed.links)) {
+      const values = Object.values(parsed.links as Record<string, string>);
+      if (values.length) documentationUrl = values[0];
+    }
+
+    const args = {
+      code,
+      http_status_code: httpStatusCode,
+      is_retryable: isRetryable,
+      resource: code ? code.split('::')[1] : null,
+      documentation_url: documentationUrl,
+    };
+
+    const ResourceError = args.resource ? RESOURCE_TO_ERROR[args.resource] : undefined;
+    if (ResourceError) {
+      return new ResourceError(message, args);
+    }
+
+    switch (httpStatusCode) {
+      case 401:
+        return new errors.BadApiKeyError(message, args);
+      case 429:
+        return new errors.TooManyRequests(message, args);
+    }
+
+    return httpStatusCode >= 500
+      ? new errors.ApiHttpServerError(message, args)
+      : new errors.ApiHttpClientError(message, args);
   }
 
   /**
@@ -736,6 +768,21 @@ export class ScrapflyClient {
             `scrapeBatch: failed to decode part for correlation_id=${JSON.stringify(correlationId)}: ${decodeErr}`,
           ),
         ];
+        continue;
+      }
+
+      // API-generated error parts carry status >= 400 and an error body
+      // instead of the scrape envelope — surface them as typed errors.
+      const partStatus = parseInt(part.headers['x-scrapfly-scrape-status'] ?? '0', 10) || 0;
+      if (
+        partStatus >= 400 &&
+        parsed &&
+        typeof parsed === 'object' &&
+        !Array.isArray(parsed) &&
+        !('result' in parsed) &&
+        !('config' in parsed)
+      ) {
+        yield [correlationId, this.batchApiErrorPartToError(parsed, part.headers)];
         continue;
       }
 
