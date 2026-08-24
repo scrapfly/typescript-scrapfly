@@ -96,4 +96,4 @@ export type {
 
 export { log } from './logger.ts';
 
-export { createServer, verifySignature } from './webhookserver.ts';
+export { createServer, ResourceType, verifySignature } from './webhookserver.ts';
