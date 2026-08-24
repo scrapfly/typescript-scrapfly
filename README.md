@@ -2,7 +2,7 @@
 
 `npm install scrapfly-sdk`  
 `deno add jsr:@scrapfly/scrapfly-sdk`  
-`bun jsr add @scrapfly/scrapfly-sdk`  
+`bunx jsr add @scrapfly/scrapfly-sdk`  
 
 Typescript/Javascript SDK for [Scrapfly.io](https://scrapfly.io/) web scraping API which allows to:
 
