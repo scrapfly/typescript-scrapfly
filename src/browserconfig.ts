@@ -14,6 +14,12 @@ export enum OperatingSystem {
   WINDOWS = 'windows',
   /** Emulate a macOS browser fingerprint. */
   MACOS = 'macos',
+  /** Emulate an Android phone browser fingerprint. */
+  ANDROID = 'android',
+  /** Emulate an iPhone browser fingerprint. */
+  IPHONE = 'iphone',
+  /** Emulate an iPad browser fingerprint. */
+  IPAD = 'ipad',
 }
 
 /**
