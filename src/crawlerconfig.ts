@@ -34,7 +34,7 @@ const VALID_CONTENT_FORMATS: ReadonlySet<string> = new Set([
 /**
  * Webhook event names emitted by the crawler.
  *
- * Source of truth: `apps/scrapfly/scrape-engine/scrape_engine/scrape_engine/crawler/webhook_manager.py`
+ * Event names match the wire format documented in the Crawler API webhook reference.
  * lines 11-20. Verified to match the public docs and the JSON example payloads.
  */
 export type CrawlerWebhookEventName =

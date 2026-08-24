@@ -358,7 +358,7 @@ export interface CrawlerWebhookCommon {
  * Webhook for the four "lifecycle" events that share an identical payload shape:
  * `crawler_started`, `crawler_stopped`, `crawler_cancelled`, `crawler_finished`.
  *
- * Verified against `apps/scrapfly/web-app/src/Template/Docs/crawler-api/webhooks_example/`.
+ * Verified against the Crawler API webhook payload reference.
  */
 export interface CrawlerLifecycleWebhook {
   event: 'crawler_started' | 'crawler_stopped' | 'crawler_cancelled' | 'crawler_finished';

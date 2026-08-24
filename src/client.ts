@@ -996,7 +996,7 @@ export class ScrapflyClient {
       if (urlList !== undefined) {
         // Strip url_list from the JSON config — the URLs go through the
         // 'urls' multipart part instead, which the API gateway streams
-        // straight through to the scrape engine.
+        // straight through to the scraping backend.
         delete params.url_list;
         const form = new FormData();
         const configBlob = new Blob([JSON.stringify(params)], { type: 'application/json' });
@@ -1609,7 +1609,7 @@ export class ScrapflyClient {
   }
 
   // ----- Cloud Browser Credential Vault -------------------------------------
-  // Server contract documented at apps/scrapfly/api/scrapfly-api/pkg/vault/.
+  // Server contract documented in the Vault API reference.
   //
   // SECURITY: the vault key is the customer-held secret that decrypts every
   // item in the vault. The server emits it ONCE on POST /vault and POST
