@@ -68,7 +68,8 @@ Deno.test('url param generation: sets extraction_template', async () => {
     assertEquals(params, {
         key: '1234',
         content_type: input_content_type,
-        extraction_template: 'my_template',
+        // Sent as persistent:<slug>, matching the python, go and rust SDKs.
+        extraction_template: 'persistent:my_template',
     });
 });
 

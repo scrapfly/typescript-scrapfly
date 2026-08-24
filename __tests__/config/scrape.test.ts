@@ -368,7 +368,8 @@ Deno.test('url param generation: sets extraction_template', async () => {
     assertEquals(params, {
         key: '1234',
         url: 'http://httpbin.dev/get',
-        extraction_template: 'my_template',
+        // Sent as persistent:<slug>, matching the python, go and rust SDKs.
+        extraction_template: 'persistent:my_template',
     });
 });
 
@@ -420,6 +421,9 @@ Deno.test('url param generation: session sets', () => {
         key: '1234',
         url: 'http://httpbin.dev/get',
         session: 'foo123',
+        // Defaults to true and is emitted whenever a session is set, matching the
+        // python SDK.
+        session_sticky_proxy: true,
     });
 });
 

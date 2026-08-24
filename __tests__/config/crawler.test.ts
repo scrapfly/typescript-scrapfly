@@ -17,7 +17,7 @@ Deno.test('CrawlerConfig: empty url is rejected', () => {
   assertThrows(
     () => new CrawlerConfig({ url: '' }),
     errors.CrawlerConfigError,
-    'url is required',
+    'Provide one of: url, url_list, remote_url_list',
   );
 });
 
