@@ -1403,8 +1403,8 @@ export class ScrapflyClient {
 
   /**
    * Return the deterministic project salt for this client's api_key. Matches
-   * the `X-Browser-Project-Salt` response header returned on a successful
-   * Cloud Browser WebSocket upgrade.
+   * the `X-Browser-Project-Salt` response header returned on VNC-enabled
+   * Cloud Browser upgrades, where the salt is also the VNC password prefix.
    */
   async cloudBrowserProjectSalt(): Promise<string> {
     return BrowserConfig.projectSalt(this.key);
