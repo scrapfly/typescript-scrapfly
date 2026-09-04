@@ -14,7 +14,7 @@
  * const result = await client.scrape(new ScrapeConfig({
  *   url: 'https://web-scraping.dev/products',
  *   render_js: true,
- *   asp: true,
+ *   unblocker: true,
  * }));
  * console.log(result.content);
  * ```

@@ -2308,7 +2308,12 @@ export class ScrapflyClient {
   // -------------------------------------------------------------------------
 
   /** Create a Web Scraping API schedule. `scrape_config` is the same shape
-   *  accepted by `/scrape` (e.g. `{ url, render_js, asp, ... }`). */
+   *  accepted by `/scrape` (e.g. `{ url, render_js, asp, ... }`). This dict is
+   *  forwarded to the API verbatim, so its keys are wire keys, not the SDK
+   *  option names. The anti-bot bypass may be spelled either way here: the API
+   *  folds `unblocker` into `asp` on the STORED config, with the same precedence
+   *  the SDK uses (a supplied `asp` wins; `unblocker` is read only when `asp` is
+   *  absent, `null` or `""`), so both names reach the replayed scrape. */
   async createScrapeSchedule(
     scrapeConfig: Record<string, unknown>,
     request: CreateScheduleRequest,
@@ -2334,7 +2339,11 @@ export class ScrapflyClient {
     ) as Schedule;
   }
 
-  /** Create a Crawler API schedule. */
+  /** Create a Crawler API schedule. `crawler_config` is forwarded verbatim and
+   *  its keys are wire keys, not the SDK option names. As with
+   *  `createScrapeSchedule`, the anti-bot bypass may be spelled `asp` or
+   *  `unblocker`: the API folds the alias into `asp` on the stored config before
+   *  it is ever replayed. */
   async createCrawlerSchedule(
     crawlerConfig: Record<string, unknown>,
     request: CreateScheduleRequest,

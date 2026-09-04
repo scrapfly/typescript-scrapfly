@@ -41,8 +41,8 @@ const apiResponse = await client.scrape(
         render_js: true,
         // set proxy country
         country: 'us',
-        // enable anti-scraping protection bypass
-        asp: true,
+        // enable anti-bot bypass
+        unblocker: true,
         // set residential proxies
         proxy_pool: 'public_residential_pool',
         // etc.
@@ -56,6 +56,39 @@ console.log(apiResponse.result.selector('h3').text());
 For more see [/examples](/examples/) directory.  
 For more on Scrapfly API see our [getting started documentation](https://scrapfly.io/docs/scrape-api/getting-started)
 For Python see [Scrapfly Python SDK](https://github.com/scrapfly/python-scrapfly)
+
+### `unblocker` (formerly `asp`)
+
+The anti-bot bypass is called `unblocker`. `asp` is its deprecated alias and
+keeps working forever, in both `ScrapeConfig` and `CrawlerConfig` - only the
+documented name changed, so no existing code needs updating:
+
+```javascript
+new ScrapeConfig({ url: 'https://web-scraping.dev/product/1', unblocker: true });
+new ScrapeConfig({ url: 'https://web-scraping.dev/product/1', asp: true }); // same thing
+```
+
+Both names address one value, so `config.unblocker` and `config.asp` always
+read the same and either can be assigned after construction. When both are
+supplied to the constructor, `asp` wins - but only when it was actually
+supplied: `asp: undefined` is not a supplied value, so `{ ...opts, asp: opts.asp }`
+spread-forwarding cannot silently veto an explicit `unblocker: true`.
+
+The request still carries the parameter as `asp` on the wire, in the `/scrape`
+query and in the `POST /crawl` body, and only when the feature is ON - both
+"off" and "not supplied" drop the key, so the request is byte-identical to the
+one the Python, Go and Rust SDKs build for the same intent.
+
+The matching error class is `ScrapflyUnblockerError`, the same class object as
+`ScrapflyAspError`, so either name works in a `catch`:
+
+```javascript
+import { ScrapflyUnblockerError } from 'scrapfly-sdk';
+
+if (err instanceof ScrapflyUnblockerError) {
+    // the unblocker could not get through the target's protection
+}
+```
 
 ## Debugging
 

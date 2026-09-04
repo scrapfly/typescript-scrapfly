@@ -59,6 +59,18 @@ export class ScrapflyProxyError extends HttpError {}
 export class ScrapflyThrottleError extends HttpError {}
 /** Raised when Scrapfly failed to bypass anti-scraping protection on the target. */
 export class ScrapflyAspError extends HttpError {}
+/**
+ * Raised when the unblocker (formerly "ASP") could not get through the target's
+ * anti-bot protection.
+ *
+ * This is the SAME class as {@link ScrapflyAspError}, not a subclass and not a
+ * second class, so `instanceof ScrapflyUnblockerError` and `instanceof
+ * ScrapflyAspError` are interchangeable and customer code written against
+ * either name keeps working. The class is still selected by the literal `ASP`
+ * segment of the `ERR::ASP::*` codes the API sends.
+ */
+export const ScrapflyUnblockerError: typeof ScrapflyAspError = ScrapflyAspError;
+export type ScrapflyUnblockerError = ScrapflyAspError;
 /** Raised when a scheduled scrape cannot be created or fulfilled. */
 export class ScrapflyScheduleError extends HttpError {}
 /** Raised when a webhook is invalid or cannot be delivered (e.g. full queue). */

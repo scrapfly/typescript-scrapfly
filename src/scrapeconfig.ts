@@ -54,6 +54,18 @@ type ScrapeConfigOptions = {
   cost_budget?: number;
   ssl?: boolean;
   dns?: boolean;
+  /**
+   * Anti-bot bypass. The current name for what used to be called `asp`.
+   * Sent to the API as the `asp` query parameter; only the SDK-facing name
+   * changed.
+   */
+  unblocker?: boolean;
+  /**
+   * @deprecated Use {@link unblocker}. `asp` is a permanently supported alias
+   * and keeps working forever; only the documented name changed. When both are
+   * supplied `asp` wins, so existing code cannot have its meaning changed by a
+   * later `unblocker`.
+   */
   asp?: boolean;
   debug?: boolean;
   raise_on_upstream_error?: boolean;
@@ -125,6 +137,12 @@ export class ScrapeConfig {
   cost_budget?: number;
   ssl = false;
   dns = false;
+  /**
+   * Storage for the anti-bot bypass toggle, under its deprecated name.
+   * `unblocker` is an accessor over this same field — see below.
+   *
+   * @deprecated Use {@link ScrapeConfig.unblocker}. `asp` keeps working forever.
+   */
   asp = false;
   debug = false;
   raise_on_upstream_error = true;
@@ -190,7 +208,11 @@ export class ScrapeConfig {
     this.cache = options.cache ?? this.cache;
     this.cache_clear = options.cache_clear ?? this.cache_clear;
     this.cost_budget = options.cost_budget ?? this.cost_budget;
-    this.asp = options.asp ?? this.asp;
+    // `asp` is the deprecated alias of `unblocker` and an explicitly supplied
+    // `asp` always wins; `unblocker` applies only when `asp` was not supplied.
+    // `??` and not `||`, so an explicit `false` on either name turns the
+    // feature off instead of falling through to the other name.
+    this.asp = options.asp ?? options.unblocker ?? this.asp;
     this.headers = options.headers
       ? Object.fromEntries(Object.entries(options.headers).map(([k, v]) => [k.toLowerCase(), v]))
       : {};
@@ -256,10 +278,35 @@ export class ScrapeConfig {
     }
   }
 
+  /**
+   * Anti-bot bypass toggle — the current name for what used to be `asp`.
+   *
+   * An accessor over the single `asp` field rather than a second stored
+   * property: one storage slot means the two names can never disagree, so
+   * `config.unblocker = true` after construction is exactly `config.asp = true`
+   * and `toApiParams` has one value to read. It also keeps `unblocker` out of
+   * the instance's own keys, so serializers that iterate them do not sprout a
+   * duplicate of `asp`.
+   */
+  get unblocker(): boolean {
+    return this.asp;
+  }
+
+  set unblocker(value: boolean) {
+    this.asp = value;
+  }
+
+  /**
+   * Option names the constructor accepts that are not own properties of the
+   * instance. `unblocker` is an accessor, so it lives on the prototype and the
+   * `Object.keys(this)` allow-list below never sees it.
+   */
+  private static readonly ALIAS_OPTION_KEYS: ReadonlySet<string> = new Set(['unblocker']);
+
   private validateOptions(options: Partial<ScrapeConfigOptions>) {
     const validKeys = new Set(Object.keys(this) as Array<keyof ScrapeConfig>);
     for (const key in options) {
-      if (!validKeys.has(key as keyof ScrapeConfig)) {
+      if (!validKeys.has(key as keyof ScrapeConfig) && !ScrapeConfig.ALIAS_OPTION_KEYS.has(key)) {
         throw new ScrapeConfigError(`Invalid option provided: ${key}`);
       }
     }
@@ -359,6 +406,11 @@ export class ScrapeConfig {
       }
     }
 
+    // The wire key stays `asp` for both names. A published package version is
+    // immutable and upgraded per installation, so emitting `unblocker` against
+    // an API deployment that has not learned that name yet would silently drop
+    // a paid feature: the scrape succeeds, is billed, and returns a blocked
+    // page. Renaming the emitted key is a separate, later release.
     if (this.asp === true) {
       params.asp = true;
     }

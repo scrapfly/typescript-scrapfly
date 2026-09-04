@@ -260,6 +260,43 @@ Deno.test('scrape errors: raises ScrapflyAspError on ERR::ASP::SHIELD_ERROR reso
     fetchStub.restore();
 });
 
+// The anti-bot bypass is called `unblocker` now, but the error class is frozen
+// under its old name: customer code catches ScrapflyAspError by name, and the
+// class is still selected by the literal `ASP` segment of ERR::ASP::*. The new
+// name is an alias of the same class, never a replacement.
+Deno.test('scrape errors: ScrapflyUnblockerError is an alias of ScrapflyAspError', async () => {
+    assertEquals(errors.ScrapflyUnblockerError, errors.ScrapflyAspError);
+
+    const KEY = '__API_KEY__';
+    const client = new ScrapflyClient({ key: KEY });
+
+    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
+        const result = resultFactory({
+            url: config.url,
+            status: 'ERR::ASP::SHIELD_ERROR',
+            success: true,
+        });
+        return responseFactory(result.data, {
+            status: 200,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+    });
+
+    // One thrown error, catchable through either name.
+    let caught: unknown = null;
+    try {
+        await client.scrape(new ScrapeConfig({ url: 'https://httpbin.dev/json', unblocker: true }));
+    } catch (e) {
+        caught = e;
+    }
+    assertEquals(caught instanceof errors.ScrapflyUnblockerError, true);
+    assertEquals(caught instanceof errors.ScrapflyAspError, true);
+
+    fetchStub.restore();
+});
+
 Deno.test('scrape errors: raises ScrapflySessionError on ERR::SESSION::CONCURRENT_ACCESS resource and success', async () => {
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
@@ -546,4 +583,80 @@ Deno.test('concurrent scrape: success with explicit concurrency', async () => {
     // assertEquals(errors.length, 5, "expected 5 error results");
 
     fetchStub.restore();
+});
+// ===========================================================================
+// CLIENT-LAYER WIRE KEY
+//
+// Every other unblocker/asp assertion in this repo stops at the config
+// serializer. Nothing pinned that the key survives the CLIENT: a param
+// whitelist, a rename shim, or a re-serialization between `toApiParams()` and
+// the outgoing request would leave the whole parity matrix green while the wire
+// lost the flag. These capture what the client actually puts in the URL.
+// ===========================================================================
+
+/** Captured outgoing search params for one scrape, without any network. */
+async function captureScrapeSearchParams(config: ScrapeConfig): Promise<URLSearchParams> {
+    const client = new ScrapflyClient({ key: '__API_KEY__' });
+    let captured: URLSearchParams | undefined;
+
+    const fetchStub = stub(client, 'fetch', async (options: RequestOptions): Promise<Response> => {
+        captured = new URL(options.url).searchParams;
+        const result = resultFactory({ url: 'https://httpbin.dev/json' });
+        return responseFactory(result.data, { status: 200, headers: { 'Content-Type': 'application/json' } });
+    });
+
+    try {
+        await client.scrape(config);
+    } finally {
+        fetchStub.restore();
+    }
+
+    if (captured === undefined) {
+        throw new Error('the client never issued a request');
+    }
+    return captured;
+}
+
+Deno.test('scrape client: unblocker reaches the wire as asp, never as unblocker', async () => {
+    for (const name of ['asp', 'unblocker'] as const) {
+        const params = await captureScrapeSearchParams(
+            new ScrapeConfig({ url: 'https://httpbin.dev/json', [name]: true }),
+        );
+        assertEquals(params.get('asp'), 'true', `built with ${name}: asp missing from the request URL`);
+        assertEquals(params.has('unblocker'), false, `built with ${name}: the new name reached the wire`);
+    }
+});
+
+Deno.test('scrape client: the off toggle omits the key under either name', async () => {
+    for (const name of ['asp', 'unblocker'] as const) {
+        const params = await captureScrapeSearchParams(
+            new ScrapeConfig({ url: 'https://httpbin.dev/json', [name]: false }),
+        );
+        assertEquals(params.has('asp'), false, `built with ${name}: asp emitted while the feature is off`);
+        assertEquals(params.has('unblocker'), false);
+    }
+});
+
+Deno.test('scrape client: the whole request URL is identical under both names', async () => {
+    // Whole query string, not just the one key — the same guarantee the config
+    // matrix makes, re-made one layer up.
+    const viaAsp = await captureScrapeSearchParams(
+        new ScrapeConfig({ url: 'https://httpbin.dev/json', asp: true, render_js: true, country: 'us', cache: true }),
+    );
+    const viaUnblocker = await captureScrapeSearchParams(
+        new ScrapeConfig({
+            url: 'https://httpbin.dev/json',
+            unblocker: true,
+            render_js: true,
+            country: 'us',
+            cache: true,
+        }),
+    );
+    const sorted = (p: URLSearchParams): Array<[string, string]> => {
+        const entries: Array<[string, string]> = [];
+        p.forEach((value, key) => entries.push([key, value]));
+        return entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    };
+    assertEquals(sorted(viaUnblocker), sorted(viaAsp));
+    assertEquals(viaAsp.get('asp'), 'true');
 });

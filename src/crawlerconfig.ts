@@ -132,6 +132,17 @@ export type CrawlerConfigOptions = {
   refresh_interval?: number;
 
   // Web scraping features
+  /**
+   * Anti-bot bypass. The current name for what used to be called `asp`.
+   * Sent in the `POST /crawl` body as `asp`; only the SDK-facing name changed.
+   */
+  unblocker?: boolean;
+  /**
+   * @deprecated Use {@link CrawlerConfigOptions.unblocker}. `asp` is a
+   * permanently supported alias and keeps working forever. When both are
+   * supplied `asp` wins, so existing code cannot have its meaning changed by a
+   * later `unblocker`.
+   */
   asp?: boolean;
   proxy_pool?: string;
   country?: string;
@@ -197,6 +208,12 @@ export class CrawlerConfig {
   refresh?: boolean;
   refresh_interval?: number;
 
+  /**
+   * Storage for the anti-bot bypass toggle, under its deprecated name.
+   * `unblocker` is an accessor over this same field — see below.
+   *
+   * @deprecated Use {@link CrawlerConfig.unblocker}. `asp` keeps working forever.
+   */
   asp?: boolean;
   proxy_pool?: string;
   country?: string;
@@ -321,11 +338,32 @@ export class CrawlerConfig {
     this.search = options.search;
     this.refresh = options.refresh;
     this.refresh_interval = options.refresh_interval;
-    this.asp = options.asp;
+    // An explicitly supplied `asp` always wins; the deprecated alias is only
+    // superseded by `unblocker` when it was not supplied at all. `??` and not
+    // `||`, so an explicit `false` on either name still reaches the server.
+    // Both unset stays `undefined`, which toApiParams drops so the server
+    // applies its own default.
+    this.asp = options.asp ?? options.unblocker;
     this.proxy_pool = options.proxy_pool;
     this.country = options.country;
     this.webhook_name = options.webhook_name;
     this.webhook_events = options.webhook_events;
+  }
+
+  /**
+   * Anti-bot bypass toggle — the current name for what used to be `asp`.
+   *
+   * An accessor over the single `asp` field rather than a second stored
+   * property: one storage slot means the two names can never disagree, and
+   * `toApiParams` keeps serializing the one field under the wire key `asp`.
+   * `undefined` propagates in both directions, so "unset" stays unset.
+   */
+  get unblocker(): boolean | undefined {
+    return this.asp;
+  }
+
+  set unblocker(value: boolean | undefined) {
+    this.asp = value;
   }
 
   private validateOptions(options: Partial<CrawlerConfigOptions>) {
@@ -360,6 +398,7 @@ export class CrawlerConfig {
       'search',
       'refresh',
       'refresh_interval',
+      'unblocker',
       'asp',
       'proxy_pool',
       'country',
@@ -416,7 +455,6 @@ export class CrawlerConfig {
       'search',
       'refresh',
       'refresh_interval',
-      'asp',
       'proxy_pool',
       'country',
       'webhook_name',
@@ -428,6 +466,29 @@ export class CrawlerConfig {
         params[key] = v;
       }
     }
+
+    // The anti-bot toggle is serialized apart from the loop above because it is
+    // the one field where `false` and "not supplied" must collapse.
+    //
+    // The key is `asp` and never `unblocker`: the wire key is unchanged for
+    // both names. A published package version is immutable and upgraded per
+    // installation, so emitting `unblocker` against an API deployment that has
+    // not learned that name yet would silently drop a paid feature — the crawl
+    // runs, is billed, and comes back blocked. Renaming the emitted key is a
+    // separate, later release.
+    //
+    // Only `true` is emitted. CROSS-SDK SHAPE: the Python, Go and Rust SDKs all
+    // omit the key when the feature is off (Python's `asp` is a plain `bool`,
+    // Go's is a `bool`, Rust's carries `skip_serializing_if = "is_false"`), so
+    // carrying an explicit `asp: false` here would make the same customer
+    // intent produce two different POST /crawl bodies depending on which SDK
+    // they picked. The API cannot tell the two apart either: `resolveAsp` in
+    // pkg/crawler/config.go returns false for a present-false and for an absent
+    // pair alike, and `WithAsp` is its only writer. One shape, all four SDKs.
+    if (this.asp === true) {
+      params.asp = true;
+    }
+
     return params;
   }
 }
