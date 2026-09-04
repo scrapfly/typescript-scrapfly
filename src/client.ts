@@ -10,7 +10,21 @@ import { type AccountData, type ClassifyOptions, type ClassifyResult, Extraction
 import { log } from './logger.ts';
 import type { Rec, Vault, VaultItem, VaultItemCreate, VaultSecret } from './types.ts';
 import type { CrawlerConfig, CrawlerContentFormat } from './crawlerconfig.ts';
-import { CrawlerArtifact, type CrawlerArtifactType, CrawlerContents, CrawlerStatus, CrawlerUrls } from './crawlerresult.ts';
+import { REFRESH_MAX_INTERVAL, REFRESH_MIN_INTERVAL } from './crawlerconfig.ts';
+import {
+  CrawlerArtifact,
+  type CrawlerArtifactType,
+  CrawlerContents,
+  type CrawlerPromptEvent,
+  type CrawlerRefreshEntry,
+  type CrawlerRefreshState,
+  type CrawlerSearchMode,
+  CrawlerSearchResponse,
+  CrawlerStatus,
+  CrawlerUrls,
+  parseCrawlerPromptStream,
+  parseCrawlerRefreshState,
+} from './crawlerresult.ts';
 import {
   formatMonitoringDate,
   type CloudBrowserMonitoringOptions,
@@ -1387,6 +1401,287 @@ export class ScrapflyClient {
     }
     return response.ok;
   }
+
+  /**
+   * Run one refresh of an existing crawl immediately, without waiting for the
+   * next scheduled period.
+   *
+   * `POST /crawl/{uuid}/refresh` re-scrapes the crawl's own URLs in place:
+   * same `crawler_uuid`, same artifacts, same search index. Only pages whose
+   * content actually changed are re-indexed and pages that disappeared are
+   * dropped, so everything already pointing at this crawl keeps working.
+   *
+   * A refresh bills the pages it re-scrapes, exactly like the original crawl.
+   * What unchanged pages save is the embedding and the index write.
+   *
+   * The call returns as soon as the run is accepted; poll `crawlStatus` or
+   * `crawlRefreshHistory` for the outcome. Do not retry it blindly: a retry
+   * starts a second re-scrape of the whole site.
+   */
+  async crawlRefreshNow(uuid: string): Promise<CrawlerRefreshState> {
+    if (!uuid) {
+      throw new errors.ScrapflyCrawlerError('uuid must be a non-empty string');
+    }
+    let response: Response;
+    try {
+      const url = new URL(`${this.HOST}/crawl/${encodeURIComponent(uuid)}/refresh`);
+      url.search = new URLSearchParams({ key: this.key }).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'POST',
+        headers: {
+          'user-agent': this.ua,
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'application/json',
+        },
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+    const data: Rec<any> = (await response.json()) as Rec<any>;
+    if ('error_id' in data || data.http_code !== undefined) {
+      this.throwCrawlerError(response, data);
+    }
+    return parseCrawlerRefreshState(data);
+  }
+
+  /**
+   * Change the refresh schedule of an existing crawl.
+   *
+   * `PATCH /crawl/{uuid}/refresh` — only the fields passed are changed, so
+   * turning a crawl off keeps its interval for when it is turned back on.
+   *
+   * Turning refresh on for a crawl started without it is allowed: the crawl
+   * already holds the URL index a refresh walks.
+   */
+  async crawlRefreshSettings(
+    uuid: string,
+    settings: { enabled?: boolean; interval_seconds?: number },
+  ): Promise<CrawlerRefreshState> {
+    if (!uuid) {
+      throw new errors.ScrapflyCrawlerError('uuid must be a non-empty string');
+    }
+    if (settings?.enabled === undefined && settings?.interval_seconds === undefined) {
+      throw new errors.ScrapflyCrawlerError('pass at least one of enabled, interval_seconds');
+    }
+    if (
+      settings.interval_seconds !== undefined &&
+      (settings.interval_seconds < REFRESH_MIN_INTERVAL || settings.interval_seconds > REFRESH_MAX_INTERVAL)
+    ) {
+      throw new errors.ScrapflyCrawlerError(
+        `interval_seconds must be between ${REFRESH_MIN_INTERVAL} and ${REFRESH_MAX_INTERVAL} seconds`,
+      );
+    }
+
+    // Wire keys are the ones POST /crawl already takes, so a crawl body and a
+    // later PATCH name the same things. The enabled/interval_seconds spelling
+    // belongs to the state block this call answers with, not to its request;
+    // the API decodes the body with unknown fields rejected.
+    const payload: Rec<any> = {};
+    if (settings.enabled !== undefined) payload.refresh = settings.enabled;
+    if (settings.interval_seconds !== undefined) payload.refresh_interval = settings.interval_seconds;
+
+    let response: Response;
+    try {
+      const url = new URL(`${this.HOST}/crawl/${encodeURIComponent(uuid)}/refresh`);
+      url.search = new URLSearchParams({ key: this.key }).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'PATCH',
+        headers: {
+          'user-agent': this.ua,
+          'content-type': 'application/json',
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+    const data: Rec<any> = (await response.json()) as Rec<any>;
+    if ('error_id' in data || data.http_code !== undefined) {
+      this.throwCrawlerError(response, data);
+    }
+    return parseCrawlerRefreshState(data);
+  }
+
+  /**
+   * Read a crawl's refresh timeline, newest last.
+   *
+   * `GET /crawl/{uuid}/refresh/history` — the server keeps the 50 most recent
+   * runs; older rows are trimmed rather than paged, because the timeline
+   * exists to show recent activity.
+   */
+  async crawlRefreshHistory(uuid: string, opts?: { limit?: number }): Promise<CrawlerRefreshEntry[]> {
+    if (!uuid) {
+      throw new errors.ScrapflyCrawlerError('uuid must be a non-empty string');
+    }
+    let response: Response;
+    try {
+      const url = new URL(`${this.HOST}/crawl/${encodeURIComponent(uuid)}/refresh/history`);
+      const params: Rec<string> = { key: this.key };
+      if (opts?.limit !== undefined) params.limit = String(opts.limit);
+      url.search = new URLSearchParams(params).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'GET',
+        headers: {
+          'user-agent': this.ua,
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'application/json',
+        },
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+    const data: Rec<any> = (await response.json()) as Rec<any>;
+    if ('error_id' in data || data.http_code !== undefined) {
+      this.throwCrawlerError(response, data);
+    }
+    return parseCrawlerRefreshState(data).history ?? [];
+  }
+
+  /**
+   * Search across the search indexes of one or more crawls.
+   *
+   * `POST /crawl/search`: the collection endpoint is the real API and
+   * {@link crawl.Crawl.search} is sugar over a one-element list so the two
+   * cannot drift.
+   *
+   * Only crawls started with `search: true` whose index reached `READY` or
+   * `PARTIAL` contribute. The rest come back in `skipped` with a reason and
+   * never fail the call, so inspect `skipped` before concluding a crawl had
+   * no match.
+   */
+  async crawlSearch(
+    crawlIds: string[],
+    query: string,
+    opts?: {
+      /** 1-50 (server cap). Unset uses the server default. */
+      limit?: number;
+      mode?: CrawlerSearchMode;
+      /**
+       * Flat filter map: `url_prefix`, `host`, `source_format`,
+       * `content_type`, `http_status`, `crawler_uuid`. Filters are pushed down
+       * per crawl before its top-K, so they never cost recall. Unknown keys
+       * are rejected server-side rather than ignored.
+       */
+      filters?: Rec<any>;
+      /** Next-page token from a previous response. */
+      cursor?: string;
+    },
+  ): Promise<CrawlerSearchResponse> {
+    if (!Array.isArray(crawlIds) || crawlIds.length === 0) {
+      throw new errors.ScrapflyCrawlerError('crawl_ids must contain at least one crawler UUID');
+    }
+    if (!query) {
+      throw new errors.ScrapflyCrawlerError('query must be a non-empty string');
+    }
+
+    const payload: Rec<any> = { query, crawl_ids: crawlIds };
+    if (opts?.limit !== undefined) payload.limit = opts.limit;
+    if (opts?.mode !== undefined) payload.mode = opts.mode;
+    if (opts?.filters !== undefined) payload.filters = opts.filters;
+    if (opts?.cursor !== undefined) payload.cursor = opts.cursor;
+
+    let response: Response;
+    try {
+      const url = new URL(`${this.HOST}/crawl/search`);
+      url.search = new URLSearchParams({ key: this.key }).toString();
+      response = await this.fetch({
+        url: url.toString(),
+        method: 'POST',
+        headers: {
+          'user-agent': this.ua,
+          'content-type': 'application/json',
+          'accept-encoding': 'gzip, deflate, br',
+          accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (e) {
+      log.error('error', e);
+      throw e;
+    }
+    const data: Rec<any> = (await response.json()) as Rec<any>;
+    if ('error_id' in data || data.http_code !== undefined) {
+      this.throwCrawlerError(response, data);
+    }
+    return new CrawlerSearchResponse(data);
+  }
+
+  /**
+   * Ask a question answered from the content of one or more crawls, streaming
+   * the answer as it is generated.
+   *
+   * `POST /crawl/prompt`: the collection endpoint is the real API and
+   * {@link crawl.Crawl.prompt} is sugar over a one-element list.
+   *
+   * Yields `source` frames, then `token` frames, then one `done`. An
+   * `event: error` frame is thrown as `ScrapflyCrawlerError` rather than
+   * yielded, and can arrive after tokens were already yielded because
+   * generation fails mid-stream.
+   *
+   * Consume with `for await`; abandoning the iterator early cancels the body.
+   *
+   * Do not consume this with `EventSource`: it reconnects on close and would
+   * silently re-run the whole fan-out and generation.
+   */
+  async *crawlPrompt(
+    crawlIds: string[],
+    prompt: string,
+    opts?: {
+      /** Retrieval overrides. Unset uses the server defaults. */
+      search?: { limit?: number; mode?: CrawlerSearchMode; filters?: Rec<any> };
+      /** Generation model id. Unset uses the server default. */
+      model?: string;
+    },
+  ): AsyncGenerator<CrawlerPromptEvent, void, undefined> {
+    if (!Array.isArray(crawlIds) || crawlIds.length === 0) {
+      throw new errors.ScrapflyCrawlerError('crawl_ids must contain at least one crawler UUID');
+    }
+    if (!prompt) {
+      throw new errors.ScrapflyCrawlerError('prompt must be a non-empty string');
+    }
+
+    const generation: Rec<any> = { stream: true };
+    if (opts?.model !== undefined) generation.model = opts.model;
+    const payload: Rec<any> = { prompt, crawl_ids: crawlIds, generation };
+    if (opts?.search !== undefined) payload.search = opts.search;
+
+    const url = new URL(`${this.HOST}/crawl/prompt`);
+    url.search = new URLSearchParams({ key: this.key }).toString();
+    // One attempt only: the request runs a fan-out and a generation, both
+    // billable, so a retry doubles the bill.
+    const response = await this.fetch(
+      {
+        url: url.toString(),
+        method: 'POST',
+        headers: {
+          'user-agent': this.ua,
+          'content-type': 'application/json',
+          accept: 'text/event-stream',
+        },
+        body: JSON.stringify(payload),
+      },
+      1,
+    );
+
+    if (!response.ok) {
+      const data: Rec<any> = (await response.json().catch(() => ({}))) as Rec<any>;
+      this.throwCrawlerError(response, data);
+    }
+    if (response.body === null) {
+      throw new errors.ScrapflyCrawlerError('prompt response carried no body');
+    }
+
+    yield* parseCrawlerPromptStream(response.body);
+  }
+
   // --- Cloud Browser ---
 
   /**

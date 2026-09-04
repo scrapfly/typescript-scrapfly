@@ -6,6 +6,11 @@ import type {
   CrawlerArtifact,
   CrawlerArtifactType,
   CrawlerContents,
+  CrawlerPromptEvent,
+  CrawlerRefreshEntry,
+  CrawlerRefreshState,
+  CrawlerSearchMode,
+  CrawlerSearchResponse,
   CrawlerStatus,
   CrawlerUrls,
 } from './crawlerresult.ts';
@@ -192,6 +197,75 @@ export class Crawl {
   }): Promise<CrawlerUrls> {
     const uuid = this.requireUuid();
     return await this.client.crawlUrls(uuid, opts);
+  }
+
+  /**
+   * Search this crawl's index.
+   *
+   * Sugar over `client.crawlSearch([uuid], ...)`. The cross-crawl call is the
+   * real endpoint; both share its implementation so single and multi-crawl
+   * search cannot drift.
+   *
+   * Requires the crawl to have been started with `search: true` and its index
+   * to have reached `READY`/`PARTIAL`; poll `CrawlerStatus.search` or
+   * subscribe to the `crawler_search_ready` webhook. An index that is not
+   * ready yet is reported in the response's `skipped` list, not as an error.
+   */
+  async search(
+    query: string,
+    opts?: { limit?: number; mode?: CrawlerSearchMode; filters?: Record<string, any>; cursor?: string },
+  ): Promise<CrawlerSearchResponse> {
+    const uuid = this.requireUuid();
+    return await this.client.crawlSearch([uuid], query, opts);
+  }
+
+  /**
+   * Ask a question answered from this crawl's content.
+   *
+   * Sugar over `client.crawlPrompt([uuid], ...)`; yields the same frames.
+   */
+  prompt(
+    prompt: string,
+    opts?: {
+      search?: { limit?: number; mode?: CrawlerSearchMode; filters?: Record<string, any> };
+      model?: string;
+    },
+  ): AsyncGenerator<CrawlerPromptEvent, void, undefined> {
+    const uuid = this.requireUuid();
+    return this.client.crawlPrompt([uuid], prompt, opts);
+  }
+
+  /**
+   * Re-scrape this crawl's URLs in place, right now.
+   *
+   * Sugar over `client.crawlRefreshNow(uuid)`. The crawl keeps its uuid, its
+   * artifacts and its search index; only pages whose content changed are
+   * re-indexed and pages that disappeared are dropped.
+   */
+  async refreshNow(): Promise<CrawlerRefreshState> {
+    const uuid = this.requireUuid();
+    return await this.client.crawlRefreshNow(uuid);
+  }
+
+  /**
+   * Change this crawl's refresh schedule.
+   *
+   * Sugar over `client.crawlRefreshSettings(uuid, ...)`; only what is passed
+   * is changed.
+   */
+  async refreshSettings(settings: { enabled?: boolean; interval_seconds?: number }): Promise<CrawlerRefreshState> {
+    const uuid = this.requireUuid();
+    return await this.client.crawlRefreshSettings(uuid, settings);
+  }
+
+  /**
+   * Read this crawl's refresh timeline, newest last.
+   *
+   * Sugar over `client.crawlRefreshHistory(uuid, ...)`.
+   */
+  async refreshHistory(opts?: { limit?: number }): Promise<CrawlerRefreshEntry[]> {
+    const uuid = this.requireUuid();
+    return await this.client.crawlRefreshHistory(uuid, opts);
   }
 
   /**

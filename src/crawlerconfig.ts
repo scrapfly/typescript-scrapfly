@@ -45,7 +45,16 @@ export type CrawlerWebhookEventName =
   | 'crawler_url_failed'
   | 'crawler_stopped'
   | 'crawler_cancelled'
-  | 'crawler_finished';
+  | 'crawler_finished'
+  | 'crawler_search_ready'
+  | 'crawler_search_failed'
+  | 'crawler_updated';
+
+/**
+ * Auto-refresh interval bounds, in seconds (1 hour to 90 days).
+ */
+export const REFRESH_MIN_INTERVAL = 3600;
+export const REFRESH_MAX_INTERVAL = 90 * 24 * 3600;
 
 const VALID_WEBHOOK_EVENTS: ReadonlySet<string> = new Set([
   'crawler_started',
@@ -56,6 +65,9 @@ const VALID_WEBHOOK_EVENTS: ReadonlySet<string> = new Set([
   'crawler_stopped',
   'crawler_cancelled',
   'crawler_finished',
+  'crawler_search_ready',
+  'crawler_search_failed',
+  'crawler_updated',
 ]);
 
 /**
@@ -109,6 +121,15 @@ export type CrawlerConfigOptions = {
   // Content extraction
   content_formats?: CrawlerContentFormat[];
   extraction_rules?: Rec<any>;
+
+  // Search index built while the crawl runs. Query it with
+  // ScrapflyClient.crawlSearch / crawlPrompt once the index is READY.
+  search?: boolean;
+
+  // Auto-refresh: re-scrape this crawl's own URLs in place, on a period. Same
+  // crawler_uuid, same artifacts, only changed pages re-indexed.
+  refresh?: boolean;
+  refresh_interval?: number;
 
   // Web scraping features
   asp?: boolean;
@@ -170,6 +191,11 @@ export class CrawlerConfig {
 
   content_formats?: CrawlerContentFormat[];
   extraction_rules?: Rec<any>;
+
+  search?: boolean;
+
+  refresh?: boolean;
+  refresh_interval?: number;
 
   asp?: boolean;
   proxy_pool?: string;
@@ -234,6 +260,20 @@ export class CrawlerConfig {
     if (options.allowed_internal_subdomains && options.allowed_internal_subdomains.length > 250) {
       throw new CrawlerConfigError('allowed_internal_subdomains is limited to 250 entries');
     }
+    // The floor decides the cost: a crawl refreshing every minute re-scrapes
+    // the whole site 1,440 times a day.
+    if (
+      options.refresh_interval !== undefined &&
+      (options.refresh_interval < REFRESH_MIN_INTERVAL || options.refresh_interval > REFRESH_MAX_INTERVAL)
+    ) {
+      throw new CrawlerConfigError(
+        `refresh_interval must be between ${REFRESH_MIN_INTERVAL} and ${REFRESH_MAX_INTERVAL} (seconds, 1 hour to 90 days)`,
+      );
+    }
+    // A period with the feature off would silently never run.
+    if (options.refresh_interval !== undefined && !options.refresh) {
+      throw new CrawlerConfigError('refresh_interval requires refresh: true');
+    }
 
     // Validate content_formats values
     if (options.content_formats) {
@@ -278,6 +318,9 @@ export class CrawlerConfig {
     this.cache_clear = options.cache_clear;
     this.content_formats = options.content_formats;
     this.extraction_rules = options.extraction_rules;
+    this.search = options.search;
+    this.refresh = options.refresh;
+    this.refresh_interval = options.refresh_interval;
     this.asp = options.asp;
     this.proxy_pool = options.proxy_pool;
     this.country = options.country;
@@ -314,6 +357,9 @@ export class CrawlerConfig {
       'cache_clear',
       'content_formats',
       'extraction_rules',
+      'search',
+      'refresh',
+      'refresh_interval',
       'asp',
       'proxy_pool',
       'country',
@@ -367,6 +413,9 @@ export class CrawlerConfig {
       'cache_clear',
       'content_formats',
       'extraction_rules',
+      'search',
+      'refresh',
+      'refresh_interval',
       'asp',
       'proxy_pool',
       'country',

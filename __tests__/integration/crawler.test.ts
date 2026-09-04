@@ -18,7 +18,13 @@
 import { ScrapflyClient } from '../../src/client.ts';
 import { CrawlerConfig } from '../../src/crawlerconfig.ts';
 import { Crawl } from '../../src/crawl.ts';
-import { CrawlerArtifact, CrawlerStatus, CrawlerUrls } from '../../src/crawlerresult.ts';
+import {
+  CrawlerArtifact,
+  CrawlerSearchResponse,
+  CrawlerStatus,
+  CrawlerUrls,
+  isSearchable,
+} from '../../src/crawlerresult.ts';
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
 const SCRAPFLY_KEY = Deno.env.get('SCRAPFLY_API_KEY');
@@ -152,5 +158,64 @@ if (!SCRAPFLY_KEY) {
       assert(typeof entry.url === 'string' && entry.url.length > 0);
       assertEquals(entry.status, 'visited');
     }
+  });
+
+  // Helper: start a crawl with the search index on and wait for the index to
+  // leave BUILDING. The index is published after the crawl's own terminal
+  // status, so a crawl that just finished is not yet searchable.
+  async function startSearchCrawl(): Promise<{ client: ScrapflyClient; crawl: Crawl }> {
+    const client = makeClient();
+    const crawl = new Crawl(
+      client,
+      new CrawlerConfig({
+        url: 'https://web-scraping.dev/products',
+        page_limit: 3,
+        max_duration: 60,
+        content_formats: ['markdown'],
+        search: true,
+      }),
+    );
+    await crawl.start();
+    await crawl.wait({ pollInterval: 2, maxWait: 120 });
+
+    const deadline = Date.now() + 120_000;
+    for (;;) {
+      const status = await crawl.status(true);
+      assert(status.search !== null, 'a crawl started with search:true must report a search block');
+      if (status.search!.status !== 'BUILDING' || Date.now() > deadline) break;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+    return { client, crawl };
+  }
+
+  Deno.test('integration: search=true publishes an index reported on /status', async () => {
+    const { crawl } = await startSearchCrawl();
+    const status = await crawl.status(true);
+    assert(isSearchable(status.search), `index never became searchable: ${JSON.stringify(status.search)}`);
+    assert((status.search!.vectors ?? 0) >= 1, 'index published with no vectors');
+  });
+
+  Deno.test('integration: crawlSearch returns ranked chunks from the crawl', async () => {
+    const { crawl } = await startSearchCrawl();
+    const res = await crawl.search('product', { limit: 5 });
+    assert(res instanceof CrawlerSearchResponse);
+    assert(res.results.length > 0, `no results: ${JSON.stringify(res.skipped)}`);
+    const hit = res.results[0];
+    assertEquals(hit.rank, 1);
+    assertEquals(hit.crawler_uuid, crawl.uuid);
+    assert(hit.url.length > 0);
+    assert(hit.text.length > 0);
+  });
+
+  Deno.test('integration: crawlPrompt streams source, token and done frames', async () => {
+    const { crawl } = await startSearchCrawl();
+    let answer = '';
+    let done = false;
+    for await (const ev of crawl.prompt('What does this website sell?')) {
+      if (ev.event === 'token') answer += ev.data;
+      if (ev.event === 'done') done = true;
+    }
+    assert(done, 'stream ended without a done frame');
+    assert(answer.length > 0, 'no tokens streamed');
   });
 }

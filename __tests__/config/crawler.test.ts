@@ -229,7 +229,7 @@ Deno.test('CrawlerConfig: unknown option is rejected', () => {
   );
 });
 
-Deno.test('CrawlerConfig: all 8 valid webhook event names accepted', () => {
+Deno.test('CrawlerConfig: all valid webhook event names accepted', () => {
   const config = new CrawlerConfig({
     url: 'https://example.com',
     webhook_events: [
@@ -241,7 +241,83 @@ Deno.test('CrawlerConfig: all 8 valid webhook event names accepted', () => {
       'crawler_stopped',
       'crawler_cancelled',
       'crawler_finished',
+      'crawler_search_ready',
+      'crawler_search_failed',
+      'crawler_updated',
     ],
   });
-  assertEquals(config.webhook_events?.length, 8);
+  assertEquals(config.webhook_events?.length, 11);
+  assertEquals(config.toApiParams().webhook_events?.length, 11);
+});
+
+Deno.test('CrawlerConfig: search serializes to the wire payload', () => {
+  const config = new CrawlerConfig({ url: 'https://example.com', search: true });
+  assertEquals(config.toApiParams().search, true);
+});
+
+Deno.test('CrawlerConfig: search is omitted when off', () => {
+  // Unset means server default: never emit a field to send its default.
+  const config = new CrawlerConfig({ url: 'https://example.com' });
+  assertEquals(config.toApiParams().search, undefined);
+});
+
+Deno.test('CrawlerConfig: search survives the validateOptions allowlist', () => {
+  // A key missing from validKeys throws 'Invalid option provided'; a key
+  // missing from toApiParams' fields array is dropped silently. Both are
+  // covered by the two assertions here.
+  const config = new CrawlerConfig({ url: 'https://example.com', search: false });
+  assertEquals(config.search, false);
+  assertEquals(config.toApiParams().search, false);
+});
+
+Deno.test('CrawlerConfig: refresh fields serialize to the wire payload', () => {
+  const config = new CrawlerConfig({ url: 'https://example.com', refresh: true, refresh_interval: 86400 });
+  assertEquals(config.toApiParams().refresh, true);
+  assertEquals(config.toApiParams().refresh_interval, 86400);
+});
+
+Deno.test('CrawlerConfig: refresh fields are omitted when off', () => {
+  // Unset means server default: never emit a field to send its default.
+  const config = new CrawlerConfig({ url: 'https://example.com' });
+  assertEquals(config.toApiParams().refresh, undefined);
+  assertEquals(config.toApiParams().refresh_interval, undefined);
+});
+
+Deno.test('CrawlerConfig: refresh without an interval uses the server period', () => {
+  const config = new CrawlerConfig({ url: 'https://example.com', refresh: true });
+  assertEquals(config.toApiParams().refresh, true);
+  assertEquals(config.toApiParams().refresh_interval, undefined);
+});
+
+Deno.test('CrawlerConfig: refresh survives the validateOptions allowlist', () => {
+  // A key missing from validKeys throws 'Invalid option provided'; a key
+  // missing from toApiParams' fields array is dropped silently. Both are
+  // covered by the two assertions here.
+  const config = new CrawlerConfig({ url: 'https://example.com', refresh: false });
+  assertEquals(config.refresh, false);
+  assertEquals(config.toApiParams().refresh, false);
+});
+
+Deno.test('CrawlerConfig: refresh_interval outside the bounds is refused', () => {
+  // The floor decides the cost; reject before a round trip.
+  for (const refresh_interval of [1, 3599, 90 * 24 * 3600 + 1]) {
+    assertThrows(
+      () => new CrawlerConfig({ url: 'https://example.com', refresh: true, refresh_interval }),
+      errors.CrawlerConfigError,
+      'refresh_interval must be between',
+    );
+  }
+  for (const refresh_interval of [3600, 86400, 90 * 24 * 3600]) {
+    const config = new CrawlerConfig({ url: 'https://example.com', refresh: true, refresh_interval });
+    assertEquals(config.toApiParams().refresh_interval, refresh_interval);
+  }
+});
+
+Deno.test('CrawlerConfig: refresh_interval without refresh is refused', () => {
+  // A period with the feature off would silently never run.
+  assertThrows(
+    () => new CrawlerConfig({ url: 'https://example.com', refresh_interval: 86400 }),
+    errors.CrawlerConfigError,
+    'refresh_interval requires refresh: true',
+  );
 });
