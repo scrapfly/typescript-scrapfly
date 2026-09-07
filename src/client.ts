@@ -1426,15 +1426,20 @@ export class ScrapflyClient {
     try {
       const url = new URL(`${this.HOST}/crawl/${encodeURIComponent(uuid)}/refresh`);
       url.search = new URLSearchParams({ key: this.key }).toString();
-      response = await this.fetch({
-        url: url.toString(),
-        method: 'POST',
-        headers: {
-          'user-agent': this.ua,
-          'accept-encoding': 'gzip, deflate, br',
-          accept: 'application/json',
+      // One attempt: the server may have accepted the billable refresh even
+      // when its response is lost or replaced by a gateway error.
+      response = await this.fetch(
+        {
+          url: url.toString(),
+          method: 'POST',
+          headers: {
+            'user-agent': this.ua,
+            'accept-encoding': 'gzip, deflate, br',
+            accept: 'application/json',
+          },
         },
-      });
+        1,
+      );
     } catch (e) {
       log.error('error', e);
       throw e;

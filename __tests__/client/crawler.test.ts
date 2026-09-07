@@ -986,6 +986,37 @@ Deno.test('crawlRefreshNow: POSTs to /crawl/{uuid}/refresh', async () => {
   fetchStub.restore();
 });
 
+for (const failure of ['502', 'connection reset']) {
+  Deno.test(`crawlRefreshNow: does not retry after ${failure}`, async () => {
+    const client = new ScrapflyClient({ key: '__API_KEY__' });
+    let calls = 0;
+    // Keep the real SDK fetch helper: stubbing client.fetch would hide retries.
+    const fetchStub = stub(globalThis, 'fetch', async (input): Promise<Response> => {
+      assert(input instanceof Request);
+      assertEquals(input.method, 'POST');
+      assertEquals(new URL(input.url).pathname, '/crawl/0198aaaa/refresh');
+      calls++;
+      if (calls === 1) {
+        if (failure === 'connection reset') throw new TypeError('connection reset');
+        return new Response('upstream response lost', { status: 502 });
+      }
+      return responseFactory(REFRESH_ENVELOPE, { status: 202 });
+    });
+    try {
+      let error: unknown;
+      try {
+        await client.crawlRefreshNow('0198aaaa');
+      } catch (e) {
+        error = e;
+      }
+      assertEquals(calls, 1, 'a refresh must issue exactly one billable POST');
+      assert(error instanceof Error, 'the caller must receive the failed attempt');
+    } finally {
+      fetchStub.restore();
+    }
+  });
+}
+
 Deno.test('crawlRefreshSettings: PATCHes only the fields passed', async () => {
   const client = new ScrapflyClient({ key: '__API_KEY__' });
   let body: Record<string, unknown> = {};
