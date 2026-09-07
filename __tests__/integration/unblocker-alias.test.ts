@@ -14,11 +14,8 @@
 // honours that key. It does NOT prove the API still honours the `unblocker`
 // SPELLING, because no SDK leg ever sends it.
 //
-// That spelling is a real, separately deployed code path — see
-// apps/scrapfly/api/scrapfly-api/pkg/scraper/config.go:
-//
-//     asp := queryParams.Get("asp")
-//     if asp == "" { asp = queryParams.Get("unblocker") }
+// That spelling is a separate code path in the API itself: it reads the `asp`
+// query parameter first and falls back to `unblocker` when `asp` is absent.
 //
 // It is what a customer on a raw HTTP client depends on, and the API silently
 // ignores query params it does not recognise, so deleting it would make
@@ -28,7 +25,7 @@
 // leg 5 — goes red.
 //
 // GATING: both `SCRAPFLY_API_KEY` and `SCRAPFLY_API_HOST` must be set. There is
-// deliberately no default host — a placeholder like api.scrapfly.local does not
+// deliberately no default host — a non-resolvable placeholder does not
 // resolve, so a developer who exported only the key would get a wall of red that
 // reads like an alias regression. The tests are REGISTERED either way and use
 // Deno's own `ignore` flag, so a credential-less run reports `ignored` in the
@@ -56,16 +53,14 @@
 // the harness. The equivalence tests then FAIL-FAST with an explicit message
 // rather than passing, so a harness-only run can never read as a green verdict.
 //
-// Local development: point at the dev cluster. The dev API serves a certificate
-// signed by "Scrapfly Dev Root CA", so Deno needs that CA — pass `--cert`
-// (or `DENO_TLS_CA_STORE=system` when the CA is in the machine trust store).
-// Certificate verification stays ON; `--unsafely-ignore-certificate-errors` is
-// NOT required.
+// An endpoint whose certificate the system store cannot verify needs that root
+// handed to Deno — pass `--cert <pem>` (or `DENO_TLS_CA_STORE=system` when the
+// root is already in the machine trust store). Certificate verification stays
+// ON; `--unsafely-ignore-certificate-errors` is NOT required.
 //
 //   export SCRAPFLY_API_KEY=scp-live-...
-//   export SCRAPFLY_API_HOST=https://api.scrapfly.home
+//   export SCRAPFLY_API_HOST=https://api.scrapfly.io
 //   deno test --allow-net --allow-env --allow-read \
-//     --cert /usr/local/share/ca-certificates/scrapfly-local-ca.crt \
 //     __tests__/integration/unblocker-alias.test.ts
 
 import { ScrapflyClient } from '../../src/client.ts';

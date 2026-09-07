@@ -10,27 +10,21 @@
 // nofollow, sitemap index, etc). Each route records hits in an
 // in-memory store. This test suite asserts hit counts after each crawl.
 //
-// Server-side catalog:
-//   apps/web-scraping-dev/website/app/web/CRAWLER_TEST_SUITE.md
-// Reference Python SDK implementation:
-//   sdk/python/tests/crawler/test_compliance.py
-// SDK brief:
-//   sdk/CRAWLER_COMPLIANCE_TEST_BRIEF.md
+// The trap catalog is published by the trap app itself; this suite asserts the
+// crawler's observable behaviour against it.
 //
 // Required env vars:
-//   SCRAPFLY_API_KEY        Dev API key (e.g. scp-live-...)
-//   SCRAPFLY_API_HOST       Local Scrapfly API (default: https://api.scrapfly.local)
+//   SCRAPFLY_API_KEY        API key (e.g. scp-live-...)
+//   SCRAPFLY_API_HOST       API endpoint (default: https://api.scrapfly.io)
 //
 // Optional:
 //   WEB_SCRAPING_DEV_BASE   Trap app base URL.
-//                           Default: https://web-scraping.dev (public prod).
-//                           Override to https://web-scraping-dev.local for the
-//                           local self-hosted dev cluster.
+//                           Default: https://web-scraping.dev.
+//                           Override to point at your own deployment of it.
 //
 // Run locally:
 //   export SCRAPFLY_API_KEY=scp-live-...
 //   deno test --allow-net --allow-read --allow-env \
-//     --unsafely-ignore-certificate-errors=api.scrapfly.local,web-scraping-dev.local \
 //     __tests__/integration/crawler-compliance.test.ts
 
 import { ScrapflyClient } from '../../src/client.ts';
@@ -39,7 +33,7 @@ import { Crawl } from '../../src/crawl.ts';
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
 const SCRAPFLY_KEY = Deno.env.get('SCRAPFLY_API_KEY');
-const SCRAPFLY_HOST = Deno.env.get('SCRAPFLY_API_HOST') ?? 'https://api.scrapfly.local';
+const SCRAPFLY_HOST = Deno.env.get('SCRAPFLY_API_HOST') ?? 'https://api.scrapfly.io';
 const TARGET_BASE = Deno.env.get('WEB_SCRAPING_DEV_BASE') ?? 'https://web-scraping.dev';
 const REPORT_URL = `${TARGET_BASE}/crawler-test-report`;
 const RESET_URL = `${REPORT_URL}/reset`;

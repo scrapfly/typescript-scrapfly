@@ -4,10 +4,11 @@
 // set in the environment. They are skipped (with a console message) otherwise,
 // so the unit-test suite stays fast and offline.
 //
-// Local development: point at the dev cluster:
+// Run them with a real key:
 //   export SCRAPFLY_API_KEY=scp-live-...
-//   export SCRAPFLY_API_HOST=https://api.scrapfly.local
-//   deno test --allow-net --allow-read --allow-env --unsafely-ignore-certificate-errors=api.scrapfly.local __tests__/integration/crawler.test.ts
+//   deno test --allow-net --allow-read --allow-env __tests__/integration/crawler.test.ts
+//
+// SCRAPFLY_API_HOST overrides the endpoint.
 //
 // Note on the `/urls` endpoint: the server returns a streaming `text/plain`
 // response (one URL per line for visited; `url,reason` for failed/skipped).
@@ -28,11 +29,11 @@ import {
 import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 
 const SCRAPFLY_KEY = Deno.env.get('SCRAPFLY_API_KEY');
-const SCRAPFLY_HOST = Deno.env.get('SCRAPFLY_API_HOST') ?? 'https://api.scrapfly.local';
+const SCRAPFLY_HOST = Deno.env.get('SCRAPFLY_API_HOST') ?? 'https://api.scrapfly.io';
 
 if (!SCRAPFLY_KEY) {
   console.log(
-    'skipping crawler integration tests (set SCRAPFLY_API_KEY to enable; pointing at https://api.scrapfly.local by default)',
+    'skipping crawler integration tests (set SCRAPFLY_API_KEY to enable; pointing at https://api.scrapfly.io by default)',
   );
 } else {
   function makeClient(): ScrapflyClient {
@@ -59,7 +60,7 @@ if (!SCRAPFLY_KEY) {
     return { client, crawl };
   }
 
-  Deno.test('integration: client can talk to api.scrapfly.local', async () => {
+  Deno.test('integration: client can talk to the API', async () => {
     // Sanity check — the URL host override works and the cluster is reachable.
     const client = makeClient();
     assertEquals(client.HOST, SCRAPFLY_HOST.replace(/\/+$/, ''));
