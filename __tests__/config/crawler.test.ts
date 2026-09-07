@@ -337,7 +337,7 @@ Deno.test('CrawlerConfig: unblocker is serialized as asp', () => {
 
 Deno.test('CrawlerConfig: unblocker false omits the key, as in every other SDK', () => {
   // Off means the key is ABSENT, not `asp: false`. Python, Go and Rust all omit
-  // it, and the API's resolveAsp (pkg/crawler/config.go) cannot tell a
+  // it, and the API's own parsing of the crawl body cannot tell a
   // present-false from an absent pair, so one shape is carried by all four.
   const params = new CrawlerConfig({ url: 'https://example.com', unblocker: false }).toApiParams();
   assertEquals(Object.keys(params).includes('asp'), false);
@@ -513,7 +513,7 @@ Deno.test('parity: asp and unblocker leave identical stored state', () => {
  * resolve `asp: false, unblocker: true` to OFF, as pinned here. GO ANSWERS ON
  * for that one row: its `ASP` field is a plain `bool`, so a supplied `false` is
  * byte-identical to the zero value and cannot be honoured. That divergence is
- * documented in go/unblocker.go and go/README.md, and the Go test row that pins
+ * documented in the Go SDK's own unblocker.go and README, and the Go test row that pins
  * it is named GO_LANGUAGE_FORCED_EXCEPTION_documented_divergence_not_a_bug. It
  * is the ONLY cell where the four SDKs disagree.
  */

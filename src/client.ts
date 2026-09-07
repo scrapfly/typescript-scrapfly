@@ -1914,7 +1914,7 @@ export class ScrapflyClient {
   // SECURITY: the vault key is the customer-held secret that decrypts every
   // item in the vault. The server emits it ONCE on POST /vault and POST
   // /vault/{id}/rotate; never log it, never include it in error messages,
-  // never put it in a breadcrumb. See agent_secret_tokenization_boundary.md.
+  // never put it in a breadcrumb, and never echo it back to a caller.
 
   /**
    * Create a new Cloud Browser Credential Vault. The response contains a

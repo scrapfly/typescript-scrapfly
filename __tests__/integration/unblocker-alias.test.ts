@@ -87,8 +87,8 @@ if (CREDENTIALS_MISSING) {
 // parsed, not about defeating anything, so the target only has to answer 200.
 const TARGET_URL = 'https://httpbin.dev/html';
 
-// The dev project carries a user throttle rule on the target host
-// (SLIDING_WINDOW, max_rate 5, max_concurrency 5, reported under
+// The account running this matrix may carry a throttle rule on the target host
+// (a sliding-window limit on rate and concurrency, reported under
 // `context.throttler`). Five sequential legs do not reliably fit in it, and the
 // slot is not released the instant a response is handed back. Pacing keeps the
 // matrix observable; it softens no assertion and re-sends no leg.

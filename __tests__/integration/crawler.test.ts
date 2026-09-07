@@ -61,7 +61,7 @@ if (!SCRAPFLY_KEY) {
   }
 
   Deno.test('integration: client can talk to the API', async () => {
-    // Sanity check — the URL host override works and the cluster is reachable.
+    // Sanity check — the host override is applied verbatim, trailing slash stripped.
     const client = makeClient();
     assertEquals(client.HOST, SCRAPFLY_HOST.replace(/\/+$/, ''));
   });

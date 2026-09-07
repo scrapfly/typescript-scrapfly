@@ -8,7 +8,6 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'HEAD';
 // encrypted server-side under a customer-held vault key. The server emits the
 // raw vault key exactly once on POST /vault and POST /vault/{id}/rotate; the
 // SDK MUST never log, print, or include it in error messages.
-// See compliance memory at agent_secret_tokenization_boundary.md.
 // ---------------------------------------------------------------------------
 
 /** Vault metadata returned by the server (no secret material). */

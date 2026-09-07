@@ -911,7 +911,7 @@ Deno.test('parity: asp and unblocker leave identical stored state', () => {
  * resolve `asp: false, unblocker: true` to OFF, as pinned here. GO ANSWERS ON
  * for that one row: its `ASP` field is a plain `bool`, so a supplied `false` is
  * byte-identical to the zero value and cannot be honoured. That divergence is
- * documented in go/unblocker.go and go/README.md, and the Go test row that pins
+ * documented in the Go SDK's own unblocker.go and README, and the Go test row that pins
  * it is named GO_LANGUAGE_FORCED_EXCEPTION_documented_divergence_not_a_bug. It
  * is the ONLY cell where the four SDKs disagree; nothing here may be "fixed" to
  * match Go.

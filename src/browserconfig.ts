@@ -83,7 +83,7 @@ export type BrowserConfigOptions = {
   /** Enable the MCP (Model Context Protocol) bridge. */
   enable_mcp?: boolean;
   /**
-   * Arm Scrapium's built-in captcha detector + solver on the first page attach.
+   * Arm the Cloud Browser's built-in captcha detector + solver on the first page attach.
    * Turnstile, DataDome slider, reCAPTCHA, GeeTest, PerimeterX hold, and
    * puzzle captchas are handled automatically — no extra CDP calls from the
    * client. Billed per solve; failures cost nothing.

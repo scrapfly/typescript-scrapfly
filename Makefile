@@ -1,5 +1,5 @@
 # Scrapfly TypeScript SDK — release/dev Makefile.
-# Target names mirror sdk/python & sdk/rust Makefiles for muscle-memory parity.
+# Target names mirror the Python and Rust SDK Makefiles for muscle-memory parity.
 # Source of truth for the version is deno.json; build.ts copies it into npm/package.json.
 # Publishes to npm (via dnt output in ./npm) and JSR (via publish-jsr.sh).
 

@@ -35,7 +35,7 @@ const VALID_CONTENT_FORMATS: ReadonlySet<string> = new Set([
  * Webhook event names emitted by the crawler.
  *
  * Event names match the wire format documented in the Crawler API webhook reference.
- * lines 11-20. Verified to match the public docs and the JSON example payloads.
+ * Verified against the public docs and the JSON example payloads.
  */
 export type CrawlerWebhookEventName =
   | 'crawler_started'
@@ -482,9 +482,9 @@ export class CrawlerConfig {
     // Go's is a `bool`, Rust's carries `skip_serializing_if = "is_false"`), so
     // carrying an explicit `asp: false` here would make the same customer
     // intent produce two different POST /crawl bodies depending on which SDK
-    // they picked. The API cannot tell the two apart either: `resolveAsp` in
-    // pkg/crawler/config.go returns false for a present-false and for an absent
-    // pair alike, and `WithAsp` is its only writer. One shape, all four SDKs.
+    // they picked. The API cannot tell the two apart either: it resolves a
+    // present-false and an absent pair to the same `false`, so an explicit
+    // `asp: false` on the wire buys nothing. One shape, all four SDKs.
     if (this.asp === true) {
       params.asp = true;
     }
