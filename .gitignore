@@ -1,6 +1,8 @@
 node_modules
 coverage
-scripts
+# Local-only helpers stay untracked; the leak guard CI runs is the exception.
+scripts/*
+!scripts/check-internal-refs.sh
 npm
 build
 dev
