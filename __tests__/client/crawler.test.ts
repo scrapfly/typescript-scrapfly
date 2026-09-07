@@ -8,6 +8,7 @@ import {
   CrawlerStatus,
   CrawlerUrls,
   isSearchable,
+  parseCrawlerPromptStream,
   parseCrawlerRefreshState,
   parseCrawlerSearchState,
   refreshChanged,
@@ -630,10 +631,10 @@ Deno.test('crawlPrompt: streams source, token and done frames', async () => {
         ':keepalive\n\n' +
         'event: token\ndata: "The"\n\n' +
         'event: token\ndata: " answer"\n\n' +
-        // The engine's own done frame, verbatim. The stream is a byte relay, so
-        // thoughts_token_count / model / sources_dropped reach the caller here
-        // even though the non-streaming JSON path renders a narrower envelope.
+        // Older servers may include provider details. The SDK should preserve
+        // the public fields and actual charge while dropping those details.
         'event: done\ndata: {"sources_used":[1],"sources_dropped":2,"truncated":false,' +
+        '"api_credit":3,' +
         '"usage":{"prompt_token_count":1841,"candidates_token_count":260,"thoughts_token_count":118,' +
         '"total_token_count":2219,"cost":{"input":0.000184,"output":0.000378},"model":"gemini-2.5-flash"}}\n\n',
     );
@@ -661,13 +662,24 @@ Deno.test('crawlPrompt: streams source, token and done frames', async () => {
   assertEquals(sources, ['https://example.com/foo']);
   assertEquals(done?.sources_used, [1]);
   assertEquals(done?.sources_dropped, 2);
-  // The done frame reports the flat price and nothing about how the answer was
-  // produced. The fixture still sends usage/tokens/cost/model because an older
-  // API will; a type with no such field is what drops them.
-  assertEquals(JSON.stringify(done).includes('gemini'), false);
-  assertEquals(JSON.stringify(done).includes('token_count'), false);
+  assertEquals(JSON.parse(JSON.stringify(done)), {
+    sources_used: [1], sources_dropped: 2, truncated: false, api_credit: 3,
+  });
   fetchStub.restore();
 });
+
+for (const credit of [3, 0, null, undefined]) {
+  Deno.test(`crawlPrompt: preserves the reported charge ${credit}`, async () => {
+    const frame = { sources_used: [], sources_dropped: 0, truncated: false, api_credit: credit };
+    let done: CrawlerPromptDone | undefined;
+    for await (const event of parseCrawlerPromptStream(sseResponse(`event: done\ndata: ${JSON.stringify(frame)}\n\n`).body!)) {
+      if (event.event === 'done') done = event.data;
+    }
+    assert(done);
+    const actual: number | undefined = done.api_credit;
+    assertEquals(actual, credit ?? undefined);
+  });
+}
 
 Deno.test('crawlPrompt: an error frame throws mid-stream', async () => {
   // Generation can fail after tokens were already yielded.

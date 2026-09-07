@@ -564,6 +564,8 @@ export interface CrawlerPromptDone {
    * whether to use it is the caller's call.
    */
   truncated?: boolean;
+  /** Actual charge, including zero. Undefined when the server does not report it. */
+  api_credit?: number;
 }
 
 /**
@@ -617,7 +619,18 @@ export async function* parseCrawlerPromptStream(
       return { event: 'source', data: JSON.parse(raw) as CrawlerPromptSource };
     }
     if (name === 'done') {
-      return { event: 'done', data: JSON.parse(raw) as CrawlerPromptDone };
+      const payload = JSON.parse(raw) as Rec<any>;
+      // Build the public result explicitly: a TypeScript cast does not remove
+      // legacy model, token or provider-cost fields from the runtime object.
+      return {
+        event: 'done',
+        data: {
+          sources_used: optionalField<number[]>(payload, 'sources_used', 'array', 'CrawlerPromptDone') ?? undefined,
+          sources_dropped: optionalField<number>(payload, 'sources_dropped', 'number', 'CrawlerPromptDone') ?? undefined,
+          truncated: optionalField<boolean>(payload, 'truncated', 'boolean', 'CrawlerPromptDone') ?? undefined,
+          api_credit: optionalField<number>(payload, 'api_credit', 'number', 'CrawlerPromptDone') ?? undefined,
+        },
+      };
     }
     if (name === 'error') {
       let payload: Rec<any> = {};
