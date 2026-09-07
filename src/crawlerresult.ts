@@ -593,6 +593,7 @@ export type CrawlerPromptEvent =
  *
  * Decoding is explicitly UTF-8 with `stream: true`, because a multi-byte
  * character can straddle two chunks of the body.
+ * EOF before a complete `done` frame throws, even after tokens were delivered.
  */
 export async function* parseCrawlerPromptStream(
   body: ReadableStream<Uint8Array>,
@@ -668,7 +669,10 @@ export async function* parseCrawlerPromptStream(
         if (line === '') {
           if (eventName !== '' && data.length > 0) {
             const event = decodeFrame(eventName, data.join('\n'));
-            if (event !== null) yield event;
+            if (event !== null) {
+              yield event;
+              if (event.event === 'done') return;
+            }
           }
           eventName = '';
           data = [];
@@ -682,7 +686,11 @@ export async function* parseCrawlerPromptStream(
         }
       }
 
-      if (done) break;
+      if (done) {
+        throw new ScrapflyCrawlerError('Prompt stream ended before the done frame', {
+          code: 'ERR::CRAWLER::PROMPT_GENERATION_FAILED',
+        });
+      }
     }
   } finally {
     // Covers both exhaustion and an early `break` out of the caller's loop.

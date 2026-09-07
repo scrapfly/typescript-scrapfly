@@ -681,6 +681,23 @@ for (const credit of [3, 0, null, undefined]) {
   });
 }
 
+for (const body of [
+  '',
+  ':keepalive\n\n',
+  'event: token\ndata: "partial"\n\n',
+  'event: token\ndata: "partial"\n\nevent: done\ndata: {}\n',
+]) {
+  Deno.test(`crawlPrompt: rejects incomplete stream ${JSON.stringify(body)}`, async () => {
+    let answer = '';
+    await assertRejects(async () => {
+      for await (const event of parseCrawlerPromptStream(sseResponse(body).body!)) {
+        if (event.event === 'token') answer += event.data;
+      }
+    }, errors.ScrapflyCrawlerError, 'done');
+    assertEquals(answer, body.includes('partial') ? 'partial' : '');
+  });
+}
+
 Deno.test('crawlPrompt: an error frame throws mid-stream', async () => {
   // Generation can fail after tokens were already yielded.
   const client = new ScrapflyClient({ key: '__API_KEY__' });
