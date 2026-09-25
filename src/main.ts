@@ -40,7 +40,25 @@ export {
 export { ExtractionConfig } from './extractionconfig.ts';
 export { BrowserConfig, ProxyPool, OperatingSystem } from './browserconfig.ts';
 export type { BrowserConfigOptions } from './browserconfig.ts';
-export type { Vault, VaultItem, VaultItemCreate, VaultItemType, VaultSecret } from './types.ts';
+export type {
+  Vault,
+  VaultItem,
+  VaultItemCreate,
+  VaultItemSource,
+  VaultItemType,
+  VaultLinkedService,
+  VaultOnePasswordData,
+  VaultProbeResult,
+  VaultProbeVault,
+  VaultSecret,
+  VaultServiceLink,
+  VaultServiceUpdate,
+  VaultSyncCounts,
+  VaultSyncMode,
+  VaultSyncReport,
+  VaultSyncStatus,
+  VaultType,
+} from './types.ts';
 /** Namespace of every error class the SDK can throw. See {@link ScrapflyError}. */
 export * as errors from './errors.ts';
 

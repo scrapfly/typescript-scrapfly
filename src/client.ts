@@ -8,7 +8,19 @@ import type { ExtractionConfig } from './extractionconfig.ts';
 import { BrowserConfig } from './browserconfig.ts';
 import { type AccountData, type ClassifyOptions, type ClassifyResult, ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
 import { log } from './logger.ts';
-import type { Rec, Vault, VaultItem, VaultItemCreate, VaultSecret } from './types.ts';
+import type {
+  Rec,
+  Vault,
+  VaultItem,
+  VaultItemCreate,
+  VaultLinkedService,
+  VaultProbeResult,
+  VaultProbeVault,
+  VaultSecret,
+  VaultServiceLink,
+  VaultServiceUpdate,
+  VaultSyncReport,
+} from './types.ts';
 import type { CrawlerConfig, CrawlerContentFormat } from './crawlerconfig.ts';
 import { REFRESH_MAX_INTERVAL, REFRESH_MIN_INTERVAL } from './crawlerconfig.ts';
 import {
@@ -2218,6 +2230,221 @@ export class ScrapflyClient {
       success: body.success !== undefined ? Boolean(body.success) : true,
       message: typeof body.message === 'string' ? body.message : '',
     };
+  }
+
+  // ----- Vault ↔ linked secret manager (1Password) ---------------------------
+  // A linked vault mirrors an upstream secret manager instead of holding
+  // operator-entered items. The provider's service-account token is sealed
+  // under the vault key like any other secret, so every endpoint that carries
+  // a token also carries X-Vault-Key: the server verifies the key BEFORE
+  // sealing, because a well-formed wrong key would link the vault and leave a
+  // token every later sync fails to open.
+
+  /**
+   * Link a vault to a secret manager. The token is sealed under `vaultKey`, so
+   * the key is mandatory here. The vault must not already be linked and must
+   * hold no rows owned by a previous service (the server answers 409).
+   */
+  async cloudBrowserVaultServiceLink(
+    vaultId: string,
+    vaultKey: string,
+    link: VaultServiceLink,
+  ): Promise<{ vault: Vault; message: string }> {
+    if (!link.token) {
+      throw new Error('cloudBrowserVaultServiceLink: token is required when linking a service');
+    }
+    // Same rule as the server's linked_service_data validation; caught here so a
+    // malformed link does not cost a round trip.
+    if (!link.linked_service_data?.vault_id && !link.linked_service_data?.vault_name) {
+      throw new Error(
+        'cloudBrowserVaultServiceLink: linked_service_data requires vault_id or vault_name',
+      );
+    }
+    const url = new URL(
+      this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId) + '/service',
+    );
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'user-agent': this.ua,
+        'X-Vault-Key': vaultKey,
+      },
+      body: JSON.stringify({
+        linked_service: link.linked_service,
+        token: link.token,
+        linked_service_data: link.linked_service_data,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault service link failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { vault: Vault; message: string };
+  }
+
+  /**
+   * Update a link: edit the non-secret selection rules, rotate the token, or
+   * both. `vaultKey` is required only when `token` is supplied, mirroring
+   * `cloudBrowserVaultItemUpdate`; a config-only edit needs no key.
+   *
+   * A token rotation also clears the server's one-hour auth back-off, so a link
+   * broken by a dead token syncs again on the next round.
+   */
+  async cloudBrowserVaultServiceUpdate(
+    vaultId: string,
+    opts: VaultServiceUpdate & { vaultKey?: string },
+  ): Promise<{ vault: Vault; message: string }> {
+    if (opts.token !== undefined && opts.token !== '' && (opts.vaultKey === undefined || opts.vaultKey === '')) {
+      throw new Error(
+        'cloudBrowserVaultServiceUpdate: vaultKey is required when rotating the service token',
+      );
+    }
+    const url = new URL(
+      this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId) + '/service',
+    );
+    url.searchParams.set('key', this.key);
+
+    const body: Record<string, unknown> = {};
+    if (opts.token !== undefined) body.token = opts.token;
+    if (opts.linked_service_data !== undefined) body.linked_service_data = opts.linked_service_data;
+
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      'user-agent': this.ua,
+    };
+    if (opts.vaultKey !== undefined && opts.vaultKey !== '') {
+      headers['X-Vault-Key'] = opts.vaultKey;
+    }
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault service update failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as { vault: Vault; message: string };
+  }
+
+  /**
+   * Unlink the provider. `keepItems` governs only the mirrored rows — kept as
+   * plain manual items, or deleted — while the sealed token is removed either
+   * way, so no vault key is needed.
+   *
+   * Dropping the rows is irreversible, so the default is to keep them and the
+   * flag always goes on the wire explicitly rather than relying on a default at
+   * either end.
+   */
+  async cloudBrowserVaultServiceUnlink(
+    vaultId: string,
+    opts: { keepItems?: boolean } = {},
+  ): Promise<{ success: boolean; message: string }> {
+    const url = new URL(
+      this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId) + '/service',
+    );
+    url.searchParams.set('key', this.key);
+    url.searchParams.set('keep_items', (opts.keepItems ?? true) ? 'true' : 'false');
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'DELETE',
+      headers: { 'user-agent': this.ua },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault service unlink failed: ${response.status} ${await response.text()}`);
+    }
+    const body = await response.json() as Record<string, any>;
+    return {
+      success: body.success !== undefined ? Boolean(body.success) : true,
+      message: typeof body.message === 'string' ? body.message : '',
+    };
+  }
+
+  /**
+   * Force a reconcile against the provider now, bypassing the sync TTL and the
+   * back-off a failed round leaves behind. Requires the vault key: the server
+   * opens the sealed token with it and re-seals every mirrored row.
+   *
+   * The server budget is 25s; the SDK pins no per-call timeout, so the runtime's
+   * own fetch default applies.
+   */
+  async cloudBrowserVaultServiceSync(vaultId: string, vaultKey: string): Promise<VaultSyncReport> {
+    const url = new URL(
+      this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId) + '/service/sync',
+    );
+    url.searchParams.set('key', this.key);
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers: {
+        'user-agent': this.ua,
+        'X-Vault-Key': vaultKey,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault service sync failed: ${response.status} ${await response.text()}`);
+    }
+    return await response.json() as VaultSyncReport;
+  }
+
+  /**
+   * Probe the provider: proves a token is live and lists the upstream vaults it
+   * can read. Writes nothing, so it never moves the vault's sync state.
+   *
+   * With no `token` the sealed token of an existing link is probed (the vault
+   * key opens it). Passing an unsaved `token` instead enumerates the upstream
+   * vaults BEFORE a link exists, which is how a caller picks `vault_id`.
+   *
+   * The server budget is 10s; the SDK pins no per-call timeout, so the runtime's
+   * own fetch default applies.
+   */
+  async cloudBrowserVaultServiceTest(
+    vaultId: string,
+    vaultKey: string,
+    opts: { linkedService?: VaultLinkedService; token?: string } = {},
+  ): Promise<VaultProbeResult> {
+    const url = new URL(
+      this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId) + '/service/test',
+    );
+    url.searchParams.set('key', this.key);
+
+    const headers: Record<string, string> = {
+      'user-agent': this.ua,
+      'X-Vault-Key': vaultKey,
+    };
+    // A bodyless request is what selects the stored-token path server-side, so
+    // send a body only when the caller supplied something to probe with.
+    let body: string | undefined;
+    if (opts.token !== undefined || opts.linkedService !== undefined) {
+      const payload: Record<string, unknown> = {};
+      if (opts.linkedService !== undefined) payload.linked_service = opts.linkedService;
+      if (opts.token !== undefined) payload.token = opts.token;
+      body = JSON.stringify(payload);
+      headers['content-type'] = 'application/json';
+    }
+
+    const response = await this.fetch({
+      url: url.toString(),
+      method: 'POST',
+      headers,
+      body,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Vault service test failed: ${response.status} ${await response.text()}`);
+    }
+    const json = await response.json() as VaultProbeResult & { vaults_visible: VaultProbeVault[] | null };
+    return { ...json, vaults_visible: json.vaults_visible ?? [] };
   }
 
   /**
