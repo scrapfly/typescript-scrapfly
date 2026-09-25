@@ -14,6 +14,7 @@ import type {
   VaultItem,
   VaultItemCreate,
   VaultLinkedService,
+  VaultLinkedServiceValue,
   VaultProbeResult,
   VaultProbeVault,
   VaultSecret,
@@ -2405,13 +2406,18 @@ export class ScrapflyClient {
    * key opens it). Passing an unsaved `token` instead enumerates the upstream
    * vaults BEFORE a link exists, which is how a caller picks `vault_id`.
    *
+   * `linkedService` stays optional and undefaulted here: this is the one endpoint
+   * whose empty discriminator the server itself resolves to 1Password, and a
+   * client-side default would send a field the bodyless stored-token path must
+   * not carry.
+   *
    * The server budget is 10s; the SDK pins no per-call timeout, so the runtime's
    * own fetch default applies.
    */
   async cloudBrowserVaultServiceTest(
     vaultId: string,
     vaultKey: string,
-    opts: { linkedService?: VaultLinkedService; token?: string } = {},
+    opts: { linkedService?: VaultLinkedServiceValue; token?: string } = {},
   ): Promise<VaultProbeResult> {
     const url = new URL(
       this.cloudBrowserApiHost + '/vault/' + encodeURIComponent(vaultId) + '/service/test',

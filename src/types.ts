@@ -132,8 +132,15 @@ export type VaultItem = {
   [k: string]: unknown;
 };
 
-/** `source` of a {@link VaultItem}. The sealed provider token is never listed. */
-export type VaultItemSource = 'manual' | '1password';
+/**
+ * `source` of a {@link VaultItem}. The sealed provider token is never listed.
+ *
+ * Server-written. The server's own domain is wider, reserving `service_token`,
+ * but that row is never returned to a caller so it is not listed here. Kept as
+ * literals so a mirrored row reads as plain data; comparing it against
+ * `VaultLinkedService.ONE_PASSWORD` still type-checks.
+ */
+export type VaultItemSource = 'manual' | `${VaultLinkedService}`;
 
 /** Payload accepted by `cloudBrowserVaultItemCreate`. */
 export type VaultItemCreate = {
@@ -155,8 +162,25 @@ export type VaultItemCreate = {
 // back by the server.
 // ---------------------------------------------------------------------------
 
-/** Linked-service discriminator. 1Password is the only provider today. */
-export type VaultLinkedService = '1password';
+/**
+ * Linked-service discriminator, and the only closed value set a caller has to
+ * name when linking. 1Password is the sole entry in the server's linked-service
+ * registry; anything else is a 400, not a typed provider error.
+ */
+export enum VaultLinkedService {
+  /**
+   * 1Password service account. Also the `source` written on every row its
+   * syncer mirrors.
+   */
+  ONE_PASSWORD = '1password',
+}
+
+/**
+ * Accepted on the wire: the enum member or its own string value. Derived from
+ * {@link VaultLinkedService} so the literal is declared once; the server
+ * registry, not this type, is the authority on what links.
+ */
+export type VaultLinkedServiceValue = `${VaultLinkedService}`;
 
 /**
  * When the mirror is refreshed. `on_session` refreshes at most once per
@@ -199,7 +223,11 @@ export type VaultOnePasswordData = {
 
 /** Payload accepted by `cloudBrowserVaultServiceLink`. */
 export type VaultServiceLink = {
-  linked_service: VaultLinkedService;
+  /**
+   * Required: `POST /vault/{id}/service` has no server-side default. The raw
+   * wire value stays assignable so untyped JavaScript callers keep working.
+   */
+  linked_service: VaultLinkedServiceValue;
   /** Provider service-account token. Sealed under the vault key on arrival. */
   token: string;
   linked_service_data: VaultOnePasswordData;

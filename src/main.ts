@@ -40,13 +40,15 @@ export {
 export { ExtractionConfig } from './extractionconfig.ts';
 export { BrowserConfig, ProxyPool, OperatingSystem } from './browserconfig.ts';
 export type { BrowserConfigOptions } from './browserconfig.ts';
+// Enum, hence a value export: callers name VaultLinkedService.ONE_PASSWORD.
+export { VaultLinkedService } from './types.ts';
 export type {
   Vault,
   VaultItem,
   VaultItemCreate,
+  VaultLinkedServiceValue,
   VaultItemSource,
   VaultItemType,
-  VaultLinkedService,
   VaultOnePasswordData,
   VaultProbeResult,
   VaultProbeVault,
