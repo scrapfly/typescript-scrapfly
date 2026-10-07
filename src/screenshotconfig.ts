@@ -22,7 +22,7 @@ export enum Format {
   PNG = 'png',
   /** WebP encoding. */
   WEBP = 'webp',
-  /** Animated GIF encoding. */
+  /** GIF encoding, single frame. */
   GIF = 'gif',
 }
 
