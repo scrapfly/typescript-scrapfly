@@ -74,9 +74,17 @@ export type BrowserConfigOptions = {
   cache?: boolean;
   /** Apply Scrapfly's abuse blacklist. */
   blacklist?: boolean;
-  /** Enable anti-scraping-protection bypass. */
+  /**
+   * @deprecated The Cloud Browser WebSocket endpoint does not read this
+   * parameter; it is sent but has no effect. Use
+   * {@link ScrapflyClient.cloudBrowserUnblock} (the `/unblock` endpoint).
+   */
   unblock?: boolean;
-  /** Timeout in seconds for the unblock step. */
+  /**
+   * @deprecated The Cloud Browser WebSocket endpoint does not read this
+   * parameter; it is sent but has no effect. Use
+   * {@link ScrapflyClient.cloudBrowserUnblock}, which takes its own timeouts.
+   */
   unblock_timeout?: number;
   /** Browser brand to emulate (e.g. "chrome", "firefox"). */
   browser_brand?: string;
@@ -165,9 +173,9 @@ export class BrowserConfig {
   cache?: boolean;
   /** See {@link BrowserConfigOptions.blacklist}. */
   blacklist?: boolean;
-  /** See {@link BrowserConfigOptions.unblock}. */
+  /** @deprecated Not read by the API, see {@link BrowserConfigOptions.unblock}. */
   unblock?: boolean;
-  /** See {@link BrowserConfigOptions.unblock_timeout}. */
+  /** @deprecated Not read by the API, see {@link BrowserConfigOptions.unblock_timeout}. */
   unblock_timeout?: number;
   /** See {@link BrowserConfigOptions.browser_brand}. */
   browser_brand?: string;

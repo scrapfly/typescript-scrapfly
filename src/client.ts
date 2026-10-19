@@ -1740,7 +1740,7 @@ export class ScrapflyClient {
    *
    * Unblock always uses a residential proxy (no proxy pool selection) and
    * always performs a GET — the endpoint's purpose is to harvest cookies /
-   * clearance tokens via an ASP-bypass navigation, not to proxy arbitrary
+   * clearance tokens via an Unblocker navigation, not to proxy arbitrary
    * HTTP requests.
    */
   async cloudBrowserUnblock(options: {

@@ -59,8 +59,8 @@ export interface CloudBrowserMonitoringOptions {
   /** Time window to aggregate over. */
   period?: MonitoringPeriod;
   /**
-   * Optional filter to a single proxy pool
-   * (e.g. `public_datacenter_pool`, `public_residential_pool`, `byop`).
+   * Optional filter to a single proxy pool, as the runs record it:
+   * `datacenter`, `residential`, `tor` or `byop`.
    */
   proxyPool?: string;
   /** Window start. */

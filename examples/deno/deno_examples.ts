@@ -20,9 +20,8 @@ export async function basicGet(apiKey: string) {
   let scrape_result = await client.scrape(
     new ScrapeConfig({
       url: 'https://httpbin.dev/html',
-      // Anti-bot bypass - enable this when scraping protected targets
-      // (previously named `asp`, which still works)
-      unblocker: true,
+      // Proxy pool: basic, unblocker (anti-bot bypass), unblocker_ultra or auto
+      proxy_pool: ScrapeConfig.UNBLOCKER,
       // server side cache - great for repeated requests
       cache: true,
       cache_ttl: 3600,  // in seconds

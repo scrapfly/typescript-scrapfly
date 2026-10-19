@@ -13,8 +13,7 @@
  * const client = new ScrapflyClient({ key: 'your-api-key' });
  * const result = await client.scrape(new ScrapeConfig({
  *   url: 'https://web-scraping.dev/products',
- *   render_js: true,
- *   unblocker: true,
+ *   proxy_pool: ScrapeConfig.UNBLOCKER,
  * }));
  * console.log(result.content);
  * ```

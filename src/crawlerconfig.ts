@@ -133,17 +133,27 @@ export type CrawlerConfigOptions = {
 
   // Web scraping features
   /**
-   * Anti-bot bypass. The current name for what used to be called `asp`.
-   * Sent in the `POST /crawl` body as `asp`; only the SDK-facing name changed.
+   * The Unblocker (anti-bot bypass), the current name for what used to be
+   * called `asp`. Sent in the `POST /crawl` body as `asp`; only the SDK-facing
+   * name changed.
+   *
+   * @deprecated Use `proxy_pool` (`'unblocker_ultra'` for the Unblocker). The
+   * migration guide covers requests written before the proxy pools:
+   * https://scrapfly.io/new-pricing#legacy-spellings
    */
   unblocker?: boolean;
   /**
-   * @deprecated Use {@link CrawlerConfigOptions.unblocker}. `asp` is a
-   * permanently supported alias and keeps working forever. When both are
+   * @deprecated Alias of {@link CrawlerConfigOptions.unblocker}: use
+   * `proxy_pool` (`'unblocker_ultra'` for the Unblocker). When both are
    * supplied `asp` wins, so existing code cannot have its meaning changed by a
    * later `unblocker`.
    */
   asp?: boolean;
+  /**
+   * Proxy pool for every crawled page: `basic`, `unblocker`, `unblocker_ultra`
+   * or `auto` (see ScrapeConfig.BASIC), each of which sets the Unblocker
+   * itself.
+   */
   proxy_pool?: string;
   country?: string;
 
@@ -212,7 +222,7 @@ export class CrawlerConfig {
    * Storage for the anti-bot bypass toggle, under its deprecated name.
    * `unblocker` is an accessor over this same field — see below.
    *
-   * @deprecated Use {@link CrawlerConfig.unblocker}. `asp` keeps working forever.
+   * @deprecated Use `proxy_pool` (`'unblocker_ultra'` for the Unblocker).
    */
   asp?: boolean;
   proxy_pool?: string;
@@ -351,7 +361,10 @@ export class CrawlerConfig {
   }
 
   /**
-   * Anti-bot bypass toggle — the current name for what used to be `asp`.
+   * The Unblocker toggle, the current name for what used to be `asp`.
+   * Deprecated: use `proxy_pool` (`'unblocker_ultra'` for the Unblocker). The
+   * migration guide covers requests written before the proxy pools:
+   * https://scrapfly.io/new-pricing#legacy-spellings
    *
    * An accessor over the single `asp` field rather than a second stored
    * property: one storage slot means the two names can never disagree, and

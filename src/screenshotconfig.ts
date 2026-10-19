@@ -83,6 +83,12 @@ type ScreenshotConfigOptions = {
   vision_deficiency?: 'deuteranopia' | 'protanopia' | 'tritanopia' | 'achromatopsia' | 'blurredVision' | 'reducedContrast' | VisionDeficiency;
   /** Webhook name to notify when the screenshot completes. */
   webhook?: string;
+  /**
+   * Proxy pool: `basic`, `unblocker`, `unblocker_ultra` or `auto` (see
+   * `ScrapeConfig.BASIC`); any other value is ignored here. Unset, the API's
+   * screenshot defaults apply. The screenshot price is the same on every pool.
+   */
+  proxy_pool?: string;
 };
 
 /**
@@ -113,6 +119,8 @@ export class ScreenshotConfig {
   cache_clear?: boolean;
   vision_deficiency?: 'deuteranopia' | 'protanopia' | 'tritanopia' | 'achromatopsia' | 'blurredVision' | 'reducedContrast' | VisionDeficiency;
   webhook?: string;
+  /** Proxy pool: `basic`, `unblocker`, `unblocker_ultra` or `auto`; any other value is ignored here. */
+  proxy_pool?: string;
 
   constructor(options: ScreenshotConfigOptions) {
     this.validateOptions(options);
@@ -143,6 +151,7 @@ export class ScreenshotConfig {
     this.cache_clear = options.cache_clear ?? this.cache_clear;
     this.vision_deficiency = options.vision_deficiency ?? this.vision_deficiency;
     this.webhook = options.webhook;
+    this.proxy_pool = options.proxy_pool;
   }
 
   private validateOptions(options: Partial<ScreenshotConfigOptions>) {
@@ -230,6 +239,10 @@ export class ScreenshotConfig {
 
     if (this.webhook) {
       params.webhook_name = this.webhook;
+    }
+
+    if (this.proxy_pool) {
+      params.proxy_pool = this.proxy_pool;
     }
 
     return params;

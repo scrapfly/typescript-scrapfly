@@ -41,10 +41,8 @@ const apiResponse = await client.scrape(
         render_js: true,
         // set proxy country
         country: 'us',
-        // enable anti-bot bypass
-        unblocker: true,
-        // set residential proxies
-        proxy_pool: 'public_residential_pool',
+        // proxy pool: basic, unblocker (anti-bot bypass), unblocker_ultra or auto
+        proxy_pool: ScrapeConfig.UNBLOCKER,
         // etc.
     }),
 );
@@ -57,14 +55,47 @@ For more see [/examples](/examples/) directory.
 For more on Scrapfly API see our [getting started documentation](https://scrapfly.io/docs/scrape-api/getting-started)
 For Python see [Scrapfly Python SDK](https://github.com/scrapfly/python-scrapfly)
 
-### `unblocker` (formerly `asp`)
+### Proxy pools
 
-The anti-bot bypass is called `unblocker`. `asp` is its deprecated alias and
-keeps working forever, in both `ScrapeConfig` and `CrawlerConfig` - only the
-documented name changed, so no existing code needs updating:
+`proxy_pool` picks one of four proxy pools. The pool sets both the proxy
+network and the anti-bot bypass (the Unblocker):
+
+| Static | Value | What it runs |
+|---|---|---|
+| `ScrapeConfig.BASIC` | `'basic'` | datacenter proxies, Unblocker off |
+| `ScrapeConfig.UNBLOCKER` | `'unblocker'` | residential proxies and the Unblocker |
+| `ScrapeConfig.UNBLOCKER_ULTRA` | `'unblocker_ultra'` | residential proxies and the Unblocker, the only pool accepted by the targets and anti-bot protections that have a price of their own |
+| `ScrapeConfig.AUTO` | `'auto'` | the API picks the pool before the request, from the target's profile: the Unblocker on datacenter proxies, or the pool the target needs; accepted on every target, the ones that require `unblocker_ultra` included, where their price is added; priced as the pool it runs on |
 
 ```javascript
-new ScrapeConfig({ url: 'https://web-scraping.dev/product/1', unblocker: true });
+const result = await client.scrape(
+    new ScrapeConfig({ url: 'https://web-scraping.dev/product/1', proxy_pool: ScrapeConfig.UNBLOCKER }),
+);
+new CrawlerConfig({ url: 'https://web-scraping.dev/', proxy_pool: ScrapeConfig.UNBLOCKER });
+```
+
+A request on `basic` or `unblocker` against a target or protection that has a
+price of its own fails with `ERR::PROXY::UNBLOCKER_ULTRA_REQUIRED` (HTTP 422,
+not billed); retry it with `ScrapeConfig.UNBLOCKER_ULTRA`. `basic` is billed at
+the datacenter price and both Unblocker pools at the residential price;
+`unblocker_ultra` adds the target's or protection's own price where it has one.
+The SDK sends no default `proxy_pool`.
+
+`ScreenshotConfig` takes the same four pools, at the same price on every pool;
+any other value is ignored there. The Cloud Browser (`BrowserConfig`)
+keeps its own pools: `datacenter`, `residential`, `tor` and `byop`.
+
+### Deprecated: `unblocker` and `asp`
+
+`unblocker` and its alias `asp`, in both `ScrapeConfig` and `CrawlerConfig`, are
+deprecated: use `proxy_pool` (`ScrapeConfig.UNBLOCKER_ULTRA` for the Unblocker).
+The [migration guide](https://scrapfly.io/new-pricing#legacy-spellings) covers
+the requests written before the proxy pools, the pool names
+`ScrapeConfig.PUBLIC_DATACENTER_POOL` and `ScrapeConfig.PUBLIC_RESIDENTIAL_POOL`
+included.
+
+```javascript
+new ScrapeConfig({ url: 'https://web-scraping.dev/product/1', unblocker: true }); // deprecated
 new ScrapeConfig({ url: 'https://web-scraping.dev/product/1', asp: true }); // same thing
 ```
 
