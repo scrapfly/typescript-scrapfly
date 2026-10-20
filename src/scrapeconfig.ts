@@ -145,11 +145,13 @@ export class ScrapeConfig {
   static UNBLOCKER_ULTRA = 'unblocker_ultra';
   static AUTO = 'auto';
 
+  // The Tor network, the only pool that reaches .onion hidden services.
+  static PUBLIC_TOR_POOL = 'public_tor_pool';
+
   // Pool names written before the proxy pools, still accepted. The migration
   // guide covers them: https://scrapfly.io/new-pricing#legacy-spellings
   static PUBLIC_DATACENTER_POOL = 'public_datacenter_pool';
   static PUBLIC_RESIDENTIAL_POOL = 'public_residential_pool';
-  static PUBLIC_TOR_POOL = 'public_tor_pool';
 
   url: string;
   retry = true;

@@ -14,11 +14,13 @@ const POOLS: Record<string, string> = {
 const LEGACY_POOLS: Record<string, string> = {
   PUBLIC_DATACENTER_POOL: 'public_datacenter_pool',
   PUBLIC_RESIDENTIAL_POOL: 'public_residential_pool',
-  PUBLIC_TOR_POOL: 'public_tor_pool',
 };
 
+// The Tor pool is a current pool, not a name written before the proxy pools.
+const TOR_POOL: Record<string, string> = { PUBLIC_TOR_POOL: 'public_tor_pool' };
+
 Deno.test('proxy pools: statics carry the wire values, legacy names kept', () => {
-  for (const [name, value] of Object.entries({ ...POOLS, ...LEGACY_POOLS })) {
+  for (const [name, value] of Object.entries({ ...POOLS, ...TOR_POOL, ...LEGACY_POOLS })) {
     assertEquals((ScrapeConfig as unknown as Record<string, string>)[name], value, name);
   }
 });
