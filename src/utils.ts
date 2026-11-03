@@ -23,6 +23,18 @@ export type RequestOptions = {
   body?: string | Uint8Array | any;
 };
 
+const KEY_IN_URL = /(?<=[?&]key=)[^&\s)'"]+/g;
+
+/**
+ * Mask the API key in a fetch error, in place: Deno prints the request URL,
+ * query and key included, in the message and in the stack it captured.
+ */
+function maskKey(error: unknown): void {
+  if (!(error instanceof Error)) return;
+  error.message = error.message.replace(KEY_IN_URL, 'REDACTED');
+  if (error.stack !== undefined) error.stack = error.stack.replace(KEY_IN_URL, 'REDACTED');
+}
+
 export async function fetchRetry(
   config: RequestOptions,
   retries: number = 3,
@@ -59,6 +71,7 @@ export async function fetchRetry(
         return response;
       }
     } catch (error) {
+      maskKey(error);
       lastError = error;
 
       // AbortError should never be retried: it means the caller explicitly

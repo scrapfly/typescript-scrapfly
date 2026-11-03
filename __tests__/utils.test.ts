@@ -113,3 +113,12 @@ Deno.test('fetchRetry: fails due to timeout', async () => {
     'The signal has been aborted'
   );
 }); */
+Deno.test('fetchRetry: a transport error does not print the key', async () => {
+  const error = await assertRejects(
+    () => fetchRetry({ url: 'http://127.0.0.1:1/account?key=scp-live-0123456789abcdef&url=x' }, 1),
+    TypeError,
+  );
+  assertEquals(error.message.includes('0123456789abcdef'), false, error.message);
+  assertEquals(error.message.includes('key=REDACTED&url=x'), true, error.message);
+  assertEquals((error.stack ?? '').includes('0123456789abcdef'), false);
+});
