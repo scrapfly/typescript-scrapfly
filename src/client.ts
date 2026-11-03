@@ -28,6 +28,8 @@ import {
   CrawlerArtifact,
   type CrawlerArtifactType,
   CrawlerContents,
+  type CrawlerExtractResponse,
+  type CrawlerPromptAnswer,
   type CrawlerPromptEvent,
   type CrawlerRefreshEntry,
   type CrawlerRefreshState,
@@ -983,7 +985,8 @@ export class ScrapflyClient {
   private throwCrawlerError(response: Response, data: Rec<any>): never {
     const httpCode = data.http_code ?? response.status;
     const code = (data.code ?? '') as string;
-    const message = data.message ?? JSON.stringify(data);
+    // The engine relays its own failures as `{error, code}`.
+    const message = data.message ?? (typeof data.error === 'string' ? data.error : JSON.stringify(data));
     if (httpCode === 401) {
       throw new errors.BadApiKeyError(message, { http_status_code: httpCode, code, api_response: data });
     }
@@ -1698,6 +1701,98 @@ export class ScrapflyClient {
     }
 
     yield* parseCrawlerPromptStream(response.body);
+  }
+
+  /**
+   * Ask a question answered from the content of one or more crawls, and get
+   * the whole answer in one object once generation completes.
+   *
+   * `POST /crawl/prompt` with `generation.stream: false`: the same facts as
+   * the frames of {@link crawlPrompt}. {@link crawl.Crawl.promptAnswer} is
+   * sugar over a one-element list.
+   */
+  async crawlPromptAnswer(
+    crawlIds: string[],
+    prompt: string,
+    opts?: {
+      /** Retrieval overrides. Unset uses the server defaults. */
+      search?: { limit?: number; mode?: CrawlerSearchMode; filters?: Rec<any> };
+      /** Generation model id. Unset uses the server default. */
+      model?: string;
+    },
+  ): Promise<CrawlerPromptAnswer> {
+    if (!Array.isArray(crawlIds) || crawlIds.length === 0) {
+      throw new errors.ScrapflyCrawlerError('crawl_ids must contain at least one crawler UUID');
+    }
+    if (!prompt) {
+      throw new errors.ScrapflyCrawlerError('prompt must be a non-empty string');
+    }
+
+    const generation: Rec<any> = { stream: false };
+    if (opts?.model !== undefined) generation.model = opts.model;
+    const payload: Rec<any> = { prompt, crawl_ids: crawlIds, generation };
+    if (opts?.search !== undefined) payload.search = opts.search;
+
+    return (await this.postCrawlerJson('/crawl/prompt', payload)) as CrawlerPromptAnswer;
+  }
+
+  /**
+   * Extract a structured object from the content of one or more crawls.
+   *
+   * `POST /crawl/extract` retrieves like {@link crawlPromptAnswer} and answers
+   * with `data` shaped by `schema`, a JSON Schema handed to the model as its
+   * response schema. There is no streaming variant. {@link crawl.Crawl.extract}
+   * is sugar over a one-element list.
+   */
+  async crawlExtract<T = any>(
+    crawlIds: string[],
+    prompt: string,
+    schema: Rec<any>,
+    opts?: {
+      /** Retrieval overrides. Unset uses the server defaults. */
+      search?: { limit?: number; mode?: CrawlerSearchMode; filters?: Rec<any> };
+    },
+  ): Promise<CrawlerExtractResponse<T>> {
+    if (!Array.isArray(crawlIds) || crawlIds.length === 0) {
+      throw new errors.ScrapflyCrawlerError('crawl_ids must contain at least one crawler UUID');
+    }
+    if (!prompt) {
+      throw new errors.ScrapflyCrawlerError('prompt must be a non-empty string');
+    }
+    if (typeof schema !== 'object' || schema === null || Array.isArray(schema) || Object.keys(schema).length === 0) {
+      throw new errors.ScrapflyCrawlerError('schema must be a non-empty JSON Schema object');
+    }
+
+    const payload: Rec<any> = { prompt, crawl_ids: crawlIds, schema };
+    if (opts?.search !== undefined) payload.search = opts.search;
+
+    return (await this.postCrawlerJson('/crawl/extract', payload)) as CrawlerExtractResponse<T>;
+  }
+
+  /** POST a JSON body to a crawler endpoint that generates, once, and return its JSON answer. */
+  private async postCrawlerJson(path: string, payload: Rec<any>): Promise<Rec<any>> {
+    const url = new URL(`${this.HOST}${path}`);
+    url.search = new URLSearchParams({ key: this.key }).toString();
+    // One attempt only: a retry re-runs the fan-out and the generation.
+    const response = await this.fetch(
+      {
+        url: url.toString(),
+        method: 'POST',
+        headers: {
+          'user-agent': this.ua,
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
+        body: JSON.stringify(payload),
+      },
+      1,
+    );
+
+    if (!response.ok) {
+      const data: Rec<any> = (await response.json().catch(() => ({}))) as Rec<any>;
+      this.throwCrawlerError(response, data);
+    }
+    return (await response.json()) as Rec<any>;
   }
 
   // --- Cloud Browser ---

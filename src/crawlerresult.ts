@@ -553,6 +553,47 @@ export interface CrawlerPromptSource {
   score?: number;
 }
 
+/** How much of the corpus a prompt answer or an extraction covers. */
+export interface CrawlerPromptSearch {
+  completeness: 'exact' | 'partial';
+  crawls_requested?: number;
+  crawls_searched?: number;
+  crawls_pruned_exact?: number;
+  /** Requested crawls that contributed nothing, with a reason. Never fatal. */
+  skipped: CrawlerSearchSkipped[];
+}
+
+/** The answer of `POST /crawl/prompt` with `generation.stream: false`: the facts of the stream, in one object. */
+export interface CrawlerPromptAnswer {
+  prompt: string;
+  answer: string;
+  sources: CrawlerPromptSource[];
+  sources_used: number[];
+  /** Retrieved chunks that did not fit the context and never reached the model. */
+  sources_dropped: number;
+  /** True when the model hit its output cap. The answer is still delivered. */
+  truncated: boolean;
+  search: CrawlerPromptSearch;
+  /** Actual charge, including zero. Undefined when the server does not report it. */
+  api_credit?: number;
+}
+
+/**
+ * The response of `POST /crawl/extract`. `data` is shaped by the request's JSON
+ * Schema, which constrains the model as it generates; it is not validated again
+ * afterwards, so validate on your side anything you act on.
+ */
+export interface CrawlerExtractResponse<T = any> {
+  prompt: string;
+  data: T;
+  /** The retrieved chunks `data` was built from. */
+  sources: CrawlerPromptSource[];
+  /** Retrieved chunks that did not fit the context and never reached the model. */
+  sources_dropped: number;
+  /** True when the model hit its output cap. */
+  truncated: boolean;
+  search: CrawlerPromptSearch;
+}
 
 /** Payload of the terminal `done` frame. */
 export interface CrawlerPromptDone {

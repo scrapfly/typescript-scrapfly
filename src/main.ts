@@ -86,9 +86,12 @@ export {
 } from './crawlerresult.ts';
 export type {
   CrawlerArtifactType,
+  CrawlerExtractResponse,
   CrawlerLifecycleWebhook,
+  CrawlerPromptAnswer,
   CrawlerPromptDone,
   CrawlerPromptEvent,
+  CrawlerPromptSearch,
   CrawlerPromptSource,
   CrawlerRefreshEntry,
   CrawlerRefreshState,

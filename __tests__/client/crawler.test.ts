@@ -1165,3 +1165,187 @@ Deno.test('parseCrawlerRefreshState: keeps the two fields only /status sends', (
   assertEquals(routeReply.started_at, undefined);
   assertEquals(routeReply.consecutive_failures, undefined);
 });
+
+// ----- crawlPromptAnswer / crawlExtract -------------------------------------
+
+const PROMPT_SEARCH = {
+  completeness: 'exact',
+  crawls_requested: 2,
+  crawls_searched: 1,
+  crawls_pruned_exact: 0,
+  skipped: [{ crawler_uuid: '0198bbbb', reason: 'search_not_enabled' }],
+};
+const PROMPT_SOURCE = { id: 1, crawler_uuid: '0198aaaa', url: 'https://web-scraping.dev/product/1', title: 'Box', score: 0.9 };
+
+Deno.test('crawlPromptAnswer: sends stream false and returns the whole answer', async () => {
+  const client = new ScrapflyClient({ key: '__API_KEY__' });
+  let calls = 0;
+  const fetchStub = stub(client, 'fetch', async (config: RequestOptions, retries?: number): Promise<Response> => {
+    calls++;
+    const configUrl = new URL(config.url);
+    assertEquals(configUrl.origin + configUrl.pathname, client.HOST + '/crawl/prompt');
+    assertEquals(config.headers.accept, 'application/json');
+    assertEquals(retries, 1);
+    assertEquals(JSON.parse(config.body as string), {
+      prompt: 'What does it sell?',
+      crawl_ids: ['0198aaaa', '0198bbbb'],
+      generation: { stream: false, model: 'gemini-3.5-flash-lite' },
+      search: { limit: 5 },
+    });
+    return responseFactory({
+      prompt: 'What does it sell?',
+      answer: 'Chocolate boxes.',
+      sources: [PROMPT_SOURCE],
+      sources_used: [1],
+      sources_dropped: 0,
+      truncated: false,
+      search: PROMPT_SEARCH,
+      api_credit: 5,
+    }, { status: 200, headers: { 'Content-Type': 'application/json' } });
+  });
+
+  const answer = await client.crawlPromptAnswer(['0198aaaa', '0198bbbb'], 'What does it sell?', {
+    search: { limit: 5 },
+    model: 'gemini-3.5-flash-lite',
+  });
+
+  assertEquals(calls, 1);
+  assertEquals(answer.answer, 'Chocolate boxes.');
+  assertEquals(answer.sources[0].url, 'https://web-scraping.dev/product/1');
+  assertEquals(answer.search.skipped[0].reason, 'search_not_enabled');
+  assertEquals(answer.api_credit, 5);
+  fetchStub.restore();
+});
+
+Deno.test('crawlExtract: sends the schema and returns typed data', async () => {
+  const client = new ScrapflyClient({ key: '__API_KEY__' });
+  const schema = { type: 'object', properties: { products: { type: 'array' } }, required: ['products'] };
+  const fetchStub = stub(client, 'fetch', async (config: RequestOptions, retries?: number): Promise<Response> => {
+    const configUrl = new URL(config.url);
+    assertEquals(configUrl.origin + configUrl.pathname, client.HOST + '/crawl/extract');
+    assertEquals(retries, 1);
+    assertEquals(JSON.parse(config.body as string), {
+      prompt: 'Every product with its price',
+      crawl_ids: ['0198aaaa'],
+      schema,
+      search: { filters: { url_prefix: 'https://web-scraping.dev/product/' } },
+    });
+    return responseFactory({
+      prompt: 'Every product with its price',
+      data: { products: [{ name: 'Box of Chocolate Candy', price: 9.99 }] },
+      sources: [PROMPT_SOURCE],
+      sources_used: [],
+      sources_dropped: 0,
+      truncated: false,
+      search: PROMPT_SEARCH,
+    }, { status: 200, headers: { 'Content-Type': 'application/json' } });
+  });
+
+  const result = await client.crawlExtract<{ products: { name: string; price: number }[] }>(
+    ['0198aaaa'],
+    'Every product with its price',
+    schema,
+    { search: { filters: { url_prefix: 'https://web-scraping.dev/product/' } } },
+  );
+
+  assertEquals(result.data.products[0].price, 9.99);
+  assertEquals(result.search.completeness, 'exact');
+  fetchStub.restore();
+});
+
+Deno.test('crawlExtract: ERR::CRAWLER::* error throws ScrapflyCrawlerError', async () => {
+  const client = new ScrapflyClient({ key: '__API_KEY__' });
+  const fetchStub = stub(client, 'fetch', async (): Promise<Response> => {
+    return responseFactory(
+      { code: 'ERR::CRAWLER::CONFIG_ERROR', message: 'A non-empty schema must be given', http_code: 400 },
+      { status: 400, headers: { 'Content-Type': 'application/json' } },
+    );
+  });
+
+  await assertRejects(
+    () => client.crawlExtract(['0198aaaa'], 'products', { type: 'object' }),
+    errors.ScrapflyCrawlerError,
+    'schema',
+  );
+  fetchStub.restore();
+});
+
+Deno.test('crawlExtract: an engine failure relayed as a 5xx keeps its code and message', async () => {
+  const client = new ScrapflyClient({ key: '__API_KEY__' });
+  const fetchSpy = stub(globalThis, 'fetch', async (): Promise<Response> => {
+    return new Response(
+      JSON.stringify({ error: 'the model returned no text', code: 'ERR::CRAWLER::PROMPT_GENERATION_FAILED' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
+    );
+  });
+
+  try {
+    const error = await assertRejects(
+      () => client.crawlExtract(['0198aaaa'], 'products', { type: 'object' }),
+      errors.ScrapflyCrawlerError,
+      'the model returned no text',
+    );
+    assertEquals((error as errors.ScrapflyCrawlerError).args.code, 'ERR::CRAWLER::PROMPT_GENERATION_FAILED');
+    assertEquals(fetchSpy.calls.length, 1);
+  } finally {
+    fetchSpy.restore();
+  }
+});
+
+Deno.test('crawlPromptAnswer: an unreadable 200 body throws instead of returning an empty answer', async () => {
+  const client = new ScrapflyClient({ key: '__API_KEY__' });
+  const fetchStub = stub(client, 'fetch', async (): Promise<Response> => {
+    return new Response('{"prompt": "q", "answ', { status: 200, headers: { 'Content-Type': 'application/json' } });
+  });
+
+  await assertRejects(() => client.crawlPromptAnswer(['0198aaaa'], 'question'), SyntaxError);
+  fetchStub.restore();
+});
+
+Deno.test('crawlExtract and crawlPromptAnswer: invalid arguments rejected before any request', async () => {
+  const client = new ScrapflyClient({ key: '__API_KEY__' });
+  const fetchStub = stub(client, 'fetch', async (): Promise<Response> => {
+    throw new Error('nothing must be sent');
+  });
+
+  await assertRejects(() => client.crawlExtract([], 'products', { type: 'object' }), errors.ScrapflyCrawlerError);
+  await assertRejects(() => client.crawlExtract(['0198aaaa'], '', { type: 'object' }), errors.ScrapflyCrawlerError);
+  await assertRejects(() => client.crawlExtract(['0198aaaa'], 'products', {}), errors.ScrapflyCrawlerError);
+  await assertRejects(
+    () => client.crawlExtract(['0198aaaa'], 'products', ['type'] as unknown as Record<string, any>),
+    errors.ScrapflyCrawlerError,
+  );
+  await assertRejects(() => client.crawlPromptAnswer([], 'question'), errors.ScrapflyCrawlerError);
+  await assertRejects(() => client.crawlPromptAnswer(['0198aaaa'], ''), errors.ScrapflyCrawlerError);
+  fetchStub.restore();
+});
+
+Deno.test('Crawl.extract and Crawl.promptAnswer call the collection endpoints with the crawl alone', async () => {
+  const client = new ScrapflyClient({ key: '__API_KEY__' });
+  const sent: Record<string, any>[] = [];
+  const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
+    sent.push({ path: new URL(config.url).pathname, body: JSON.parse(config.body as string) });
+    return responseFactory(
+      { prompt: 'q', answer: 'a', data: {}, sources: [], sources_used: [], sources_dropped: 0, truncated: false, search: PROMPT_SEARCH },
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  });
+  const crawl = new Crawl(client, new CrawlerConfig({ url: 'https://web-scraping.dev/products' }));
+  (crawl as any)._uuid = '0198aaaa';
+
+  await crawl.promptAnswer('q');
+  await crawl.extract('q', { type: 'object' });
+
+  assertEquals(sent.map((s) => [s.path, s.body.crawl_ids]), [['/crawl/prompt', ['0198aaaa']], ['/crawl/extract', ['0198aaaa']]]);
+  fetchStub.restore();
+});
+
+Deno.test('Crawl.extract and Crawl.promptAnswer reject, never throw, before the crawl started', async () => {
+  const crawl = new Crawl(new ScrapflyClient({ key: '__API_KEY__' }), new CrawlerConfig({ url: 'https://web-scraping.dev/products' }));
+
+  const extract = crawl.extract('q', { type: 'object' });
+  const answer = crawl.promptAnswer('q');
+
+  await assertRejects(() => extract, errors.ScrapflyCrawlerError, 'not been started');
+  await assertRejects(() => answer, errors.ScrapflyCrawlerError, 'not been started');
+});

@@ -46,8 +46,9 @@ export async function fetchRetry(
         body: reqInit.body as any,
       };
       const response = await fetch(new Request(url, init));
-      // retry 5xx status codes
-      if (response.status >= 500 && response.status < 600) {
+      // Retry 5xx status codes. A single-attempt caller reads the 5xx body
+      // itself: it carries the typed error.
+      if (response.status >= 500 && response.status < 600 && retries > 1) {
         const _text = await response.text(); // consume response to prevent leak
         lastError = new Error(`Fetch failed with status: ${response.status}`);
         if (attempt < retries) {

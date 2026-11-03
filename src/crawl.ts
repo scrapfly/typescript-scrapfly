@@ -6,6 +6,8 @@ import type {
   CrawlerArtifact,
   CrawlerArtifactType,
   CrawlerContents,
+  CrawlerExtractResponse,
+  CrawlerPromptAnswer,
   CrawlerPromptEvent,
   CrawlerRefreshEntry,
   CrawlerRefreshState,
@@ -233,6 +235,36 @@ export class Crawl {
   ): AsyncGenerator<CrawlerPromptEvent, void, undefined> {
     const uuid = this.requireUuid();
     return this.client.crawlPrompt([uuid], prompt, opts);
+  }
+
+  /**
+   * Ask a question answered from this crawl's content, the whole answer at once.
+   *
+   * Sugar over `client.crawlPromptAnswer([uuid], ...)`.
+   */
+  async promptAnswer(
+    prompt: string,
+    opts?: {
+      search?: { limit?: number; mode?: CrawlerSearchMode; filters?: Record<string, any> };
+      model?: string;
+    },
+  ): Promise<CrawlerPromptAnswer> {
+    const uuid = this.requireUuid();
+    return this.client.crawlPromptAnswer([uuid], prompt, opts);
+  }
+
+  /**
+   * Extract a structured object from this crawl's content, shaped by `schema`.
+   *
+   * Sugar over `client.crawlExtract([uuid], ...)`.
+   */
+  async extract<T = any>(
+    prompt: string,
+    schema: Record<string, any>,
+    opts?: { search?: { limit?: number; mode?: CrawlerSearchMode; filters?: Record<string, any> } },
+  ): Promise<CrawlerExtractResponse<T>> {
+    const uuid = this.requireUuid();
+    return this.client.crawlExtract<T>([uuid], prompt, schema, opts);
   }
 
   /**
