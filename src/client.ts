@@ -731,6 +731,12 @@ export class ScrapflyClient {
       // Drop `key` (batch key is in the URL).
       const params = cfg.toApiParams({ key: this.key }) as Record<string, unknown>;
       delete params.key;
+      // What a single scrape sends as the request itself: the API reads
+      // both keys of a batch entry and runs a GET without them.
+      params.method = cfg.method;
+      if (cfg.body !== undefined) {
+        params.body = cfg.body;
+      }
       bodyConfigs.push(params);
     }
 
