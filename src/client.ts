@@ -218,8 +218,7 @@ export class ScrapflyClient {
 
     try {
       const url = new URL(result.content);
-      const params = { key: this.key };
-      url.search = new URLSearchParams(params).toString();
+      url.searchParams.set('key', this.key);
       response = await this.fetch({
         url: url.toString(),
         method: 'GET',
@@ -232,6 +231,17 @@ export class ScrapflyClient {
     } catch (e) {
       log.error('error', e);
       throw e;
+    }
+
+    if (!response.ok) {
+      const body = await response.text();
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(body);
+      } catch {
+        parsed = { message: body || response.statusText };
+      }
+      throw this.batchApiErrorPartToError(parsed, { 'x-scrapfly-scrape-status': String(response.status) });
     }
 
     let content;
