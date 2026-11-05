@@ -235,13 +235,16 @@ export class ScrapflyClient {
 
     if (!response.ok) {
       const body = await response.text();
-      let parsed: Record<string, unknown>;
+      let parsed: unknown = null;
       try {
         parsed = JSON.parse(body);
       } catch {
-        parsed = { message: body || response.statusText };
+        // Not an API error: a proxy's page, say.
       }
-      throw this.batchApiErrorPartToError(parsed, { 'x-scrapfly-scrape-status': String(response.status) });
+      const envelope = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : { message: body.slice(0, 500) || response.statusText };
+      throw this.batchApiErrorPartToError(envelope, { 'x-scrapfly-scrape-status': String(response.status) });
     }
 
     let content;

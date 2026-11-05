@@ -55,6 +55,20 @@ Deno.test('large object: an error status raises instead of being returned as the
     }
 });
 
+Deno.test('large object: an error answer that is not an API error raises with its status', async () => {
+    for (const body of ['null', '<html>' + 'x'.repeat(2000) + '</html>']) {
+        const { client, fetchStub } = largeObjectClient('clob', 'https://api.scrapfly.io/scrape/large_object/01', () =>
+            new Response(body, { status: 404, headers: { 'Content-Type': 'text/html' } }));
+
+        const error = await assertRejects(
+            () => client.scrape(new ScrapeConfig({ url: 'https://web-scraping.dev/product/1' })),
+            errors.ApiHttpClientError,
+        );
+        assertEquals((error as errors.ApiHttpClientError).message.length <= 500, true);
+        fetchStub.restore();
+    }
+});
+
 Deno.test('large object: the key is added to the query of its URL', async () => {
     const { client, seen, fetchStub } = largeObjectClient('clob', 'https://api.scrapfly.io/scrape/large_object/01?part=2', () =>
         new Response('large text', { status: 200, headers: { 'Content-Type': 'text/plain' } }));
