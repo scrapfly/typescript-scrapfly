@@ -269,7 +269,8 @@ export class ScrapflyClient {
   handleResponse(response: Response, result: ScrapeResult): ScrapeResult {
     // success
     log.debug('scrape log url: ', result.result.log_url);
-    if (result.result.status === 'DONE' && result.result.success === true) {
+    // QUEUED: a scrape with a webhook, delivered to it later.
+    if (result.result.status === 'QUEUED' || (result.result.status === 'DONE' && result.result.success === true)) {
       return result;
     }
     // something went wrong

@@ -219,10 +219,10 @@ export class ScrapeResult {
 
   get selector(): cheerio.CheerioAPI {
     if (!this._selector) {
-      const headers = normalizeHeaders(this.result.response_headers);
-      if (!headers['content-type'].includes('text/html')) {
+      const contentType = normalizeHeaders(this.result.response_headers)['content-type'] ?? '';
+      if (!contentType.includes('text/html')) {
         throw new errors.ContentTypeError(
-          `Cannot use selector on non-html content-type, received: ${this.result.response_headers['content-type']}`,
+          `Cannot use selector on non-html content-type, received: ${contentType}`,
         );
       }
       this._selector = cheerio.load(this.result.content);

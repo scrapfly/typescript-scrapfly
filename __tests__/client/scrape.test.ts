@@ -1,8 +1,9 @@
 import * as errors from '../../src/errors.ts';
 import { ScrapflyClient } from '../../src/client.ts';
 import { ScrapeConfig } from '../../src/scrapeconfig.ts';
+import type { ScrapeResult } from '../../src/result.ts';
 import { log } from '../../src/logger.ts';
-import { assertEquals, assertRejects } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertEquals, assertRejects, assertThrows } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { resultFactory, responseFactory } from '../utils.ts';
 import type { RequestOptions } from '../../src/utils.ts';
 import { stub } from "https://deno.land/std/testing/mock.ts";
@@ -659,4 +660,22 @@ Deno.test('scrape client: the whole request URL is identical under both names', 
     };
     assertEquals(sorted(viaUnblocker), sorted(viaAsp));
     assertEquals(viaAsp.get('asp'), 'true');
+});
+
+Deno.test('scrape: a scrape queued for a webhook is returned', async () => {
+    const client = new ScrapflyClient({ key: '__API_KEY__' });
+    const fetchStub = stub(client, 'fetch', async (): Promise<Response> => {
+        const result = resultFactory({ url: 'https://web-scraping.dev/product/1', status: 'QUEUED' });
+        result.data.result.success = null;
+        result.data.result.status_code = null;
+        result.data.result.content = '';
+        result.data.result.response_headers = {};
+        return responseFactory(result.data, { status: 200, headers: { 'Content-Type': 'application/json' } });
+    });
+
+    const result = await client.scrape(new ScrapeConfig({ url: 'https://web-scraping.dev/product/1', webhook: 'my-webhook' })) as ScrapeResult;
+    assertEquals(result.result.status, 'QUEUED');
+    assertThrows(() => result.selector, errors.ContentTypeError);
+
+    fetchStub.restore();
 });
