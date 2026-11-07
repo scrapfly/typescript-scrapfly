@@ -305,11 +305,15 @@ export class ScreenshotResult {
   image: ArrayBuffer;
   metadata: ScreenshotMetadata;
   result: object | null;
+  /** The job of a screenshot with a webhook: the image is delivered to the webhook, `image` and `metadata` are empty. */
+  job_uuid: string | null;
 
-  constructor(response: Response, data: ArrayBuffer) {
+  constructor(response: Response, data: ArrayBuffer, job_uuid: string | null = null) {
     this.image = data;
-    this.metadata = this.defineMetadata(response);
+    this.metadata =
+      job_uuid === null ? this.defineMetadata(response) : { extension_name: '', upstream_status_code: 0, upstream_url: '' };
     this.result = this.decodeResponse(response, data); // raw result
+    this.job_uuid = job_uuid;
   }
 
   private defineMetadata(response: Response): ScreenshotMetadata {

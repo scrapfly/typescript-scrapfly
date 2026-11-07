@@ -860,7 +860,7 @@ export class ScrapflyClient {
    * Save screenshot response to a file
    */
   async saveScreenshot(result: ScreenshotResult, name: string, savePath?: string): Promise<any> {
-    if (!result.image) {
+    if (!result.image || result.image.byteLength === 0) {
       throw new Error('Screenshot binary does not exist');
     }
 
@@ -884,25 +884,38 @@ export class ScrapflyClient {
    * Turn scrapfly screenshot API response to ScreenshotResult or raise one of ScrapflyError
    */
   async handleScreenshotResponse(response: Response): Promise<ScreenshotResult> {
-    // A Response body can only be consumed once. If the server returned
-    // JSON, parse it up front and reuse it on the error path — re-reading
-    // would yield "body stream already read" and mask the real error.
-    const isJson = response.headers.get('content-type') === 'application/json';
-    let jsonData: Rec<any> | null = null;
-    if (isJson) {
-      jsonData = (await response.json()) as Rec<any>;
-      if (jsonData.http_code == 401 || response.status == 401) {
-        throw new errors.BadApiKeyError(JSON.stringify(jsonData));
+    // A JSON answer is never an image: an error, or the 201 of a screenshot with a webhook.
+    // A Response body can only be consumed once, so it is read as text and parsed from that.
+    const isJson = (response.headers.get('content-type') ?? '').startsWith('application/json');
+    if (isJson || response.status === 201) {
+      const text = await response.text();
+      let jsonData: Rec<any> | null = null;
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed !== null && typeof parsed === 'object') {
+          jsonData = parsed as Rec<any>;
+        }
+      } catch {
+        jsonData = null;
       }
-      if ('error_id' in jsonData) {
-        throw new errors.ScreenshotApiError(JSON.stringify(jsonData));
+      const message = jsonData ? JSON.stringify(jsonData) : text || `API returned status ${response.status}`;
+      if (response.status == 401 || jsonData?.http_code == 401) {
+        throw new errors.BadApiKeyError(message);
       }
+      if (jsonData) {
+        if ('error_id' in jsonData) {
+          throw new errors.ScreenshotApiError(JSON.stringify(jsonData));
+        }
+        // 201: a screenshot with a webhook, delivered to it later.
+        const job = jsonData.job_uuid;
+        if (response.status === 201 && jsonData.webhook_enqueued === true && typeof job === 'string' && job !== '') {
+          return new ScreenshotResult(response, new ArrayBuffer(0), job);
+        }
+      }
+      throw new errors.ScreenshotApiError(message);
     }
     if (!response.ok) {
-      const body = jsonData ?? (await response.text());
-      throw new errors.ScreenshotApiError(
-        typeof body === 'string' ? body : JSON.stringify(body),
-      );
+      throw new errors.ScreenshotApiError((await response.text()) || `API returned status ${response.status}`);
     }
     const data = await response.arrayBuffer();
     const result = new ScreenshotResult(response, data);
