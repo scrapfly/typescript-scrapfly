@@ -1,6 +1,7 @@
 import { ScrapflyClient } from '../../src/client.ts';
 import { ScrapeConfig } from '../../src/scrapeconfig.ts';
 import type { RequestOptions } from '../../src/utils.ts';
+import { ScrapeResult } from '../../src/result.ts';
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { stub } from "https://deno.land/std/testing/mock.ts";
 
@@ -35,4 +36,38 @@ Deno.test('scrapeBatch: each config carries its method and body', async () => {
     assertEquals([sent[0].method, sent[0].body], ['POST', '{"q":1}']);
     assertEquals(sent[1].method, 'GET');
     assertEquals('body' in sent[1], false);
+});
+
+Deno.test('scrapeBatch: a config with a webhook reads its enqueue ack', async () => {
+    const client = new ScrapflyClient({ key: '__API_KEY__' });
+    const body = JSON.stringify({
+        correlation_id: 'hook',
+        webhook_name: 'my-webhook',
+        job_uuid: '01',
+        enqueued: true,
+        result: {
+            config: { url: 'https://web-scraping.dev/product/1' },
+            context: {},
+            uuid: '01',
+            result: { status: 'QUEUED', success: null, status_code: null, content: '' },
+        },
+    });
+    const part = `--b0und\r\nContent-Type: application/json\r\nX-Scrapfly-Correlation-Id: hook\r\nX-Scrapfly-Scrape-Status: 202\r\nContent-Length: ${body.length}\r\n\r\n${body}\r\n`;
+    const fetchStub = stub(client, 'fetch', async (): Promise<Response> => {
+        return new Response(part + '--b0und--\r\n', {
+            status: 200,
+            headers: { 'Content-Type': 'multipart/mixed; boundary=b0und' },
+        });
+    });
+
+    const configs = [new ScrapeConfig({ url: 'https://web-scraping.dev/product/1', correlation_id: 'hook', webhook: 'my-webhook' })];
+    const results: [string, unknown][] = [];
+    for await (const item of client.scrapeBatch(configs)) {
+        results.push(item as [string, unknown]);
+    }
+    fetchStub.restore();
+
+    const result = results[0][1] as ScrapeResult;
+    assertEquals(result.result.status, 'QUEUED');
+    assertEquals(result.uuid, '01');
 });

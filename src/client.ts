@@ -836,11 +836,13 @@ export class ScrapflyClient {
       }
 
       try {
+        // A config with a webhook is answered by its enqueue ack, the scrape's answer under `result`.
+        const envelope = (parsed as any).enqueued === true && (parsed as any).result ? (parsed as any).result : parsed;
         const result = new ScrapeResult({
-          config: (parsed as any).config,
-          context: (parsed as any).context,
-          result: (parsed as any).result,
-          uuid: (parsed as any).uuid,
+          config: envelope.config,
+          context: envelope.context,
+          result: envelope.result,
+          uuid: envelope.uuid,
         });
         yield [correlationId, result];
       } catch (resultErr) {
