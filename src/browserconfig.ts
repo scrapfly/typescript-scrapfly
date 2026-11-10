@@ -127,6 +127,12 @@ export type BrowserConfigOptions = {
    * comma-separated string or an array of bare IPs / CIDRs.
    */
   hitl_allowed_networks?: string | string[];
+  /**
+   * Return large downloaded files from `ScrapiumBrowser.getDownloads` as IO stream handles instead of
+   * inline base64: read them with `CloudBrowserDownloads`.
+   * See https://scrapfly.io/docs/cloud-browser-api/file-downloads#large-downloads
+   */
+  downloads_stream?: boolean;
 };
 
 /**
@@ -199,6 +205,8 @@ export class BrowserConfig {
   rtc_password?: string;
   /** See {@link BrowserConfigOptions.hitl_allowed_networks}. */
   hitl_allowed_networks?: string;
+  /** See {@link BrowserConfigOptions.downloads_stream}. */
+  downloads_stream?: boolean;
 
   /**
    * @param options Session options. See {@link BrowserConfigOptions}.
@@ -252,6 +260,7 @@ export class BrowserConfig {
     } else {
       this.hitl_allowed_networks = options.hitl_allowed_networks || undefined;
     }
+    this.downloads_stream = options.downloads_stream;
   }
 
   /**
@@ -335,6 +344,7 @@ export class BrowserConfig {
     if (this.rtc_username !== undefined) params.set('rtc_username', this.rtc_username);
     if (this.rtc_password !== undefined) params.set('rtc_password', this.rtc_password);
     if (this.hitl_allowed_networks !== undefined) params.set('hitl_allowed_networks', this.hitl_allowed_networks);
+    if (this.downloads_stream !== undefined) params.set('downloads_stream', String(this.downloads_stream));
 
     const baseHost = host || 'wss://browser.scrapfly.io';
     return `${baseHost}?${params.toString()}`;
