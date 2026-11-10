@@ -2729,7 +2729,7 @@ export class ScrapflyClient {
     return await this.scheduleRequest('GET', `/schedules/${encodeURIComponent(id)}`) as Schedule;
   }
 
-  /** List every schedule on the account, optionally filtered by kind/status. */
+  /** List the schedules of the API key's project, optionally filtered by kind/status. */
   async listSchedules(opts?: ListSchedulesOptions): Promise<Schedule[]> {
     return await this.scheduleRequest(
       'GET',
