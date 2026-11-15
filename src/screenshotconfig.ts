@@ -84,9 +84,8 @@ type ScreenshotConfigOptions = {
   /** Webhook name to notify when the screenshot completes. */
   webhook?: string;
   /**
-   * Proxy pool: `basic`, `unblocker`, `unblocker_ultra` or `auto` (see
-   * `ScrapeConfig.BASIC`); any other value is ignored here. Unset, the API's
-   * screenshot defaults apply. The screenshot price is the same on every pool.
+   * Sent as `proxy_pool`. The Screenshot API picks its pool itself and ignores
+   * this value.
    */
   proxy_pool?: string;
 };
@@ -119,7 +118,7 @@ export class ScreenshotConfig {
   cache_clear?: boolean;
   vision_deficiency?: 'deuteranopia' | 'protanopia' | 'tritanopia' | 'achromatopsia' | 'blurredVision' | 'reducedContrast' | VisionDeficiency;
   webhook?: string;
-  /** Proxy pool: `basic`, `unblocker`, `unblocker_ultra` or `auto`; any other value is ignored here. */
+  /** Sent as `proxy_pool`; the Screenshot API picks its pool itself and ignores it. */
   proxy_pool?: string;
 
   constructor(options: ScreenshotConfigOptions) {

@@ -9,7 +9,7 @@
  * 5. Copy the Webhook signing secret from your Scrapfly webhook configuration and add it to the WEBHOOK_SECRET variable
  */
 
-import { createServer } from 'scrapfly-sdk';
+import { createServer } from '@scrapfly/scrapfly-sdk';
 import ngrok from '@ngrok/ngrok';
 
 const WEBHOOK_SECRET = 'your-webhook-secret';

@@ -13,9 +13,9 @@
  * const client = new ScrapflyClient({ key: 'your-api-key' });
  * const result = await client.scrape(new ScrapeConfig({
  *   url: 'https://web-scraping.dev/products',
- *   proxy_pool: ScrapeConfig.UNBLOCKER,
+ *   unblocker: true,
  * }));
- * console.log(result.content);
+ * console.log(result.result.content);
  * ```
  *
  * See the [Scrapfly docs](https://scrapfly.io/docs) for the full API

@@ -17,13 +17,7 @@ export type ConfigData = {
   debug: boolean;
   raise_on_upstream_error: boolean;
   cache_ttl: number;
-  /**
-   * The pool the request asked for, the way the account reads it: Tor reads `public_tor_pool` and one of the
-   * account's own pools its name. Otherwise, when the Unblocker ran (asked, or forced by a target that requires
-   * it), `basic` and `unblocker` read `unblocker` and any other pool `unblocker_ultra`. Without the Unblocker a
-   * Scrapfly pool reads by its network (`basic`, `unblocker`, `mobile`, `isp`) and any other name as sent.
-   * `context.proxy.pool` reads the same.
-   */
+  /** The proxy pool the request ran on. */
   proxy_pool: string;
   session?: string;
   tags: Set<string>;
@@ -81,7 +75,7 @@ export type ContextData = {
     country: string;
     identity: string;
     network: string;
-    /** The same name as {@link ConfigData.proxy_pool}. */
+    /** The proxy pool the request ran on. */
     pool: string;
   };
   redirects: Array<string>;
@@ -166,6 +160,8 @@ export type ResultData = {
     retryable: boolean;
     doc_url?: string;
   };
+  /** Present when the scrape ran an extraction (`extraction_model`, `extraction_prompt` or a template). */
+  extracted_data?: { data: any; content_type: string; data_quality?: any } | null;
   format: string;
   iframes: Array<{
     url: string;

@@ -58,30 +58,21 @@ type ScrapeConfigOptions = {
    * The Unblocker (anti-bot bypass), the current name for what used to be
    * called `asp`. Sent to the API as the `asp` query parameter; only the
    * SDK-facing name changed.
-   *
-   * @deprecated Use `proxy_pool` (`ScrapeConfig.UNBLOCKER_ULTRA` for the
-   * Unblocker). The migration guide covers requests written before the proxy
-   * pools: https://scrapfly.io/new-pricing#legacy-spellings
    */
   unblocker?: boolean;
   /**
-   * @deprecated Alias of {@link unblocker}: use `proxy_pool`
-   * (`ScrapeConfig.UNBLOCKER_ULTRA` for the Unblocker). When both are supplied
-   * `asp` wins, so existing code cannot have its meaning changed by a later
-   * `unblocker`.
+   * @deprecated Use {@link unblocker}. `asp` is a permanently supported alias
+   * and keeps working forever. When both are supplied `asp` wins, so existing
+   * code cannot have its meaning changed by a later `unblocker`.
    */
   asp?: boolean;
   debug?: boolean;
   raise_on_upstream_error?: boolean;
   cache_ttl?: number;
   /**
-   * Proxy pool: `basic` (datacenter proxies, Unblocker off), `unblocker`
-   * (residential proxies and the Unblocker), `unblocker_ultra` (residential
-   * proxies and the Unblocker, the only pool accepted by the targets and
-   * anti-bot protections that have a price of their own: they refuse `basic`
-   * and `unblocker` with `ERR::PROXY::UNBLOCKER_ULTRA_REQUIRED`) or `auto`
-   * (the API picks the pool from the target's profile), see
-   * {@link ScrapeConfig.BASIC}. Each sets the Unblocker itself.
+   * Proxy pool: `ScrapeConfig.PUBLIC_DATACENTER_POOL` (the default),
+   * `ScrapeConfig.PUBLIC_RESIDENTIAL_POOL` or `ScrapeConfig.PUBLIC_TOR_POOL`.
+   * The anti-bot bypass is a parameter of its own: {@link unblocker}.
    */
   proxy_pool?: string;
   session?: string;
@@ -136,22 +127,18 @@ type ScrapeConfigOptions = {
 };
 
 export class ScrapeConfig {
-  // Proxy pools, sent as `proxy_pool`. Each sets both the proxies and the
-  // Unblocker. AUTO lets the API pick the pool before the request, from the
-  // target's profile: the Unblocker on datacenter proxies, or the pool the
-  // target needs, priced as the pool it runs on.
+  // Proxy pools, sent as `proxy_pool`. Datacenter proxies are the default.
+  static PUBLIC_DATACENTER_POOL = 'public_datacenter_pool';
+  static PUBLIC_RESIDENTIAL_POOL = 'public_residential_pool';
+  // The Tor network, the only pool that reaches .onion hidden services.
+  static PUBLIC_TOR_POOL = 'public_tor_pool';
+
+  // Pool names the API does not accept yet: a request naming one fails with
+  // ERR::PROXY::POOL_NOT_FOUND.
   static BASIC = 'basic';
   static UNBLOCKER = 'unblocker';
   static UNBLOCKER_ULTRA = 'unblocker_ultra';
   static AUTO = 'auto';
-
-  // The Tor network, the only pool that reaches .onion hidden services.
-  static PUBLIC_TOR_POOL = 'public_tor_pool';
-
-  // Pool names written before the proxy pools, still accepted. The migration
-  // guide covers them: https://scrapfly.io/new-pricing#legacy-spellings
-  static PUBLIC_DATACENTER_POOL = 'public_datacenter_pool';
-  static PUBLIC_RESIDENTIAL_POOL = 'public_residential_pool';
 
   url: string;
   retry = true;
@@ -167,19 +154,15 @@ export class ScrapeConfig {
    * Storage for the anti-bot bypass toggle, under its deprecated name.
    * `unblocker` is an accessor over this same field — see below.
    *
-   * @deprecated Use `proxy_pool` (`ScrapeConfig.UNBLOCKER_ULTRA` for the Unblocker).
+   * @deprecated Use {@link ScrapeConfig.unblocker}. `asp` keeps working forever.
    */
   asp = false;
   debug = false;
   raise_on_upstream_error = true;
   cache_ttl?: number;
   /**
-   * Proxy pool: `basic` (datacenter proxies, Unblocker off), `unblocker`
-   * (residential proxies and the Unblocker), `unblocker_ultra` (residential
-   * proxies and the Unblocker, the only pool accepted by the targets and
-   * anti-bot protections that have a price of their own) or `auto` (the API
-   * picks the pool from the target's profile), see {@link ScrapeConfig.BASIC}.
-   * Each sets the Unblocker itself.
+   * Proxy pool: `ScrapeConfig.PUBLIC_DATACENTER_POOL` (the default),
+   * `ScrapeConfig.PUBLIC_RESIDENTIAL_POOL` or `ScrapeConfig.PUBLIC_TOR_POOL`.
    */
   proxy_pool?: string;
   session?: string;
@@ -314,9 +297,6 @@ export class ScrapeConfig {
 
   /**
    * The Unblocker toggle, the current name for what used to be `asp`.
-   * Deprecated: use `proxy_pool` (`ScrapeConfig.UNBLOCKER_ULTRA` for the
-   * Unblocker). The migration guide covers requests written before the proxy
-   * pools: https://scrapfly.io/new-pricing#legacy-spellings
    *
    * An accessor over the single `asp` field rather than a second stored
    * property: one storage slot means the two names can never disagree, so

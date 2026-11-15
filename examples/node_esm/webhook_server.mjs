@@ -6,27 +6,22 @@
  * 2. Export your authtoken from the ngrok dashboard https://dashboard.ngrok.com/get-started/your-authtoken  as NGROK_AUTHTOKEN in your terminal
  * 3. Run the script: node examples/webhook-server-express.mjs
  * 4. Use the public ngrok url in your Scrapfly webhook configuration
- * [optional for the verficication step]
  * 5. Copy the Webhook signing secret from your Scrapfly webhook configuration and add it to the WEBHOOK_SECRET variable
  */
 
-import { createServer, verifySignature } from 'scrapfly-sdk';
+import { createServer } from 'scrapfly-sdk';
 import ngrok from '@ngrok/ngrok';
 
+const WEBHOOK_SECRET = 'your-webhook-secret';
+
+// createServer verifies the signature of every delivery before calling back.
 const callback = (data, resourceType, request) => {
   console.log(`\n=== ${resourceType.toUpperCase()} Webhook Received ===`);
   console.log(JSON.stringify(data, null, 2));
   console.log('======================\n');
-  
-  // verify webhook signature
-  console.log('====== VERIFYING SIGNATURE ======');
-  const isValid = verifySignature(Buffer.from(request.rawBody), request.headers['x-scrapfly-webhook-signature'], WEBHOOK_SECRET);
-  console.log(`Signature valid: ${isValid}`);
-  console.log('==============================\n');
 };
 
-const app = await createServer(callback);
-const WEBHOOK_SECRET = 'your-webhook-secret';
+const app = await createServer(WEBHOOK_SECRET, callback);
 
 const PORT = 3000;
 app.listen(PORT, async () => {

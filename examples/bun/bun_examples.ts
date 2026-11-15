@@ -20,8 +20,8 @@ export async function basicGet(apiKey: string) {
   let scrape_result = await client.scrape(
     new ScrapeConfig({
       url: 'https://httpbin.dev/html',
-      // Proxy pool: basic, unblocker (anti-bot bypass), unblocker_ultra or auto
-      proxy_pool: ScrapeConfig.UNBLOCKER,
+      // turn on the Unblocker (anti-bot bypass)
+      unblocker: true,
       // server side cache - great for repeated requests
       cache: true,
       cache_ttl: 3600,  // in seconds
@@ -244,7 +244,7 @@ async function main(): Promise<void> {
             `extractionLLM - Extract content using LLM queries\n` +
             `extractionAutoExtract - Extract common web objects using Auto Extract\n` + 
             `extractionTemplates - Extract content using Template engine\n` + 
-            `screenshots - Capture screenshots using Screenshot API\n`
+            `screenshot - Capture screenshots using Screenshot API\n`
         );
         return;
     }

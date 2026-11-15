@@ -15,7 +15,7 @@ const configs = [
 
 for await (const [correlationId, result] of client.scrapeBatch(configs, { format: 'msgpack' })) {
   if (result instanceof errors.ScrapflyError) {
-    console.error(`${correlationId}: error ${result.code}`);
+    console.error(`${correlationId}: error ${result.args.code}`);
     continue;
   }
   if (result instanceof Response) continue;
