@@ -4,11 +4,12 @@
   },
   "name": "@scrapfly/scrapfly-sdk",
   "exports": "./src/main.ts",
-  "version": "0.12.3",
+  "version": "1.0.0",
   "description": "SDK for Scrapfly.io API for web scraping, screenshotting and data extraction",
   "tasks": {
     "start": "deno run --allow-net --allow-read src/main.ts",
-    "test": "deno test --allow-net --allow-env --allow-read --allow-write __tests__",
+    "test": "deno test --allow-net --allow-env --allow-read --allow-write __tests__ && deno task check-types-nonstrict",
+    "check-types-nonstrict": "deno check --config __tests__/types/nonstrict.json __tests__/types/nonstrict.ts",
     "build-npm": "deno run -A build.ts",
     "build-jsr": "deno publish --dry-run --allow-dirty",
     "fmt": "deno fmt"

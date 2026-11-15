@@ -2,6 +2,7 @@ import { urlsafe_b64encode } from './utils.ts';
 import { log } from './logger.ts';
 import type { HttpMethod, Rec } from './types.ts';
 import { ScrapeConfigError } from './errors.ts';
+import type { ScrapeResult } from './result.ts';
 
 export enum ScreenshotFlags {
   /**
@@ -43,7 +44,7 @@ export enum FormatOption {
   ONLY_CONTENT = 'only_content',
 }
 
-type ScrapeConfigOptions = {
+export type ScrapeConfigOptions = {
   url: string;
   retry?: boolean;
   method?: HttpMethod;
@@ -126,7 +127,45 @@ type ScrapeConfigOptions = {
   geolocation?: string;
 };
 
-export class ScrapeConfig {
+/**
+ * An option the constructor does not take: a typo fails to compile, as the constructor refuses it when it
+ * runs. Options built with an index signature (computed keys) are left to that runtime check.
+ */
+type NoExtraOptions<O> = string extends keyof O ? unknown
+  : { [K in Exclude<keyof O, keyof ScrapeConfigOptions>]: never };
+
+/**
+ * `proxified_response` as options `O` set it: `false` when absent, `boolean` when unknown (`any`, a variable, an
+ * optional key, options that are a union of literals from a ternary or a conditional spread).
+ */
+type ProxifiedOf<O> = 0 extends (1 & O) ? boolean
+  : O extends unknown ? (
+    'proxified_response' extends keyof O
+      ? ({} extends Pick<O, 'proxified_response' & keyof O> ? false : never)
+        | KnownBoolean<Exclude<O['proxified_response' & keyof O], undefined>>
+      : false
+  )
+  : never;
+
+/** `any` (an `undefined` value without strict null checks widens to it) says nothing: `boolean`. */
+type KnownBoolean<V> = 0 extends (1 & V) ? boolean : V;
+
+/**
+ * What `ScrapflyClient.scrape` answers for a config built from options `O`: the raw `Response` with
+ * `proxified_response: true`, a `ScrapeResult` without it or with `false`, either one when the options
+ * do not say which (a `boolean` variable, `any`, or a config typed as plain `ScrapeConfig`).
+ */
+export type ScrapeAnswer<O> = [ProxifiedOf<O>] extends [never] ? ScrapeResult
+  : [ProxifiedOf<O>] extends [true] ? Response
+  : [ProxifiedOf<O>] extends [false] ? ScrapeResult
+  : ScrapeResult | Response;
+
+/**
+ * `O` is the options the config was built from, inferred by `new ScrapeConfig({...})`: it only types what
+ * `ScrapflyClient.scrape` answers. A plain `ScrapeConfig` takes any of them and answers either one; type a
+ * variable that holds both proxified and plain configs as plain `ScrapeConfig`.
+ */
+export class ScrapeConfig<O extends ScrapeConfigOptions = ScrapeConfigOptions> {
   // Proxy pools, sent as `proxy_pool`. Datacenter proxies are the default.
   static PUBLIC_DATACENTER_POOL = 'public_datacenter_pool';
   static PUBLIC_RESIDENTIAL_POOL = 'public_residential_pool';
@@ -196,7 +235,10 @@ export class ScrapeConfig {
   rendering_stage?: 'complete' | 'domcontentloaded';
   geolocation?: string;
 
-  constructor(options: ScrapeConfigOptions) {
+  /** Type-level only, never defined: carries `O` to `ScrapflyClient.scrape`. A method, so configs of any options stay assignable to each other. */
+  __options?(options: O): void;
+
+  constructor(options: O & NoExtraOptions<O>) {
     this.validateOptions(options);
     if (options.format && !Object.values(Format).includes(options.format as Format)) {
       throw new ScrapeConfigError(`Invalid Format param value: ${options.format}`);

@@ -30,6 +30,7 @@ export {
   ScrapeConfig,
   ScreenshotFlags,
 } from './scrapeconfig.ts';
+export type { ScrapeAnswer, ScrapeConfigOptions } from './scrapeconfig.ts';
 export {
   Format as ScreenshotFormat,
   Options as ScreenshotOptions,

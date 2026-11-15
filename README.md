@@ -51,6 +51,12 @@ console.log(apiResponse.result.content); // html content
 console.log(apiResponse.selector('h3').text());
 ```
 
+`client.scrape()` answers a `ScrapeResult`. With `proxified_response: true` it answers the target's raw
+`Response` instead, and its TypeScript type says so: a config built from options that name neither (a
+`boolean` variable, `any`, or a value typed as plain `ScrapeConfig`) answers `ScrapeResult | Response`,
+which an `instanceof` check narrows. Type a variable that holds both proxified and plain configs as plain
+`ScrapeConfig`.
+
 For more see [/examples](/examples/) directory.  
 For more on Scrapfly API see our [getting started documentation](https://scrapfly.io/docs/scrape-api/getting-started)
 For Python see [Scrapfly Python SDK](https://github.com/scrapfly/python-scrapfly)

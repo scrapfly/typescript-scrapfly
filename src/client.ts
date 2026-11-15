@@ -2,7 +2,7 @@ import { path } from './deps.ts';
 import { mkdir, writeFile, readFileSync } from './polyfill.ts';
 import { fetchRetry } from './utils.ts';
 import * as errors from './errors.ts';
-import type { ScrapeConfig } from './scrapeconfig.ts';
+import type { ScrapeAnswer, ScrapeConfig, ScrapeConfigOptions } from './scrapeconfig.ts';
 import type { ScreenshotConfig } from './screenshotconfig.ts';
 import type { ExtractionConfig } from './extractionconfig.ts';
 import { BrowserConfig } from './browserconfig.ts';
@@ -515,9 +515,14 @@ export class ScrapflyClient {
   }
 
   /**
-   * Issue a single scrape command from a given scrape configuration
+   * Issue a single scrape command from a given scrape configuration. It answers a `ScrapeResult`, or the
+   * raw `Response` with `proxified_response: true`; the type says which when the config's options do.
    */
-  async scrape(config: ScrapeConfig): Promise<ScrapeResult | Response> {
+  async scrape<O extends ScrapeConfigOptions = ScrapeConfigOptions>(config: ScrapeConfig<O>): Promise<ScrapeAnswer<O>> {
+    return (await this.scrapeAnswer(config)) as ScrapeAnswer<O>;
+  }
+
+  private async scrapeAnswer(config: ScrapeConfig): Promise<ScrapeResult | Response> {
     log.debug('scraping', { method: config.method, url: config.url });
     let response;
     try {
