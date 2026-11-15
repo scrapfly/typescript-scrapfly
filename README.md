@@ -110,13 +110,16 @@ query and in the `POST /crawl` body, and only when the feature is ON - both
 "off" and "not supplied" drop the key, so the request is byte-identical to the
 one the Python, Go and Rust SDKs build for the same intent.
 
-The matching error class is `ScrapflyUnblockerError`, the same class object as
-`ScrapflyAspError`, so either name works in a `catch`:
+The matching error class is `errors.ScrapflyUnblockerError`, the same class
+object as `errors.ScrapflyAspError`, so either name works in a `catch`. The API
+error classes (`ScrapflyError` and its subclasses) are exported under the
+`errors` namespace, not at the package root; `BrowserDownloadError` and
+`ScheduleAPIError` are root exports:
 
 ```javascript
-import { ScrapflyUnblockerError } from 'scrapfly-sdk';
+import { errors } from 'scrapfly-sdk';
 
-if (err instanceof ScrapflyUnblockerError) {
+if (err instanceof errors.ScrapflyUnblockerError) {
     // the unblocker could not get through the target's protection
 }
 ```

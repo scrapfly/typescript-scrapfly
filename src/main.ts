@@ -62,7 +62,10 @@ export type {
   VaultSyncStatus,
   VaultType,
 } from './types.ts';
-/** Namespace of every error class the SDK can throw. See {@link ScrapflyError}. */
+/**
+ * Namespace of the API error classes, {@link ScrapflyError} and its subclasses: `errors.ScrapflyAspError`.
+ * `BrowserDownloadError` and `ScheduleAPIError` are exported at the root.
+ */
 export * as errors from './errors.ts';
 
 export { ExtractionResult, ScrapeResult, ScreenshotResult } from './result.ts';
