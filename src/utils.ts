@@ -1,10 +1,19 @@
 import { log } from './logger.ts';
 import type { Rec } from './types.ts';
 
+const BASE64_CHUNK_BYTES = 0x8000;
+
 export function urlsafe_b64encode(data: string): string {
   const encoder = new TextEncoder();
   const encoded = encoder.encode(data);
-  const base64 = btoa(String.fromCharCode(...encoded))
+  let binary = '';
+
+  // Encoded in chunks of BASE64_CHUNK_BYTES bytes.
+  for (let offset = 0; offset < encoded.length; offset += BASE64_CHUNK_BYTES) {
+    binary += String.fromCharCode(...encoded.subarray(offset, offset + BASE64_CHUNK_BYTES));
+  }
+
+  const base64 = btoa(binary)
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');

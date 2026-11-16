@@ -18,6 +18,15 @@ Deno.test("urlsafe_b64encode multiple / characters should be encoded correctly a
   assertEquals(urlsafe_b64encode(inp), expected);
 });
 
+Deno.test("urlsafe_b64encode encodes an input of 300 KiB and the text comes back", () => {
+  const inp = 'line of text with + and / and \u00e9 \u65e5\u672c\n'.repeat(7000);
+  const out = urlsafe_b64encode(inp);
+  const standard = out.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (out.length % 4)) % 4);
+  const bytes = Uint8Array.from(atob(standard), (character) => character.charCodeAt(0));
+
+  assertEquals(new TextDecoder().decode(bytes), inp);
+});
+
 Deno.test('fetchRetry: succeeds on first attempt', async () => {
   const fetchStub = stub(globalThis, 'fetch', async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     return new Response('Success', { status: 200 });
