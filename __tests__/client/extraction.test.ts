@@ -68,32 +68,30 @@ Deno.test('extract: fails due to invalid API key', async () => {
         });
     });
 
-    await assertRejects(
+    const error = await assertRejects(
         async () => {
             await client.extract(new ExtractionConfig({ body: html, content_type: 'text/html' }));
         },
         errors.BadApiKeyError
     );
 
+    assertEquals(error.args.http_status_code, 401);
     fetchStub.restore();
 });
 
-Deno.test('extract: fails due to any extraction related error', async () => {
+Deno.test('extract: exposes the missing template error context', async () => {
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
     const html = 'very long html file';
-    const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
-        const result = {
-            code: 'ERR::EXTRACTION::CONTENT_TYPE_NOT_SUPPORTED',
-            error_id: 'f0e9a6af-846a-49ab-8321-e21bb12bf494',
-            http_code: 422,
-            links: {
-                'Related Error Doc':
-                    'https://scrapfly.io/docs/extraction-api/error/ERR::EXTRACTION::CONTENT_TYPE_NOT_SUPPORTED',
-            },
-            message: 'ERR::EXTRACTION::CONTENT_TYPE_NOT_SUPPORTED',
-        };
-        return responseFactory(result, {
+    const code = 'ERR::EXTRACTION::TEMPLATE_NOT_FOUND';
+    const envelope = {
+        code,
+        error_id: 'f0e9a6af-846a-49ab-8321-e21bb12bf494',
+        http_code: 422,
+        message: 'No published version for the requested template',
+    };
+    const fetchStub = stub(client, 'fetch', async (): Promise<Response> => {
+        return responseFactory(envelope, {
             status: 422,
             headers: {
                 'Content-Type': 'application/json',
@@ -101,12 +99,39 @@ Deno.test('extract: fails due to any extraction related error', async () => {
         });
     });
 
-    await assertRejects(
+    const error = await assertRejects(
         async () => {
-            await client.extract(new ExtractionConfig({ body: html, content_type: 'text/html' }));
+            await client.extract(new ExtractionConfig({
+                body: html,
+                content_type: 'text/html',
+                extraction_template: 'missing-template',
+            }));
         },
         errors.ExtractionApiError
     );
 
+    assertEquals(error.args.code, code);
+    assertEquals(error.args.http_status_code, 422);
+    assertEquals(error.args.api_response, envelope);
+    assertEquals(error.message, JSON.stringify(envelope));
+    fetchStub.restore();
+});
+
+Deno.test('extract: exposes the wire status for an error without an error id', async () => {
+    const client = new ScrapflyClient({ key: '__API_KEY__' });
+    const envelope = { message: 'Not found', http_code: 422 };
+    const fetchStub = stub(client, 'fetch', async (): Promise<Response> =>
+        responseFactory(envelope, { status: 404 })
+    );
+
+    const error = await assertRejects(
+        () => client.extract(new ExtractionConfig({ body: 'html', content_type: 'text/html' })),
+        errors.ApiHttpClientError
+    );
+
+    assertEquals(error.constructor, errors.ApiHttpClientError);
+    assertEquals(error.args.http_status_code, 404);
+    assertEquals(error.args.api_response, envelope);
+    assertEquals(error.message, JSON.stringify(envelope));
     fetchStub.restore();
 });

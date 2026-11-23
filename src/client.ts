@@ -961,14 +961,17 @@ export class ScrapflyClient {
     // error path instead of re-reading, which would fail with
     // "body stream already read".
     const data: Rec<any> = (await response.json()) as Rec<any>;
-    if ('error_id' in data) {
-      if (data.http_code == 401 || response.status == 401) {
-        throw new errors.BadApiKeyError(JSON.stringify(data));
+    const hasErrorId = 'error_id' in data;
+    if (hasErrorId || !response.ok) {
+      const message = JSON.stringify(data);
+      const args = { http_status_code: response.status, code: data.code ?? '', api_response: data };
+      if (!hasErrorId) {
+        throw new errors.ApiHttpClientError(message, args);
       }
-      throw new errors.ExtractionApiError(JSON.stringify(data));
-    }
-    if (!response.ok) {
-      throw new errors.ApiHttpClientError(JSON.stringify(data));
+      if (data.http_code == 401 || response.status == 401) {
+        throw new errors.BadApiKeyError(message, args);
+      }
+      throw new errors.ExtractionApiError(message, args);
     }
     const result = new ExtractionResult({
       data: data.data,
