@@ -176,6 +176,76 @@ Deno.test('crawlStatus: terminal DONE+success', async () => {
   fetchStub.restore();
 });
 
+// Crawl.wait: a DONE crawl with is_success true resolves whatever its stop_reason says (a stop on a limit, or a crawl that
+// crawled everything, is a success), and one with is_success false rejects with the reason.
+function crawlAnswering(isSuccess: boolean, stopReason: string): { client: ScrapflyClient; restore: () => void } {
+  const client = new ScrapflyClient({ key: '__API_KEY__' });
+  const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
+    const path = new URL(config.url).pathname;
+    if (path === '/crawl') {
+      return responseFactory(
+        { crawler_uuid: 'abc-123', status: 'PENDING' },
+        { status: 201, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    assertEquals(path, '/crawl/abc-123/status');
+    return responseFactory(
+      {
+        crawler_uuid: 'abc-123',
+        status: 'DONE',
+        is_finished: true,
+        is_success: isSuccess,
+        state: {
+          urls_visited: isSuccess ? 3 : 0,
+          urls_extracted: 10,
+          urls_failed: 0,
+          urls_skipped: 7,
+          urls_to_crawl: 0,
+          api_credit_used: 30,
+          duration: 12,
+          stop_reason: stopReason,
+          start_time: 1700000000,
+          stop_time: 1700000012,
+        },
+      },
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  });
+  return { client, restore: () => fetchStub.restore() };
+}
+
+for (const reason of ['backlog_empty', 'retry_backlog_only', 'page_limit', 'max_duration_reached', 'max_api_credit', 'crawler_error'] as const) {
+  Deno.test(`Crawl.wait: a DONE crawl with is_success true stopped on ${reason} resolves and keeps its reason`, async () => {
+    const { client, restore } = crawlAnswering(true, reason);
+    try {
+      const crawl = new Crawl(client, new CrawlerConfig({ url: 'https://web-scraping.dev/products' }));
+      await crawl.start();
+
+      await crawl.wait({ pollInterval: 0 });
+
+      const status = await crawl.status(false);
+      assertEquals(status.isComplete, true);
+      assertEquals(status.state.stop_reason, reason);
+    } finally {
+      restore();
+    }
+  });
+}
+
+Deno.test('Crawl.wait: a DONE crawl with is_success false rejects with its stop reason', async () => {
+  const { client, restore } = crawlAnswering(false, 'seed_url_failed');
+  try {
+    const crawl = new Crawl(client, new CrawlerConfig({ url: 'https://web-scraping.dev/products' }));
+    await crawl.start();
+
+    const error = await assertRejects(() => crawl.wait({ pollInterval: 0 }), errors.ScrapflyCrawlerError);
+
+    assertEquals(error.message.includes('seed_url_failed'), true);
+  } finally {
+    restore();
+  }
+});
+
 // ----- crawlUrls() ---------------------------------------------------------
 
 Deno.test('crawlUrls: GET /crawl/{uuid}/urls parses streaming text (visited)', async () => {

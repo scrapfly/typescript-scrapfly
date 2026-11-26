@@ -96,7 +96,7 @@ export type BrowserConfigOptions = {
    * Arm the Cloud Browser's built-in captcha detector + solver on the first page attach.
    * Turnstile, DataDome slider, reCAPTCHA, GeeTest, PerimeterX hold, and
    * puzzle captchas are handled automatically — no extra CDP calls from the
-   * client. Billed per solve; failures cost nothing.
+   * client. Billed per solve; a captchaError costs nothing unless the captcha's solve had started.
    * See https://scrapfly.io/docs/cloud-browser-api/captcha-solver
    */
   solve_captcha?: boolean;

@@ -62,18 +62,40 @@ function optionalField<T>(
 export type CrawlerStatusValue = 'PENDING' | 'RUNNING' | 'DONE' | 'CANCELLED';
 
 /**
- * Reasons documented for why a crawler stopped.
+ * Why a crawler stopped, as `state.stop_reason` reports it.
+ *
+ * `backlog_empty` and `retry_backlog_only` are a normal completion: every URL found was crawled, or only URLs waiting
+ * for a retry were left. A stop on a limit (`page_limit`, `max_duration_reached`, `max_api_credit`) or on
+ * `crawler_error` after at least one visited page keeps its pages and ends with `is_success: true`: a stop on
+ * `max_api_credit` is a success.
  */
 export type CrawlerStopReason =
+  | 'backlog_empty'
+  | 'retry_backlog_only'
   | 'no_more_urls'
   | 'page_limit'
-  | 'max_duration'
+  | 'max_duration_reached'
   | 'max_api_credit'
   | 'seed_url_failed'
   | 'user_cancelled'
   | 'crawler_error'
-  | 'no_api_credit_left'
-  | 'storage_error';
+  | 'target_not_allowed'
+  | 'webhook_not_found'
+  | 'storage_error'
+  | 'remote_list_fetch_failed'
+  | 'remote_list_too_large'
+  | 'worker_interrupted'
+  | 'internal_error'
+  | LegacyCrawlerStopReason;
+
+/**
+ * Values the API no longer sets, kept so code that names them still compiles: a stop on `max_duration` is
+ * `max_duration_reached`, `no_api_credit_left` is never returned, and `worker_interupted` is the misspelled value
+ * that crawls stored before its correction still report.
+ *
+ * @deprecated Compare with `worker_interrupted` and `max_duration_reached`; the API never returns the others.
+ */
+export type LegacyCrawlerStopReason = 'max_duration' | 'no_api_credit_left' | 'worker_interupted';
 
 /**
  * Per-job state metrics returned in the status response and webhook payloads.
@@ -98,7 +120,7 @@ export interface CrawlerState {
   api_credit_used: number;
   /** Elapsed time in seconds since the crawl started (0 while PENDING). */
   duration: number;
-  /** `null` until the crawler stops. */
+  /** Why the crawler stopped, `null` until it does. */
   stop_reason: CrawlerStopReason | null;
   /** `null` until the crawler actually starts processing (still PENDING). */
   start_time: number | null;

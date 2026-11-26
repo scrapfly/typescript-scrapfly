@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes (TypeScript only)
+
+- **`CrawlerStopReason` lists the values `state.stop_reason` returns.** It gains `backlog_empty`, `retry_backlog_only`,
+  `max_duration_reached`, `target_not_allowed`, `webhook_not_found`, `remote_list_fetch_failed`,
+  `remote_list_too_large`, `worker_interrupted` and `internal_error`. `max_duration`, `no_api_credit_left` and
+  `worker_interupted` stay in it as the deprecated `LegacyCrawlerStopReason`: the API no longer sets them, and
+  `worker_interupted` is the misspelled value of crawls stored before its correction. Nothing changes at runtime.
+  To do: compare with `max_duration_reached` where you compared with `max_duration`. A `switch` over the type that is
+  exhaustive, and a `Record<CrawlerStopReason, ...>`, need the new members.
+
 ## 1.0.0 (2026-11-15)
 
 Nothing changes at runtime: every request and answer is the one 0.12 sends and returns. The major version is for

@@ -115,6 +115,7 @@ export type {
   CrawlerState,
   CrawlerStatusValue,
   CrawlerStopReason,
+  LegacyCrawlerStopReason,
   CrawlerUpdatedWebhook,
   CrawlerUrlDiscoveredWebhook,
   CrawlerUrlEntry,
