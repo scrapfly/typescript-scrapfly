@@ -31,9 +31,9 @@ Deno.test('CrawlerConfig: all common fields round-trip through toApiParams', () 
     exclude_paths: ['/admin/*'],
     ignore_base_path_restriction: true,
     follow_external_links: true,
-    allowed_external_domains: ['cdn.example.com'],
+    allowed_external_domains: ['httpbin.dev'],
     follow_internal_subdomains: false,
-    allowed_internal_subdomains: ['blog.example.com'],
+    allowed_internal_subdomains: ['blog.web-scraping.dev'],
     headers: { 'X-Custom': 'value' },
     delay: 1000,
     user_agent: 'TestBot/1.0',
@@ -62,9 +62,9 @@ Deno.test('CrawlerConfig: all common fields round-trip through toApiParams', () 
   assertEquals(params.exclude_paths, ['/admin/*']);
   assertEquals(params.ignore_base_path_restriction, true);
   assertEquals(params.follow_external_links, true);
-  assertEquals(params.allowed_external_domains, ['cdn.example.com']);
+  assertEquals(params.allowed_external_domains, ['httpbin.dev']);
   assertEquals(params.follow_internal_subdomains, false);
-  assertEquals(params.allowed_internal_subdomains, ['blog.example.com']);
+  assertEquals(params.allowed_internal_subdomains, ['blog.web-scraping.dev']);
   assertEquals(params.headers, { 'X-Custom': 'value' });
   assertEquals(params.delay, 1000);
   assertEquals(params.user_agent, 'TestBot/1.0');
@@ -89,7 +89,7 @@ Deno.test('CrawlerConfig: exclude_paths and include_only_paths are mutually excl
   assertThrows(
     () =>
       new CrawlerConfig({
-        url: 'https://example.com',
+        url: 'https://web-scraping.dev',
         exclude_paths: ['/foo/*'],
         include_only_paths: ['/bar/*'],
       }),
@@ -100,61 +100,61 @@ Deno.test('CrawlerConfig: exclude_paths and include_only_paths are mutually excl
 
 Deno.test('CrawlerConfig: rendering_delay bounds are enforced', () => {
   assertThrows(
-    () => new CrawlerConfig({ url: 'https://example.com', rendering_delay: -1 }),
+    () => new CrawlerConfig({ url: 'https://web-scraping.dev', rendering_delay: -1 }),
     errors.CrawlerConfigError,
   );
   assertThrows(
-    () => new CrawlerConfig({ url: 'https://example.com', rendering_delay: 25001 }),
+    () => new CrawlerConfig({ url: 'https://web-scraping.dev', rendering_delay: 25001 }),
     errors.CrawlerConfigError,
   );
   // Boundaries are inclusive
-  new CrawlerConfig({ url: 'https://example.com', rendering_delay: 0 });
-  new CrawlerConfig({ url: 'https://example.com', rendering_delay: 25000 });
+  new CrawlerConfig({ url: 'https://web-scraping.dev', rendering_delay: 0 });
+  new CrawlerConfig({ url: 'https://web-scraping.dev', rendering_delay: 25000 });
 });
 
 Deno.test('CrawlerConfig: delay bounds are enforced', () => {
   assertThrows(
-    () => new CrawlerConfig({ url: 'https://example.com', delay: -1 }),
+    () => new CrawlerConfig({ url: 'https://web-scraping.dev', delay: -1 }),
     errors.CrawlerConfigError,
   );
   assertThrows(
-    () => new CrawlerConfig({ url: 'https://example.com', delay: 15001 }),
+    () => new CrawlerConfig({ url: 'https://web-scraping.dev', delay: 15001 }),
     errors.CrawlerConfigError,
   );
 });
 
 Deno.test('CrawlerConfig: max_duration bounds are enforced', () => {
   assertThrows(
-    () => new CrawlerConfig({ url: 'https://example.com', max_duration: 14 }),
+    () => new CrawlerConfig({ url: 'https://web-scraping.dev', max_duration: 14 }),
     errors.CrawlerConfigError,
   );
   assertThrows(
-    () => new CrawlerConfig({ url: 'https://example.com', max_duration: 10801 }),
+    () => new CrawlerConfig({ url: 'https://web-scraping.dev', max_duration: 10801 }),
     errors.CrawlerConfigError,
   );
   // Boundaries are inclusive
-  new CrawlerConfig({ url: 'https://example.com', max_duration: 15 });
-  new CrawlerConfig({ url: 'https://example.com', max_duration: 10800 });
+  new CrawlerConfig({ url: 'https://web-scraping.dev', max_duration: 15 });
+  new CrawlerConfig({ url: 'https://web-scraping.dev', max_duration: 10800 });
 });
 
 Deno.test('CrawlerConfig: cache_ttl bounds are enforced', () => {
   assertThrows(
-    () => new CrawlerConfig({ url: 'https://example.com', cache_ttl: -1 }),
+    () => new CrawlerConfig({ url: 'https://web-scraping.dev', cache_ttl: -1 }),
     errors.CrawlerConfigError,
   );
   assertThrows(
-    () => new CrawlerConfig({ url: 'https://example.com', cache_ttl: 604801 }),
+    () => new CrawlerConfig({ url: 'https://web-scraping.dev', cache_ttl: 604801 }),
     errors.CrawlerConfigError,
   );
 });
 
 Deno.test('CrawlerConfig: max_api_credit cannot be negative', () => {
   assertThrows(
-    () => new CrawlerConfig({ url: 'https://example.com', max_api_credit: -1 }),
+    () => new CrawlerConfig({ url: 'https://web-scraping.dev', max_api_credit: -1 }),
     errors.CrawlerConfigError,
   );
   // 0 is valid (means no limit per docs)
-  new CrawlerConfig({ url: 'https://example.com', max_api_credit: 0 });
+  new CrawlerConfig({ url: 'https://web-scraping.dev', max_api_credit: 0 });
 });
 
 Deno.test('CrawlerConfig: max array sizes are enforced', () => {
@@ -162,7 +162,7 @@ Deno.test('CrawlerConfig: max array sizes are enforced', () => {
   assertThrows(
     () =>
       new CrawlerConfig({
-        url: 'https://example.com',
+        url: 'https://web-scraping.dev',
         exclude_paths: Array.from({ length: 101 }, (_, i) => `/path${i}/*`),
       }),
     errors.CrawlerConfigError,
@@ -172,8 +172,8 @@ Deno.test('CrawlerConfig: max array sizes are enforced', () => {
   assertThrows(
     () =>
       new CrawlerConfig({
-        url: 'https://example.com',
-        allowed_external_domains: Array.from({ length: 251 }, (_, i) => `domain${i}.example.com`),
+        url: 'https://web-scraping.dev',
+        allowed_external_domains: Array.from({ length: 251 }, (_, i) => `domain${i}.httpbin.dev`),
       }),
     errors.CrawlerConfigError,
     'allowed_external_domains',
@@ -182,8 +182,8 @@ Deno.test('CrawlerConfig: max array sizes are enforced', () => {
   assertThrows(
     () =>
       new CrawlerConfig({
-        url: 'https://example.com',
-        allowed_internal_subdomains: Array.from({ length: 251 }, (_, i) => `sub${i}.example.com`),
+        url: 'https://web-scraping.dev',
+        allowed_internal_subdomains: Array.from({ length: 251 }, (_, i) => `sub${i}.web-scraping.dev`),
       }),
     errors.CrawlerConfigError,
     'allowed_internal_subdomains',
@@ -194,7 +194,7 @@ Deno.test('CrawlerConfig: invalid content_formats value is rejected', () => {
   assertThrows(
     () =>
       new CrawlerConfig({
-        url: 'https://example.com',
+        url: 'https://web-scraping.dev',
         // deno-lint-ignore no-explicit-any
         content_formats: ['markdown', 'pdf' as any],
       }),
@@ -207,7 +207,7 @@ Deno.test('CrawlerConfig: invalid webhook_events value is rejected', () => {
   assertThrows(
     () =>
       new CrawlerConfig({
-        url: 'https://example.com',
+        url: 'https://web-scraping.dev',
         // deno-lint-ignore no-explicit-any
         webhook_events: ['crawler_finished', 'crawl.completed' as any],
       }),
@@ -220,7 +220,7 @@ Deno.test('CrawlerConfig: unknown option is rejected', () => {
   assertThrows(
     () =>
       new CrawlerConfig({
-        url: 'https://example.com',
+        url: 'https://web-scraping.dev',
         // deno-lint-ignore no-explicit-any
         nonsense_field: true,
       } as any),
@@ -231,7 +231,7 @@ Deno.test('CrawlerConfig: unknown option is rejected', () => {
 
 Deno.test('CrawlerConfig: all valid webhook event names accepted', () => {
   const config = new CrawlerConfig({
-    url: 'https://example.com',
+    url: 'https://web-scraping.dev',
     webhook_events: [
       'crawler_started',
       'crawler_url_visited',
@@ -251,13 +251,13 @@ Deno.test('CrawlerConfig: all valid webhook event names accepted', () => {
 });
 
 Deno.test('CrawlerConfig: search serializes to the wire payload', () => {
-  const config = new CrawlerConfig({ url: 'https://example.com', search: true });
+  const config = new CrawlerConfig({ url: 'https://web-scraping.dev', search: true });
   assertEquals(config.toApiParams().search, true);
 });
 
 Deno.test('CrawlerConfig: search is omitted when off', () => {
   // Unset means server default: never emit a field to send its default.
-  const config = new CrawlerConfig({ url: 'https://example.com' });
+  const config = new CrawlerConfig({ url: 'https://web-scraping.dev' });
   assertEquals(config.toApiParams().search, undefined);
 });
 
@@ -265,26 +265,26 @@ Deno.test('CrawlerConfig: search survives the validateOptions allowlist', () => 
   // A key missing from validKeys throws 'Invalid option provided'; a key
   // missing from toApiParams' fields array is dropped silently. Both are
   // covered by the two assertions here.
-  const config = new CrawlerConfig({ url: 'https://example.com', search: false });
+  const config = new CrawlerConfig({ url: 'https://web-scraping.dev', search: false });
   assertEquals(config.search, false);
   assertEquals(config.toApiParams().search, false);
 });
 
 Deno.test('CrawlerConfig: refresh fields serialize to the wire payload', () => {
-  const config = new CrawlerConfig({ url: 'https://example.com', refresh: true, refresh_interval: 86400 });
+  const config = new CrawlerConfig({ url: 'https://web-scraping.dev', refresh: true, refresh_interval: 86400 });
   assertEquals(config.toApiParams().refresh, true);
   assertEquals(config.toApiParams().refresh_interval, 86400);
 });
 
 Deno.test('CrawlerConfig: refresh fields are omitted when off', () => {
   // Unset means server default: never emit a field to send its default.
-  const config = new CrawlerConfig({ url: 'https://example.com' });
+  const config = new CrawlerConfig({ url: 'https://web-scraping.dev' });
   assertEquals(config.toApiParams().refresh, undefined);
   assertEquals(config.toApiParams().refresh_interval, undefined);
 });
 
 Deno.test('CrawlerConfig: refresh without an interval uses the server period', () => {
-  const config = new CrawlerConfig({ url: 'https://example.com', refresh: true });
+  const config = new CrawlerConfig({ url: 'https://web-scraping.dev', refresh: true });
   assertEquals(config.toApiParams().refresh, true);
   assertEquals(config.toApiParams().refresh_interval, undefined);
 });
@@ -293,7 +293,7 @@ Deno.test('CrawlerConfig: refresh survives the validateOptions allowlist', () =>
   // A key missing from validKeys throws 'Invalid option provided'; a key
   // missing from toApiParams' fields array is dropped silently. Both are
   // covered by the two assertions here.
-  const config = new CrawlerConfig({ url: 'https://example.com', refresh: false });
+  const config = new CrawlerConfig({ url: 'https://web-scraping.dev', refresh: false });
   assertEquals(config.refresh, false);
   assertEquals(config.toApiParams().refresh, false);
 });
@@ -302,13 +302,13 @@ Deno.test('CrawlerConfig: refresh_interval outside the bounds is refused', () =>
   // The floor decides the cost; reject before a round trip.
   for (const refresh_interval of [1, 3599, 90 * 24 * 3600 + 1]) {
     assertThrows(
-      () => new CrawlerConfig({ url: 'https://example.com', refresh: true, refresh_interval }),
+      () => new CrawlerConfig({ url: 'https://web-scraping.dev', refresh: true, refresh_interval }),
       errors.CrawlerConfigError,
       'refresh_interval must be between',
     );
   }
   for (const refresh_interval of [3600, 86400, 90 * 24 * 3600]) {
-    const config = new CrawlerConfig({ url: 'https://example.com', refresh: true, refresh_interval });
+    const config = new CrawlerConfig({ url: 'https://web-scraping.dev', refresh: true, refresh_interval });
     assertEquals(config.toApiParams().refresh_interval, refresh_interval);
   }
 });
@@ -316,7 +316,7 @@ Deno.test('CrawlerConfig: refresh_interval outside the bounds is refused', () =>
 Deno.test('CrawlerConfig: refresh_interval without refresh is refused', () => {
   // A period with the feature off would silently never run.
   assertThrows(
-    () => new CrawlerConfig({ url: 'https://example.com', refresh_interval: 86400 }),
+    () => new CrawlerConfig({ url: 'https://web-scraping.dev', refresh_interval: 86400 }),
     errors.CrawlerConfigError,
     'refresh_interval requires refresh: true',
   );
@@ -326,7 +326,7 @@ Deno.test('CrawlerConfig: refresh_interval without refresh is refused', () => {
 // permanently supported deprecated alias. The POST /crawl body key stays `asp`
 // for both names.
 Deno.test('CrawlerConfig: unblocker is serialized as asp', () => {
-  const config = new CrawlerConfig({ url: 'https://example.com', unblocker: true });
+  const config = new CrawlerConfig({ url: 'https://web-scraping.dev', unblocker: true });
   assertEquals(config.unblocker, true);
   assertEquals(config.asp, true);
   const params = config.toApiParams();
@@ -339,32 +339,32 @@ Deno.test('CrawlerConfig: unblocker false omits the key, as in every other SDK',
   // Off means the key is ABSENT, not `asp: false`. Python, Go and Rust all omit
   // it, and the API's own parsing of the crawl body cannot tell a
   // present-false from an absent pair, so one shape is carried by all four.
-  const params = new CrawlerConfig({ url: 'https://example.com', unblocker: false }).toApiParams();
+  const params = new CrawlerConfig({ url: 'https://web-scraping.dev', unblocker: false }).toApiParams();
   assertEquals(Object.keys(params).includes('asp'), false);
   assertEquals(Object.keys(params).includes('unblocker'), false);
 });
 
 Deno.test('CrawlerConfig: explicit asp wins over unblocker', () => {
   // asp:false is an explicit "off" and must not be overridden by unblocker.
-  const off = new CrawlerConfig({ url: 'https://example.com', asp: false, unblocker: true });
+  const off = new CrawlerConfig({ url: 'https://web-scraping.dev', asp: false, unblocker: true });
   assertEquals(off.unblocker, false);
   assertEquals(Object.keys(off.toApiParams()).includes('asp'), false);
 
-  const on = new CrawlerConfig({ url: 'https://example.com', asp: true, unblocker: false });
+  const on = new CrawlerConfig({ url: 'https://web-scraping.dev', asp: true, unblocker: false });
   assertEquals(on.unblocker, true);
   assertEquals(on.toApiParams().asp, true);
 });
 
 Deno.test('CrawlerConfig: neither name supplied stays unset', () => {
   // Dropped from the body so the server applies its own default.
-  const config = new CrawlerConfig({ url: 'https://example.com' });
+  const config = new CrawlerConfig({ url: 'https://web-scraping.dev' });
   assertEquals(config.asp, undefined);
   assertEquals(config.unblocker, undefined);
   assertEquals(Object.keys(config.toApiParams()).includes('asp'), false);
 });
 
 Deno.test('CrawlerConfig: unblocker and asp are one value after construction', () => {
-  const config = new CrawlerConfig({ url: 'https://example.com' });
+  const config = new CrawlerConfig({ url: 'https://web-scraping.dev' });
   config.unblocker = true;
   assertEquals(config.asp, true);
   assertEquals(config.toApiParams().asp, true);
@@ -431,9 +431,9 @@ function crawlerConfigWith(toggle: { asp?: boolean; unblocker?: boolean }): Craw
     exclude_paths: ['/admin/*'],
     ignore_base_path_restriction: true,
     follow_external_links: true,
-    allowed_external_domains: ['cdn.example.com'],
+    allowed_external_domains: ['httpbin.dev'],
     follow_internal_subdomains: false,
-    allowed_internal_subdomains: ['blog.example.com'],
+    allowed_internal_subdomains: ['blog.web-scraping.dev'],
     headers: { 'X-Parity': 'yes' },
     delay: 1000,
     user_agent: 'ParityBot/1.0',
@@ -563,7 +563,7 @@ const CRAWLER_TRUTH_TABLE_BASES: Array<{
   label: string;
   build: (options: { asp?: boolean; unblocker?: boolean }) => CrawlerConfig;
 }> = [
-  { label: 'minimal', build: (options) => new CrawlerConfig({ url: 'https://example.com', ...options }) },
+  { label: 'minimal', build: (options) => new CrawlerConfig({ url: 'https://web-scraping.dev', ...options }) },
   { label: 'loaded', build: (options) => crawlerConfigWith(options) },
 ];
 
@@ -611,7 +611,7 @@ Deno.test('truth table (crawler): rows with the same outcome are indistinguishab
 // grouping above is by wire outcome and this pins the state column.
 for (const row of CRAWLER_TRUTH_TABLE) {
   Deno.test(`truth table (crawler): ${row.name}`, () => {
-    const config = new CrawlerConfig({ url: 'https://example.com', ...row.options });
+    const config = new CrawlerConfig({ url: 'https://web-scraping.dev', ...row.options });
     // Resolved outcome, readable under either name — both must agree.
     assertEquals(config.asp, row.resolved);
     assertEquals(config.unblocker, row.resolved);
@@ -628,13 +628,13 @@ for (const row of CRAWLER_TRUTH_TABLE) {
 
 Deno.test('parity: validateOptions accepts each name on its own', () => {
   for (const options of [{ asp: true }, { unblocker: true }, { asp: false }, { unblocker: false }]) {
-    const config = new CrawlerConfig({ url: 'https://example.com', ...options });
+    const config = new CrawlerConfig({ url: 'https://web-scraping.dev', ...options });
     assertEquals(typeof config.asp, 'boolean');
   }
   // Negative control: the allow-list really is enforced, so the two passes
   // above are evidence and not a no-op.
   assertThrows(
-    () => new CrawlerConfig({ url: 'https://example.com', unblock: true } as any),
+    () => new CrawlerConfig({ url: 'https://web-scraping.dev', unblock: true } as any),
     errors.CrawlerConfigError,
     'Invalid option provided: unblock',
   );
@@ -643,7 +643,7 @@ Deno.test('parity: validateOptions accepts each name on its own', () => {
 Deno.test('parity: post-construction mutation agrees in both directions', () => {
   // Setting one name and reading the other must agree BOTH ways, and each
   // mutation must reach the wire.
-  const config = new CrawlerConfig({ url: 'https://example.com' });
+  const config = new CrawlerConfig({ url: 'https://web-scraping.dev' });
 
   config.unblocker = true;
   assertEquals(config.asp, true);

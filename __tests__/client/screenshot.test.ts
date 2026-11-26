@@ -43,7 +43,7 @@ Deno.test('screenshot: succeeds', async () => {
 Deno.test('screenshot: fails due to failing upstream response', async () => {
     const KEY = '__API_KEY__';
     const client = new ScrapflyClient({ key: KEY });
-    const url = 'https://domain.com/down-page/';
+    const url = 'https://web-scraping.dev/down-page/';
     const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
         const body = {
             code: 'ERR::SCREENSHOT::UNABLE_TO_TAKE_SCREENSHOT',
