@@ -6,7 +6,7 @@
 //
 // To target another endpoint instead of api.scrapfly.io:
 //   SCRAPFLY_API_KEY=scp-live-... \
-//   SCRAPFLY_API_HOST=https://your-endpoint.example \
+//   SCRAPFLY_API_HOST=https://<endpoint> \
 //     deno run --allow-net --allow-read --allow-env examples/deno/crawler_quickstart.ts
 //
 // What this example does:

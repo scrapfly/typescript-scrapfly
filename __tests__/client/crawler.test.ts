@@ -57,7 +57,7 @@ Deno.test('crawl: API returns crawler_uuid (canonical) is preferred over uuid', 
       { status: 201, headers: { 'Content-Type': 'application/json' } },
     );
   });
-  const result = await client.crawl(new CrawlerConfig({ url: 'https://example.com' }));
+  const result = await client.crawl(new CrawlerConfig({ url: 'https://web-scraping.dev' }));
   assertEquals(result.crawler_uuid, 'canonical-uuid');
   fetchStub.restore();
 });
@@ -71,7 +71,7 @@ Deno.test('crawl: 401 throws BadApiKeyError', async () => {
     );
   });
   await assertRejects(
-    () => client.crawl(new CrawlerConfig({ url: 'https://example.com' })),
+    () => client.crawl(new CrawlerConfig({ url: 'https://web-scraping.dev' })),
     errors.BadApiKeyError,
   );
   fetchStub.restore();
@@ -91,7 +91,7 @@ Deno.test('crawl: ERR::CRAWLER::* throws ScrapflyCrawlerError', async () => {
     );
   });
   await assertRejects(
-    () => client.crawl(new CrawlerConfig({ url: 'https://example.com' })),
+    () => client.crawl(new CrawlerConfig({ url: 'https://web-scraping.dev' })),
     errors.ScrapflyCrawlerError,
   );
   fetchStub.restore();
@@ -260,16 +260,16 @@ Deno.test('crawlUrls: GET /crawl/{uuid}/urls parses streaming text (visited)', a
     assertEquals(configUrl.searchParams.get('per_page'), '50');
     // Canonical wire format: one URL per line, plain text.
     return new Response(
-      'https://example.com/page1\nhttps://example.com/page2\n',
+      'https://web-scraping.dev/page1\nhttps://web-scraping.dev/page2\n',
       { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
     );
   });
   const result = await client.crawlUrls('abc-123', { status: 'visited', page: 2, per_page: 50 });
   assert(result instanceof CrawlerUrls);
   assertEquals(result.urls.length, 2);
-  assertEquals(result.urls[0].url, 'https://example.com/page1');
+  assertEquals(result.urls[0].url, 'https://web-scraping.dev/page1');
   assertEquals(result.urls[0].status, 'visited');
-  assertEquals(result.urls[1].url, 'https://example.com/page2');
+  assertEquals(result.urls[1].url, 'https://web-scraping.dev/page2');
   assertEquals(result.page, 2);
   assertEquals(result.per_page, 50);
   fetchStub.restore();
@@ -279,13 +279,13 @@ Deno.test('crawlUrls: parses url,reason for failed status', async () => {
   const client = new ScrapflyClient({ key: '__API_KEY__' });
   const fetchStub = stub(client, 'fetch', async (_config: RequestOptions): Promise<Response> => {
     return new Response(
-      'https://example.com/404,page_limit\nhttps://example.com/500,crawler_error\n',
+      'https://web-scraping.dev/404,page_limit\nhttps://web-scraping.dev/500,crawler_error\n',
       { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
     );
   });
   const result = await client.crawlUrls('abc-123', { status: 'failed' });
   assertEquals(result.urls.length, 2);
-  assertEquals(result.urls[0].url, 'https://example.com/404');
+  assertEquals(result.urls[0].url, 'https://web-scraping.dev/404');
   assertEquals(result.urls[0].reason, 'page_limit');
   assertEquals(result.urls[0].status, 'failed');
   assertEquals(result.urls[1].reason, 'crawler_error');
@@ -336,8 +336,8 @@ Deno.test('crawlContents: JSON mode returns CrawlerContents', async () => {
     return responseFactory(
       {
         contents: {
-          'https://example.com/p1': { markdown: '# Page 1' },
-          'https://example.com/p2': { markdown: '# Page 2' },
+          'https://web-scraping.dev/p1': { markdown: '# Page 1' },
+          'https://web-scraping.dev/p2': { markdown: '# Page 2' },
         },
         links: { next: null, prev: null },
       },
@@ -355,7 +355,7 @@ Deno.test('crawlContents: plain mode returns string', async () => {
   const fetchStub = stub(client, 'fetch', async (config: RequestOptions): Promise<Response> => {
     const configUrl = new URL(config.url);
     assertEquals(configUrl.searchParams.get('plain'), 'true');
-    assertEquals(configUrl.searchParams.get('url'), 'https://example.com/p1');
+    assertEquals(configUrl.searchParams.get('url'), 'https://web-scraping.dev/p1');
     // Server query param is `formats` (plural) — see crawlContents impl note.
     assertEquals(configUrl.searchParams.get('formats'), 'markdown');
     return new Response('# Page 1 markdown content', {
@@ -365,7 +365,7 @@ Deno.test('crawlContents: plain mode returns string', async () => {
   });
   const result = await client.crawlContents('abc-123', {
     format: 'markdown',
-    url: 'https://example.com/p1',
+    url: 'https://web-scraping.dev/p1',
     plain: true,
   });
   assertEquals(typeof result, 'string');
@@ -407,12 +407,12 @@ Deno.test('crawlContentsBatch: parses multipart/related response', async () => {
   const multipartBody = [
     `--${boundary}`,
     'Content-Type: text/markdown',
-    'Content-Location: https://example.com/page1',
+    'Content-Location: https://web-scraping.dev/page1',
     '',
     '# Page 1',
     `--${boundary}`,
     'Content-Type: text/markdown',
-    'Content-Location: https://example.com/page2',
+    'Content-Location: https://web-scraping.dev/page2',
     '',
     '# Page 2',
     `--${boundary}--`,
@@ -424,7 +424,7 @@ Deno.test('crawlContentsBatch: parses multipart/related response', async () => {
     assertEquals(configUrl.origin + configUrl.pathname, client.HOST + '/crawl/abc-123/contents/batch');
     assertEquals(config.method, 'POST');
     assertEquals(configUrl.searchParams.get('formats'), 'markdown');
-    assertEquals(config.body, 'https://example.com/page1\nhttps://example.com/page2');
+    assertEquals(config.body, 'https://web-scraping.dev/page1\nhttps://web-scraping.dev/page2');
     return new Response(multipartBody, {
       status: 200,
       headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
@@ -433,11 +433,11 @@ Deno.test('crawlContentsBatch: parses multipart/related response', async () => {
 
   const result = await client.crawlContentsBatch(
     'abc-123',
-    ['https://example.com/page1', 'https://example.com/page2'],
+    ['https://web-scraping.dev/page1', 'https://web-scraping.dev/page2'],
     ['markdown'],
   );
-  assertEquals(result['https://example.com/page1']['markdown'], '# Page 1');
-  assertEquals(result['https://example.com/page2']['markdown'], '# Page 2');
+  assertEquals(result['https://web-scraping.dev/page1']['markdown'], '# Page 1');
+  assertEquals(result['https://web-scraping.dev/page2']['markdown'], '# Page 2');
   fetchStub.restore();
 });
 
@@ -451,7 +451,7 @@ Deno.test('crawlContentsBatch: empty url list throws', async () => {
 
 Deno.test('crawlContentsBatch: > 100 urls throws', async () => {
   const client = new ScrapflyClient({ key: '__API_KEY__' });
-  const urls = Array.from({ length: 101 }, (_, i) => `https://example.com/p${i}`);
+  const urls = Array.from({ length: 101 }, (_, i) => `https://web-scraping.dev/p${i}`);
   await assertRejects(
     () => client.crawlContentsBatch('abc-123', urls, ['markdown']),
     errors.CrawlerConfigError,
@@ -555,8 +555,8 @@ Deno.test('crawlCancel: error envelope throws ScrapflyCrawlerError', async () =>
 // ----- host override ------------------------------------------------------
 
 Deno.test('client: host override is honored, trailing slashes stripped', () => {
-  const client = new ScrapflyClient({ key: '__API_KEY__', host: 'https://custom-host.example/' });
-  assertEquals(client.HOST, 'https://custom-host.example');
+  const client = new ScrapflyClient({ key: '__API_KEY__', host: 'https://api.web-scraping.dev/' });
+  assertEquals(client.HOST, 'https://api.web-scraping.dev');
 });
 
 Deno.test('client: host omitted defaults to api.scrapfly.io', () => {
@@ -578,7 +578,7 @@ const SEARCH_ENVELOPE = {
     score: 0.927,
     scores: { vector: 0.91, fts: 12.4, rrf: 0.0312 },
     crawler_uuid: '0198aaaa',
-    url: 'https://example.com/foo',
+    url: 'https://web-scraping.dev/foo',
     title: 'Foo Product',
     source_format: 'markdown',
     content_type: 'application/markdown',
@@ -621,20 +621,20 @@ Deno.test('crawlSearch: POSTs the collection body to /crawl/search', async () =>
     assertEquals(body.crawl_ids, ['0198aaaa', '0198bbbb']);
     assertEquals(body.limit, 20);
     assertEquals(body.mode, 'hybrid');
-    assertEquals(body.filters, { url_prefix: 'https://example.com/docs/' });
+    assertEquals(body.filters, { url_prefix: 'https://web-scraping.dev/docs/' });
     return responseFactory(SEARCH_ENVELOPE, { status: 200, headers: { 'Content-Type': 'application/json' } });
   });
 
   const res = await client.crawlSearch(['0198aaaa', '0198bbbb'], 'TLS fingerprint', {
     limit: 20,
     mode: 'hybrid',
-    filters: { url_prefix: 'https://example.com/docs/' },
+    filters: { url_prefix: 'https://web-scraping.dev/docs/' },
   });
 
   assert(res instanceof CrawlerSearchResponse);
   assertEquals(res.isExact, true);
   assertEquals(res.results.length, 1);
-  assertEquals(res.results[0].url, 'https://example.com/foo');
+  assertEquals(res.results[0].url, 'https://web-scraping.dev/foo');
   assertEquals(res.results[0].scores.rrf, 0.0312);
   assertEquals(res.results[0].warc_end, 746643);
   assertEquals(res.skipped[0].reason, 'search_not_ready');
@@ -697,7 +697,7 @@ Deno.test('crawlPrompt: streams source, token and done frames', async () => {
     assertEquals(config.headers.accept, 'text/event-stream');
     sentBody = JSON.parse(config.body as string);
     return sseResponse(
-      'event: source\ndata: {"id":1,"crawler_uuid":"0198aaaa","url":"https://example.com/foo","score":0.92}\n\n' +
+      'event: source\ndata: {"id":1,"crawler_uuid":"0198aaaa","url":"https://web-scraping.dev/foo","score":0.92}\n\n' +
         ':keepalive\n\n' +
         'event: token\ndata: "The"\n\n' +
         'event: token\ndata: " answer"\n\n' +
@@ -729,7 +729,7 @@ Deno.test('crawlPrompt: streams source, token and done frames', async () => {
   assertEquals(sentBody.generation, { stream: true, model: 'gemini-2.5-flash-lite' });
   assertEquals(sentBody.search, { limit: 30, mode: 'hybrid' });
   assertEquals(answer, 'The answer');
-  assertEquals(sources, ['https://example.com/foo']);
+  assertEquals(sources, ['https://web-scraping.dev/foo']);
   assertEquals(done?.sources_used, [1]);
   assertEquals(done?.sources_dropped, 2);
   assertEquals(JSON.parse(JSON.stringify(done)), {
@@ -830,7 +830,7 @@ Deno.test('Crawl: search and prompt delegate to the collection endpoints', async
     return sseResponse('event: done\ndata: {"truncated":false}\n\n');
   });
 
-  const crawl = new Crawl(client, new CrawlerConfig({ url: 'https://example.com', search: true }));
+  const crawl = new Crawl(client, new CrawlerConfig({ url: 'https://web-scraping.dev', search: true }));
   await crawl.start();
   await crawl.search('q');
   for await (const _ of crawl.prompt('q')) { /* drain */ }
@@ -1027,8 +1027,8 @@ const REFRESH_ENVELOPE = {
       failed: 0,
       duration_ms: 44900,
       search_status: 'READY',
-      sample_updated: ['https://example.com/pricing'],
-      sample_removed: ['https://example.com/old'],
+      sample_updated: ['https://web-scraping.dev/pricing'],
+      sample_removed: ['https://web-scraping.dev/old'],
     },
   ],
 };
@@ -1052,7 +1052,7 @@ Deno.test('crawlRefreshNow: POSTs to /crawl/{uuid}/refresh', async () => {
   assertEquals(state.next_run_at, '2026-09-02T04:00:00Z');
   assertEquals(state.history?.length, 2);
   assertEquals(refreshChanged(state.history?.[1]), 11);
-  assertEquals(state.history?.[1].sample_removed, ['https://example.com/old']);
+  assertEquals(state.history?.[1].sample_removed, ['https://web-scraping.dev/old']);
   fetchStub.restore();
 });
 
@@ -1173,7 +1173,7 @@ Deno.test('Crawl.refresh*: delegate to the client', async () => {
     return responseFactory(REFRESH_ENVELOPE, { status: 200, headers: { 'Content-Type': 'application/json' } });
   });
 
-  const crawl = new Crawl(client, new CrawlerConfig({ url: 'https://example.com', refresh: true }));
+  const crawl = new Crawl(client, new CrawlerConfig({ url: 'https://web-scraping.dev', refresh: true }));
   await crawl.start();
   await crawl.refreshNow();
   await crawl.refreshSettings({ enabled: true });
