@@ -48,8 +48,10 @@ export type BrowserConfigOptions = {
    * entries.
    */
   languages?: string | string[];
-  /** Close the browser automatically when the connection drops. */
+  /** Close the browser automatically when the last CDP client disconnects. */
   auto_close?: boolean;
+  /** Join an existing named browser on a new tab. */
+  share_cdp?: boolean;
   /** Session timeout in seconds (max 1800 = 30 minutes). */
   timeout?: number;
   /** Enable debug trace for the session. */
@@ -155,6 +157,8 @@ export class BrowserConfig {
   languages?: string;
   /** See {@link BrowserConfigOptions.auto_close}. */
   auto_close?: boolean;
+  /** See {@link BrowserConfigOptions.share_cdp}. */
+  share_cdp?: boolean;
   /** See {@link BrowserConfigOptions.timeout}. */
   timeout?: number;
   /** See {@link BrowserConfigOptions.debug}. */
@@ -228,6 +232,7 @@ export class BrowserConfig {
       this.languages = options.languages || undefined;
     }
     this.auto_close = options.auto_close;
+    this.share_cdp = options.share_cdp;
     this.timeout = options.timeout;
     this.debug = options.debug;
     this.extensions = options.extensions;
@@ -319,6 +324,7 @@ export class BrowserConfig {
     if (this.lang !== undefined) params.set('lang', this.lang);
     if (this.languages !== undefined) params.set('languages', this.languages);
     if (this.auto_close !== undefined) params.set('auto_close', String(this.auto_close));
+    if (this.share_cdp !== undefined) params.set('share_cdp', String(this.share_cdp));
     if (this.timeout !== undefined) params.set('timeout', String(this.timeout));
     if (this.debug !== undefined) params.set('debug', String(this.debug));
     if (this.extensions && this.extensions.length > 0) params.set('extensions', this.extensions.join(','));
