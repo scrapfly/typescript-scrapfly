@@ -39,7 +39,7 @@ export {
 } from './screenshotconfig.ts';
 export { ExtractionConfig } from './extractionconfig.ts';
 export { BrowserConfig, ProxyPool, OperatingSystem } from './browserconfig.ts';
-export type { BrowserConfigOptions } from './browserconfig.ts';
+export type { BrowserConfigOptions, NetworkPolicy } from './browserconfig.ts';
 export { BrowserDownloadError, CloudBrowserDownloads, parseDownloads } from './browserdownloads.ts';
 export type { BrowserDownload, CdpSend, CdpSession, CloudBrowserDownloadsOptions, WaitForOptions } from './browserdownloads.ts';
 // Enum, hence a value export: callers name VaultLinkedService.ONE_PASSWORD.

@@ -22,6 +22,12 @@ export enum OperatingSystem {
   IPAD = 'ipad',
 }
 
+/** Domains (including subdomains) or IP addresses allowed or blocked for this session. */
+export interface NetworkPolicy {
+  readonly allow?: readonly string[];
+  readonly block?: readonly string[];
+}
+
 /**
  * User-facing options accepted by {@link BrowserConfig}. All fields are
  * optional; any field left undefined falls back to the Scrapfly Cloud
@@ -70,6 +76,8 @@ export type BrowserConfigOptions = {
   screenshot?: boolean;
   /** Viewport resolution, formatted as "widthxheight" (e.g. "1920x1080"). */
   resolution?: string;
+  /** Hosts this session may reach. An allow list restricts access to the listed hosts. */
+  network_policy?: NetworkPolicy;
   /** URL to navigate to after session start. */
   target_url?: string;
   /** Reuse cached responses where possible. */
@@ -177,6 +185,7 @@ export class BrowserConfig {
   screenshot?: boolean;
   /** See {@link BrowserConfigOptions.resolution}. */
   resolution?: string;
+  network_policy?: NetworkPolicy;
   /** See {@link BrowserConfigOptions.target_url}. */
   target_url?: string;
   /** See {@link BrowserConfigOptions.cache}. */
@@ -242,6 +251,7 @@ export class BrowserConfig {
     this.block_media = options.block_media;
     this.screenshot = options.screenshot;
     this.resolution = options.resolution;
+    this.network_policy = options.network_policy;
     this.target_url = options.target_url;
     this.cache = options.cache;
     this.blacklist = options.blacklist;
@@ -335,6 +345,13 @@ export class BrowserConfig {
     if (this.screenshot !== undefined) params.set('screenshot', String(this.screenshot));
     if (this.resolution !== undefined) params.set('resolution', this.resolution);
     if (this.target_url !== undefined) params.set('target_url', this.target_url);
+    const { allow, block } = this.network_policy ?? {};
+    if (allow?.length || block?.length) {
+      params.set('network_policy', JSON.stringify({
+        allow: allow?.length ? allow : undefined,
+        block: block?.length ? block : undefined,
+      }));
+    }
     if (this.cache !== undefined) params.set('cache', String(this.cache));
     if (this.blacklist !== undefined) params.set('blacklist', String(this.blacklist));
     if (this.unblock !== undefined) params.set('unblock', String(this.unblock));
